@@ -18,6 +18,10 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
+import { Route as DashboardResultsRouteImport } from './routes/dashboard.results'
+import { Route as DashboardNotificationsRouteImport } from './routes/dashboard.notifications'
+import { Route as DashboardEventsRouteImport } from './routes/dashboard.events'
+import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -64,6 +68,26 @@ const EventsEventIdRoute = EventsEventIdRouteImport.update({
   path: '/$eventId',
   getParentRoute: () => EventsRoute,
 } as any)
+const DashboardResultsRoute = DashboardResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardNotificationsRoute = DashboardNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardEventsRoute = DashboardEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardApplicationsRoute = DashboardApplicationsRouteImport.update({
+  id: '/applications',
+  path: '/applications',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,6 +97,10 @@ export interface FileRoutesByFullPath {
   '/events': typeof EventsRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/dashboard/applications': typeof DashboardApplicationsRoute
+  '/dashboard/events': typeof DashboardEventsRoute
+  '/dashboard/notifications': typeof DashboardNotificationsRoute
+  '/dashboard/results': typeof DashboardResultsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -83,6 +111,10 @@ export interface FileRoutesByTo {
   '/events': typeof EventsRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/dashboard/applications': typeof DashboardApplicationsRoute
+  '/dashboard/events': typeof DashboardEventsRoute
+  '/dashboard/notifications': typeof DashboardNotificationsRoute
+  '/dashboard/results': typeof DashboardResultsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/dashboard': typeof DashboardIndexRoute
 }
@@ -95,6 +127,10 @@ export interface FileRoutesById {
   '/events': typeof EventsRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/dashboard/applications': typeof DashboardApplicationsRoute
+  '/dashboard/events': typeof DashboardEventsRoute
+  '/dashboard/notifications': typeof DashboardNotificationsRoute
+  '/dashboard/results': typeof DashboardResultsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -108,6 +144,10 @@ export interface FileRouteTypes {
     | '/events'
     | '/login'
     | '/register'
+    | '/dashboard/applications'
+    | '/dashboard/events'
+    | '/dashboard/notifications'
+    | '/dashboard/results'
     | '/events/$eventId'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
@@ -118,6 +158,10 @@ export interface FileRouteTypes {
     | '/events'
     | '/login'
     | '/register'
+    | '/dashboard/applications'
+    | '/dashboard/events'
+    | '/dashboard/notifications'
+    | '/dashboard/results'
     | '/events/$eventId'
     | '/dashboard'
   id:
@@ -129,6 +173,10 @@ export interface FileRouteTypes {
     | '/events'
     | '/login'
     | '/register'
+    | '/dashboard/applications'
+    | '/dashboard/events'
+    | '/dashboard/notifications'
+    | '/dashboard/results'
     | '/events/$eventId'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
@@ -208,14 +256,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsEventIdRouteImport
       parentRoute: typeof EventsRoute
     }
+    '/dashboard/results': {
+      id: '/dashboard/results'
+      path: '/results'
+      fullPath: '/dashboard/results'
+      preLoaderRoute: typeof DashboardResultsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/notifications': {
+      id: '/dashboard/notifications'
+      path: '/notifications'
+      fullPath: '/dashboard/notifications'
+      preLoaderRoute: typeof DashboardNotificationsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/events': {
+      id: '/dashboard/events'
+      path: '/events'
+      fullPath: '/dashboard/events'
+      preLoaderRoute: typeof DashboardEventsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/applications': {
+      id: '/dashboard/applications'
+      path: '/applications'
+      fullPath: '/dashboard/applications'
+      preLoaderRoute: typeof DashboardApplicationsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
 interface DashboardRouteChildren {
+  DashboardApplicationsRoute: typeof DashboardApplicationsRoute
+  DashboardEventsRoute: typeof DashboardEventsRoute
+  DashboardNotificationsRoute: typeof DashboardNotificationsRoute
+  DashboardResultsRoute: typeof DashboardResultsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardApplicationsRoute: DashboardApplicationsRoute,
+  DashboardEventsRoute: DashboardEventsRoute,
+  DashboardNotificationsRoute: DashboardNotificationsRoute,
+  DashboardResultsRoute: DashboardResultsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
