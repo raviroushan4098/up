@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -72,14 +73,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Bhavishya Uttar Pradesh — Official Registration Portal" },
+      { name: "description", content: "नए उत्तर प्रदेश का नया भविष्य. Register for Government of Uttar Pradesh events, schemes and initiatives for the youth of UP." },
+      { name: "author", content: "Government of Uttar Pradesh" },
+      { property: "og:title", content: "Bhavishya Uttar Pradesh — Official Portal" },
+      { property: "og:description", content: "Register for Government of UP events, scholarships and skill programmes." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@UPGovt" },
     ],
     links: [
       {
@@ -114,6 +115,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }

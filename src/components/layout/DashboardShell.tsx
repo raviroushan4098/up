@@ -1,0 +1,79 @@
+import { ReactNode, useState } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X, Bell, LogOut } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+export interface NavItem { to: string; label: string; icon: LucideIcon }
+
+export function DashboardShell({
+  children, nav, brandLabel, brandSub,
+}: {
+  children: ReactNode;
+  nav: NavItem[];
+  brandLabel: string;
+  brandSub: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  const Sidebar = (
+    <div className="flex flex-col h-full">
+      <div className="px-6 h-16 flex items-center gap-3 border-b">
+        <div className="size-9 rounded-xl bg-gradient-saffron grid place-items-center"><span className="font-display font-extrabold text-primary text-base">भ</span></div>
+        <div className="leading-tight"><div className="font-display font-bold text-sm text-primary">{brandLabel}</div><div className="text-[10px] text-muted-foreground">{brandSub}</div></div>
+      </div>
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {nav.map((n) => {
+          const active = pathname === n.to || (n.to !== "/dashboard" && n.to !== "/admin" && pathname.startsWith(n.to));
+          return (
+            <Link key={n.to} to={n.to} onClick={() => setOpen(false)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-base ${
+                active ? "bg-gradient-saffron text-primary shadow-soft" : "text-foreground/70 hover:bg-secondary hover:text-primary"
+              }`}>
+              <n.icon className="size-4" /> {n.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="p-3 border-t">
+        <Link to="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-secondary">
+          <LogOut className="size-4" /> Logout
+        </Link>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-soft flex">
+      <aside className="hidden lg:flex w-64 shrink-0 bg-sidebar border-r flex-col">{Sidebar}</aside>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden" />
+            <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ type: "spring", damping: 22 }} className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r z-50 lg:hidden">{Sidebar}</motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="h-16 border-b bg-background/80 backdrop-blur-md sticky top-0 z-30 flex items-center px-4 sm:px-6 gap-3">
+          <button onClick={() => setOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-secondary"><Menu className="size-5" /></button>
+          <div className="hidden sm:block">
+            <h2 className="font-display font-bold text-primary text-lg">Dashboard</h2>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="size-4" /><Badge className="absolute -top-1 -right-1 size-4 p-0 grid place-items-center text-[10px] bg-accent text-primary">3</Badge>
+            </Button>
+            <div className="size-9 rounded-full bg-gradient-saffron grid place-items-center font-display font-bold text-primary text-sm">AS</div>
+          </div>
+        </header>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+      </div>
+    </div>
+  );
+}
