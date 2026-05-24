@@ -1,10 +1,12 @@
 import { ReactNode, useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Bell, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export interface NavItem { to: string; label: string; icon: LucideIcon }
 
@@ -18,6 +20,28 @@ export function DashboardShell({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { logout, profile } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate({ to: "/" });
+      toast.success("Logged out successfully");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const getInitials = () => {
+    if (!profile?.fullName) return "C";
+    return profile.fullName
+      .split(" ")
+      .map((s) => s[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const Sidebar = (
     <div className="flex flex-col h-full">
@@ -39,9 +63,9 @@ export function DashboardShell({
         })}
       </nav>
       <div className="p-3 border-t">
-        <Link to="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-secondary">
+        <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-secondary text-left cursor-pointer">
           <LogOut className="size-4" /> Logout
-        </Link>
+        </button>
       </div>
     </div>
   );
@@ -69,7 +93,9 @@ export function DashboardShell({
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="size-4" /><Badge className="absolute -top-1 -right-1 size-4 p-0 grid place-items-center text-[10px] bg-accent text-primary">3</Badge>
             </Button>
-            <div className="size-9 rounded-full bg-gradient-saffron grid place-items-center font-display font-bold text-primary text-sm">AS</div>
+            <div className="size-9 rounded-full bg-gradient-saffron grid place-items-center font-display font-bold text-primary text-sm uppercase">
+              {getInitials()}
+            </div>
           </div>
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>

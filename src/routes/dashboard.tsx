@@ -1,5 +1,7 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { LayoutDashboard, CalendarSearch, FileText, Trophy, Bell, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 
 export const Route = createFileRoute("/dashboard")({
@@ -7,18 +9,64 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Bhavishya UP" }] }),
 });
 
-const nav = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dashboard/events", label: "Open Events", icon: CalendarSearch },
-  { to: "/dashboard/applications", label: "My Applications", icon: FileText },
-  { to: "/dashboard/results", label: "Results", icon: Trophy },
-  { to: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { to: "/dashboard/profile", label: "Profile", icon: User },
-];
-
 function DashboardLayout() {
+  const { user, profile, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login" });
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground font-display text-sm">Securing dashboard session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const role = profile?.role || "user";
+  let nav = [];
+
+  if (role === "admin") {
+    nav = [
+      { to: "/dashboard", label: "Admin Console", icon: LayoutDashboard },
+      { to: "/dashboard/events", label: "Manage Events", icon: CalendarSearch },
+      { to: "/dashboard/applications", label: "All Applications", icon: FileText },
+      { to: "/dashboard/results", label: "State Results", icon: Trophy },
+      { to: "/dashboard/notifications", label: "System Alerts", icon: Bell },
+      { to: "/dashboard/profile", label: "Profile", icon: User },
+    ];
+  } else if (role === "manager") {
+    nav = [
+      { to: "/dashboard", label: "District Review", icon: LayoutDashboard },
+      { to: "/dashboard/applications", label: "Assigned Applications", icon: FileText },
+      { to: "/dashboard/notifications", label: "Notifications", icon: Bell },
+      { to: "/dashboard/profile", label: "Profile", icon: User },
+    ];
+  } else {
+    // Default user
+    nav = [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/dashboard/events", label: "Open Events", icon: CalendarSearch },
+      { to: "/dashboard/applications", label: "My Applications", icon: FileText },
+      { to: "/dashboard/results", label: "Results", icon: Trophy },
+      { to: "/dashboard/notifications", label: "Notifications", icon: Bell },
+      { to: "/dashboard/profile", label: "Profile", icon: User },
+    ];
+  }
+
   return (
-    <DashboardShell nav={nav} brandLabel="Bhavishya UP" brandSub="Citizen Portal">
+    <DashboardShell nav={nav} brandLabel="Bhavishya UP" brandSub={`${role.toUpperCase()} PORTAL`}>
       <Outlet />
     </DashboardShell>
   );
