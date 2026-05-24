@@ -21,6 +21,18 @@ export interface UserProfile {
   district?: string;
   category?: string;
   createdAt: string;
+  onboarded?: boolean;
+  fatherName?: string;
+  motherName?: string;
+  gender?: string;
+  dob?: string;
+  age?: number;
+  villageCity?: string;
+  phoneNumber?: string;
+  aadhaarNumber?: string;
+  aadhaarUploadUrl?: string;
+  address?: string;
+  profilePhotoUrl?: string;
 }
 
 interface AuthContextType {
@@ -77,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Citizen",
             role: "user",
             createdAt: new Date().toISOString(),
+            onboarded: false,
           };
           try {
             await setDoc(doc(db, "users", firebaseUser.uid), newProfile);
@@ -116,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName,
         role: "user", // default role
         createdAt: new Date().toISOString(),
+        onboarded: false,
       };
       await setDoc(doc(db, "users", newUser.uid), newProfile);
       setProfile(newProfile);
