@@ -45,8 +45,19 @@ export default function OnboardingPage() {
   // File upload states
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [profilePhotoName, setProfilePhotoName] = useState("");
+  const [profilePhotoError, setProfilePhotoError] = useState("");
   const [aadhaarFile, setAadhaarFile] = useState<string | null>(null);
   const [aadhaarFileName, setAadhaarFileName] = useState("");
+  const [aadhaarFileError, setAadhaarFileError] = useState("");
+
+  // Helper to format bytes to human readable string
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
 
   // Route guards
   useEffect(() => {
@@ -94,13 +105,20 @@ export default function OnboardingPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setProfilePhotoError("");
+
     if (!file.type.startsWith("image/jpeg") && !file.type.startsWith("image/png")) {
       toast.error("Please upload only JPG or PNG image formats");
+      setProfilePhotoError("Only JPG or PNG formats are supported.");
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error("Profile photo size exceeds 2MB limit");
+      const sizeStr = formatFileSize(file.size);
+      toast.error(`Profile photo is too large (${sizeStr}). Maximum size is 2.0 MB.`);
+      setProfilePhotoError(
+        `File size (${sizeStr}) exceeds the 2.0 MB limit. Please compress the image.`,
+      );
       return;
     }
 
@@ -118,14 +136,21 @@ export default function OnboardingPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setAadhaarFileError("");
+
     const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
     if (!allowedTypes.includes(file.type)) {
       toast.error("Please upload only PDF, JPG, or PNG formats");
+      setAadhaarFileError("Only PDF, JPG, or PNG formats are supported.");
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Aadhaar document size exceeds 10MB limit");
+      const sizeStr = formatFileSize(file.size);
+      toast.error(`Aadhaar document is too large (${sizeStr}). Maximum size is 10.0 MB.`);
+      setAadhaarFileError(
+        `File size (${sizeStr}) exceeds the 10.0 MB limit. Please compress or choose a smaller file.`,
+      );
       return;
     }
 
@@ -159,6 +184,7 @@ export default function OnboardingPage() {
 
     if (!profilePhoto) {
       toast.error("Profile photo is required");
+      setProfilePhotoError("Profile photo is required");
       return;
     }
     if (!fullName.trim()) {
@@ -195,6 +221,7 @@ export default function OnboardingPage() {
     }
     if (!aadhaarFile) {
       toast.error("Aadhaar card copy is required");
+      setAadhaarFileError("Aadhaar card copy is required");
       return;
     }
 
@@ -270,7 +297,9 @@ export default function OnboardingPage() {
               {/* Profile Photo Section */}
               <div className="flex flex-col items-center gap-4 pb-6 border-b">
                 <div className="relative group">
-                  <div className="size-28 rounded-full border-4 border-background shadow-soft overflow-hidden bg-secondary flex items-center justify-center">
+                  <div
+                    className={`size-28 rounded-full border-4 shadow-soft overflow-hidden bg-secondary flex items-center justify-center transition-base ${profilePhotoError ? "border-destructive" : "border-background"}`}
+                  >
                     {profilePhoto ? (
                       <img
                         src={profilePhoto}
@@ -278,10 +307,14 @@ export default function OnboardingPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User className="size-12 text-muted-foreground" />
+                      <User
+                        className={`size-12 ${profilePhotoError ? "text-destructive/70" : "text-muted-foreground"}`}
+                      />
                     )}
                   </div>
-                  <label className="absolute bottom-0 right-0 size-8 rounded-full bg-primary hover:bg-primary-glow text-primary-foreground shadow-soft grid place-items-center cursor-pointer transition-base">
+                  <label
+                    className={`absolute bottom-0 right-0 size-8 rounded-full text-primary-foreground shadow-soft grid place-items-center cursor-pointer transition-base ${profilePhotoError ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary-glow"}`}
+                  >
                     <Upload className="size-4" />
                     <input
                       type="file"
@@ -293,11 +326,20 @@ export default function OnboardingPage() {
                   </label>
                 </div>
                 <div className="text-center">
-                  <Label className="font-bold text-primary">Profile Photo *</Label>
+                  <Label
+                    className={`font-bold ${profilePhotoError ? "text-destructive" : "text-primary"}`}
+                  >
+                    Profile Photo *
+                  </Label>
                   <p className="text-xs text-muted-foreground mt-1">
                     JPG or PNG formats, Maximum size 2MB
                   </p>
-                  {profilePhotoName && (
+                  {profilePhotoError && (
+                    <p className="text-xs text-destructive font-medium mt-1.5 max-w-xs mx-auto">
+                      {profilePhotoError}
+                    </p>
+                  )}
+                  {profilePhotoName && !profilePhotoError && (
                     <Badge variant="secondary" className="mt-2">
                       {profilePhotoName}
                     </Badge>
@@ -466,7 +508,7 @@ export default function OnboardingPage() {
                 <h3 className="font-display font-bold text-lg text-primary border-l-4 border-accent pl-2.5">
                   Government Verification
                 </h3>
-                <div className="grid sm:grid-cols-2 gap-4 items-end">
+                <div className="grid sm:grid-cols-2 gap-4 items-start">
                   <div className="space-y-1.5">
                     <Label htmlFor="aadhaar">Aadhaar Number *</Label>
                     <Input
@@ -479,31 +521,44 @@ export default function OnboardingPage() {
                       className="font-mono text-base tracking-wider"
                     />
                   </div>
-                  <label className="relative border-2 border-dashed border-border rounded-xl p-5 text-center hover:border-accent hover:bg-accent/5 transition-base cursor-pointer flex flex-col items-center justify-center min-h-[96px]">
-                    <input
-                      type="file"
-                      className="sr-only"
-                      accept="application/pdf,image/jpeg,image/png"
-                      onChange={handleAadhaarFileChange}
-                      disabled={submitting}
-                    />
-                    {aadhaarFile ? (
-                      <div className="flex items-center gap-2 text-sm text-success font-semibold">
-                        <CheckCircle2 className="size-5 shrink-0" />
-                        <span className="truncate max-w-[180px]">{aadhaarFileName}</span>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="size-5 text-muted-foreground mb-1" />
-                        <span className="text-xs font-semibold text-primary">
-                          Upload Aadhaar Copy *
-                        </span>
-                        <span className="text-[10px] text-muted-foreground mt-0.5">
-                          PDF or Image, Max 10MB
-                        </span>
-                      </>
+                  <div className="space-y-1.5 w-full">
+                    <label
+                      className={`relative border-2 border-dashed rounded-xl p-5 text-center hover:bg-accent/5 transition-base cursor-pointer flex flex-col items-center justify-center min-h-[96px] w-full ${aadhaarFileError ? "border-destructive bg-destructive/5 hover:border-destructive" : "border-border hover:border-accent"}`}
+                    >
+                      <input
+                        type="file"
+                        className="sr-only"
+                        accept="application/pdf,image/jpeg,image/png"
+                        onChange={handleAadhaarFileChange}
+                        disabled={submitting}
+                      />
+                      {aadhaarFile ? (
+                        <div className="flex items-center gap-2 text-sm text-success font-semibold">
+                          <CheckCircle2 className="size-5 shrink-0" />
+                          <span className="truncate max-w-[180px]">{aadhaarFileName}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload
+                            className={`size-5 mb-1 ${aadhaarFileError ? "text-destructive" : "text-muted-foreground"}`}
+                          />
+                          <span
+                            className={`text-xs font-semibold ${aadhaarFileError ? "text-destructive" : "text-primary"}`}
+                          >
+                            Upload Aadhaar Copy *
+                          </span>
+                          <span className="text-[10px] text-muted-foreground mt-0.5">
+                            PDF or Image, Max 10MB
+                          </span>
+                        </>
+                      )}
+                    </label>
+                    {aadhaarFileError && (
+                      <p className="text-xs text-destructive font-medium mt-1">
+                        {aadhaarFileError}
+                      </p>
                     )}
-                  </label>
+                  </div>
                 </div>
               </div>
 
