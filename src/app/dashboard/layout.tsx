@@ -1,30 +1,29 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+"use client";
+
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { LayoutDashboard, CalendarSearch, FileText, Trophy, Bell, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 
-export const Route = createFileRoute("/dashboard")({
-  component: DashboardLayout,
-  head: () => ({ meta: [{ title: "Dashboard — Bhavishya UP" }] }),
-});
-
-function DashboardLayout() {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate({ to: "/login" });
+      router.push("/login");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, router]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground font-display text-sm">Securing dashboard session...</p>
+          <p className="text-muted-foreground font-display text-sm">
+            Securing dashboard session...
+          </p>
         </div>
       </div>
     );
@@ -67,7 +66,7 @@ function DashboardLayout() {
 
   return (
     <DashboardShell nav={nav} brandLabel="Bhavishya UP" brandSub={`${role.toUpperCase()} PORTAL`}>
-      <Outlet />
+      {children}
     </DashboardShell>
   );
 }

@@ -1,5 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+"use client";
+
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Mail, Phone, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
@@ -11,13 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export const Route = createFileRoute("/login")({
-  component: LoginPage,
-  head: () => ({ meta: [{ title: "Login — Bhavishya UP" }] }),
-});
-
-function LoginPage() {
-  const navigate = useNavigate();
+export default function LoginPage() {
+  const router = useRouter();
   const { loginWithEmail, loginWithGoogle, user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,9 +32,9 @@ function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate({ to: "/dashboard" });
+      router.push("/dashboard");
     }
-  }, [user, navigate]);
+  }, [user, router]);
 
   // Clean up reCAPTCHA on unmount
   useEffect(() => {
@@ -114,7 +112,7 @@ function LoginPage() {
     try {
       await confirmationResult.confirm(otp);
       toast.success("Verified successfully!");
-      navigate({ to: "/dashboard" });
+      router.push("/dashboard");
     } catch (error: any) {
       toast.error("Invalid verification code. Please check and try again.");
       console.error("Phone confirm OTP error:", error);
@@ -133,7 +131,7 @@ function LoginPage() {
     try {
       await loginWithEmail(email, password);
       toast.success("Logged in successfully");
-      navigate({ to: "/dashboard" });
+      router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Invalid credentials");
       console.error("Password login error:", error);
@@ -147,7 +145,7 @@ function LoginPage() {
     try {
       await loginWithGoogle();
       toast.success("Signed in with Google successfully");
-      navigate({ to: "/dashboard" });
+      router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Google Sign-In failed");
       console.error("Google login error:", error);
@@ -161,8 +159,12 @@ function LoginPage() {
       <div id="recaptcha-container" />
       <Tabs defaultValue="otp">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="otp"><Phone className="size-3.5 mr-1.5" /> Mobile OTP</TabsTrigger>
-          <TabsTrigger value="password"><KeyRound className="size-3.5 mr-1.5" /> Password</TabsTrigger>
+          <TabsTrigger value="otp">
+            <Phone className="size-3.5 mr-1.5" /> Mobile OTP
+          </TabsTrigger>
+          <TabsTrigger value="password">
+            <KeyRound className="size-3.5 mr-1.5" /> Password
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="otp" className="mt-5">
@@ -258,7 +260,9 @@ function LoginPage() {
       </Tabs>
 
       <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
         </div>
@@ -294,7 +298,7 @@ function LoginPage() {
 
       <p className="text-center text-sm text-muted-foreground mt-6">
         New to Bhavishya UP?{" "}
-        <Link to="/register" className="text-primary font-semibold hover:text-accent-glow">
+        <Link href="/register" className="text-primary font-semibold hover:text-accent-glow">
           Create an account
         </Link>
       </p>

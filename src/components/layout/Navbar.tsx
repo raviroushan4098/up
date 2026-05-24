@@ -1,4 +1,7 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Menu, X, ShieldCheck } from "lucide-react";
@@ -12,7 +15,7 @@ const nav = [
 ];
 
 export function Navbar() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -29,7 +32,9 @@ export function Navbar() {
         <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
           <span className="flex items-center gap-2">
             <ShieldCheck className="size-3.5 shrink-0" />
-            <span className="hidden sm:inline">Government of Uttar Pradesh — Official Registration Portal</span>
+            <span className="hidden sm:inline">
+              Government of Uttar Pradesh — Official Registration Portal
+            </span>
             <span className="sm:hidden">UP Govt Official Portal</span>
           </span>
           <span className="hidden md:inline opacity-80">Helpline · 1800-180-5555</span>
@@ -44,13 +49,17 @@ export function Navbar() {
         }`}
       >
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-3 group">
             <div className="relative size-10 rounded-xl bg-gradient-saffron grid place-items-center shadow-glow group-hover:scale-105 transition-spring">
               <span className="font-display font-extrabold text-primary text-lg">भ</span>
             </div>
             <div className="leading-tight">
-              <div className="font-display font-bold text-base sm:text-lg text-primary">Bhavishya UP</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground -mt-0.5">भविष्य उत्तर प्रदेश</div>
+              <div className="font-display font-bold text-base sm:text-lg text-primary">
+                Bhavishya UP
+              </div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground -mt-0.5">
+                भविष्य उत्तर प्रदेश
+              </div>
             </div>
           </Link>
 
@@ -60,7 +69,7 @@ export function Navbar() {
               return (
                 <Link
                   key={n.to}
-                  to={n.to}
+                  href={n.to}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-base ${
                     active
                       ? "bg-primary text-primary-foreground shadow-soft"
@@ -75,10 +84,14 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
-              <Link to="/login">Login</Link>
+              <Link href="/login">Login</Link>
             </Button>
-            <Button asChild size="sm" className="bg-gradient-saffron text-primary hover:opacity-90 shadow-soft font-semibold">
-              <Link to="/register">Register Now</Link>
+            <Button
+              asChild
+              size="sm"
+              className="bg-gradient-saffron text-primary hover:opacity-90 shadow-soft font-semibold"
+            >
+              <Link href="/register">Register Now</Link>
             </Button>
           </div>
 
@@ -103,7 +116,7 @@ export function Navbar() {
                 {nav.map((n) => (
                   <Link
                     key={n.to}
-                    to={n.to}
+                    href={n.to}
                     className={`px-4 py-3 rounded-lg text-sm font-medium transition-base ${
                       pathname === n.to
                         ? "bg-primary text-primary-foreground"
@@ -115,10 +128,10 @@ export function Navbar() {
                 ))}
                 <div className="flex gap-2 mt-3">
                   <Button asChild variant="outline" className="flex-1">
-                    <Link to="/login">Login</Link>
+                    <Link href="/login">Login</Link>
                   </Button>
                   <Button asChild className="flex-1 bg-gradient-saffron text-primary font-semibold">
-                    <Link to="/register">Register</Link>
+                    <Link href="/register">Register</Link>
                   </Button>
                 </div>
               </div>

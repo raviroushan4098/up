@@ -3,7 +3,12 @@ import event2 from "@/assets/event-2.jpg";
 import event3 from "@/assets/event-3.jpg";
 
 export type EventStatus = "Open" | "Closing Soon" | "Closed";
-export type EventCategory = "Technology" | "Skill Development" | "Cultural" | "Education" | "Agriculture";
+export type EventCategory =
+  | "Technology"
+  | "Skill Development"
+  | "Cultural"
+  | "Education"
+  | "Agriculture";
 
 export interface UPEvent {
   id: string;
@@ -27,7 +32,7 @@ export const events: UPEvent[] = [
     titleHi: "युवा तकनीकी नवाचार चुनौती २०२६",
     description:
       "State-level innovation contest for students and young professionals to showcase technology solutions for social impact.",
-    image: event1,
+    image: event1.src,
     deadline: "2026-06-30",
     districts: ["Lucknow", "Kanpur", "Varanasi", "Prayagraj", "Agra", "Noida"],
     category: "Technology",
@@ -57,7 +62,7 @@ export const events: UPEvent[] = [
     titleHi: "स्किल अप भारत कार्यशाला",
     description:
       "Free certified training across 25 trades — from welding and electronics to digital marketing and AI tools.",
-    image: event2,
+    image: event2.src,
     deadline: "2026-07-15",
     districts: ["All Districts"],
     category: "Skill Development",
@@ -85,7 +90,7 @@ export const events: UPEvent[] = [
     titleHi: "उत्तर प्रदेश कला उत्सव",
     description:
       "Celebrate the rich folk arts, music, dance and crafts of Uttar Pradesh. Open to artists and student troupes.",
-    image: event3,
+    image: event3.src,
     deadline: "2026-06-10",
     districts: ["Lucknow", "Varanasi", "Mathura", "Ayodhya", "Jhansi"],
     category: "Cultural",
@@ -114,7 +119,7 @@ export const events: UPEvent[] = [
     titleHi: "कृषि युवा — किसानों के लिए तकनीक",
     description:
       "Workshops and grants for young farmers and agritech entrepreneurs working on sustainable agriculture.",
-    image: event1,
+    image: event1.src,
     deadline: "2026-08-01",
     districts: ["Meerut", "Bareilly", "Gorakhpur", "Aligarh", "Saharanpur"],
     category: "Agriculture",
@@ -132,14 +137,17 @@ export const events: UPEvent[] = [
     titleHi: "स्कॉलर उत्तर प्रदेश छात्रवृत्ति",
     description:
       "Annual merit scholarship for meritorious students from economically weaker sections across UP.",
-    image: event2,
+    image: event2.src,
     deadline: "2026-05-31",
     districts: ["All Districts"],
     category: "Education",
     status: "Closed",
     benefits: ["Up to ₹50,000 per year", "Laptop on enrolment", "Mentorship"],
     eligibility: ["Class 12 with 80%+", "Family income < ₹6 LPA"],
-    schedule: [{ date: "Mar 01, 2026", label: "Opened" }, { date: "May 31, 2026", label: "Closed" }],
+    schedule: [
+      { date: "Mar 01, 2026", label: "Opened" },
+      { date: "May 31, 2026", label: "Closed" },
+    ],
   },
   {
     id: "her-shakti-2026",
@@ -147,7 +155,7 @@ export const events: UPEvent[] = [
     titleHi: "हर शक्ति — महिला नेतृत्व",
     description:
       "12-week leadership and entrepreneurship cohort for women aged 18–35 across Uttar Pradesh.",
-    image: event3,
+    image: event3.src,
     deadline: "2026-07-20",
     districts: ["Lucknow", "Kanpur", "Noida", "Ghaziabad", "Prayagraj"],
     category: "Skill Development",
@@ -162,13 +170,30 @@ export const events: UPEvent[] = [
 ];
 
 export const districts = [
-  "All Districts", "Lucknow", "Kanpur", "Varanasi", "Prayagraj", "Agra", "Noida",
-  "Ghaziabad", "Meerut", "Bareilly", "Gorakhpur", "Aligarh", "Mathura", "Ayodhya",
-  "Jhansi", "Saharanpur",
+  "All Districts",
+  "Lucknow",
+  "Kanpur",
+  "Varanasi",
+  "Prayagraj",
+  "Agra",
+  "Noida",
+  "Ghaziabad",
+  "Meerut",
+  "Bareilly",
+  "Gorakhpur",
+  "Aligarh",
+  "Mathura",
+  "Ayodhya",
+  "Jhansi",
+  "Saharanpur",
 ];
 
 export const categories: EventCategory[] = [
-  "Technology", "Skill Development", "Cultural", "Education", "Agriculture",
+  "Technology",
+  "Skill Development",
+  "Cultural",
+  "Education",
+  "Agriculture",
 ];
 
 export const stats = [
@@ -226,24 +251,84 @@ export const faqs = [
 ];
 
 export const timeline = [
-  { date: "May 2026", title: "Portal Launch", desc: "Bhavishya UP opens for nationwide registrations." },
-  { date: "Jun 2026", title: "Event Registrations", desc: "All flagship events open across 75 districts." },
-  { date: "Jul 2026", title: "District Auditions", desc: "Shortlisting and district-level rounds begin." },
-  { date: "Aug 2026", title: "State Finale", desc: "Winners felicitated at the state capital, Lucknow." },
+  {
+    date: "May 2026",
+    title: "Portal Launch",
+    desc: "Bhavishya UP opens for nationwide registrations.",
+  },
+  {
+    date: "Jun 2026",
+    title: "Event Registrations",
+    desc: "All flagship events open across 75 districts.",
+  },
+  {
+    date: "Jul 2026",
+    title: "District Auditions",
+    desc: "Shortlisting and district-level rounds begin.",
+  },
+  {
+    date: "Aug 2026",
+    title: "State Finale",
+    desc: "Winners felicitated at the state capital, Lucknow.",
+  },
 ];
 
 export const applications = [
-  { id: "BUP-2026-00821", event: "Youth Tech Innovation Challenge 2026", date: "2026-05-14", status: "Under Review" },
-  { id: "BUP-2026-00702", event: "Skill UP Bharat Workshop Series", date: "2026-05-10", status: "Approved" },
-  { id: "BUP-2026-00611", event: "Krishi Yuva — Agritech for Farmers", date: "2026-05-04", status: "Pending" },
-  { id: "BUP-2025-09431", event: "Scholar UP Merit Scholarship", date: "2025-12-21", status: "Selected" },
+  {
+    id: "BUP-2026-00821",
+    event: "Youth Tech Innovation Challenge 2026",
+    date: "2026-05-14",
+    status: "Under Review",
+  },
+  {
+    id: "BUP-2026-00702",
+    event: "Skill UP Bharat Workshop Series",
+    date: "2026-05-10",
+    status: "Approved",
+  },
+  {
+    id: "BUP-2026-00611",
+    event: "Krishi Yuva — Agritech for Farmers",
+    date: "2026-05-04",
+    status: "Pending",
+  },
+  {
+    id: "BUP-2025-09431",
+    event: "Scholar UP Merit Scholarship",
+    date: "2025-12-21",
+    status: "Selected",
+  },
 ];
 
 export const notifications = [
-  { id: 1, title: "Application Approved", desc: "Your Skill UP application is approved. Batch starts Aug 1.", time: "2h ago", type: "success" },
-  { id: 2, title: "Documents Verified", desc: "Aadhaar and education proofs successfully verified.", time: "1d ago", type: "info" },
-  { id: 3, title: "Reminder: Deadline", desc: "Krishi Yuva closes in 5 days. Complete your application.", time: "2d ago", type: "warning" },
-  { id: 4, title: "New Event Live", desc: "Her Shakti cohort applications are now open.", time: "5d ago", type: "info" },
+  {
+    id: 1,
+    title: "Application Approved",
+    desc: "Your Skill UP application is approved. Batch starts Aug 1.",
+    time: "2h ago",
+    type: "success",
+  },
+  {
+    id: 2,
+    title: "Documents Verified",
+    desc: "Aadhaar and education proofs successfully verified.",
+    time: "1d ago",
+    type: "info",
+  },
+  {
+    id: 3,
+    title: "Reminder: Deadline",
+    desc: "Krishi Yuva closes in 5 days. Complete your application.",
+    time: "2d ago",
+    type: "warning",
+  },
+  {
+    id: 4,
+    title: "New Event Live",
+    desc: "Her Shakti cohort applications are now open.",
+    time: "5d ago",
+    type: "info",
+  },
 ];
 
 export const dailyRegistrations = [

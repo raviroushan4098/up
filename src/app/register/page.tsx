@@ -1,5 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+"use client";
+
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthLayout } from "@/components/layout/AuthLayout";
@@ -8,28 +11,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export const Route = createFileRoute("/register")({
-  component: RegisterPage,
-  head: () => ({ meta: [{ title: "Register — Bhavishya UP" }] }),
-});
-
-function RegisterPage() {
-  const navigate = useNavigate();
+export default function RegisterPage() {
+  const router = useRouter();
   const { registerWithEmail, loginWithGoogle, user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState(""); // not strictly stored in auth creation, but good to collect
+  const [phone, setPhone] = useState(""); // not strictly stored in auth creation, but collected
   const [password, setPassword] = useState("");
   const [agree, setAgree] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate({ to: "/dashboard" });
+      router.push("/dashboard");
     }
-  }, [user, navigate]);
+  }, [user, router]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +47,7 @@ function RegisterPage() {
     try {
       await registerWithEmail(email, password, fullName);
       toast.success("Account created successfully. Welcome!");
-      navigate({ to: "/dashboard" });
+      router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
       console.error("Registration error:", error);
@@ -63,7 +61,7 @@ function RegisterPage() {
     try {
       await loginWithGoogle();
       toast.success("Signed up with Google successfully");
-      navigate({ to: "/dashboard" });
+      router.push("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Google registration failed");
       console.error("Google sign up error:", error);
@@ -139,7 +137,9 @@ function RegisterPage() {
       </form>
 
       <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-card px-2 text-muted-foreground">Or sign up with</span>
         </div>
@@ -175,7 +175,7 @@ function RegisterPage() {
 
       <p className="text-center text-sm text-muted-foreground mt-6">
         Already have an account?{" "}
-        <Link to="/login" className="text-primary font-semibold hover:text-accent-glow">
+        <Link href="/login" className="text-primary font-semibold hover:text-accent-glow">
           Login
         </Link>
       </p>
