@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, deleteField, getDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Upload, FileText, CheckCircle2, User, Landmark, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/lib/firebase";
+import { app, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,10 @@ export default function OnboardingPage() {
   const [aadhaarFile, setAadhaarFile] = useState<string | null>(null);
   const [aadhaarFileName, setAadhaarFileName] = useState("");
   const [aadhaarFileError, setAadhaarFileError] = useState("");
+
+  // Raw file objects for Storage
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [aadhaarFileObj, setAadhaarFileObj] = useState<File | null>(null);
 
   // Helper to format bytes to human readable string
   const formatFileSize = (bytes: number) => {
@@ -123,6 +128,7 @@ export default function OnboardingPage() {
     }
 
     setProfilePhotoName(file.name);
+    setProfilePhotoFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       setProfilePhoto(reader.result as string);
@@ -155,6 +161,7 @@ export default function OnboardingPage() {
     }
 
     setAadhaarFileName(file.name);
+    setAadhaarFileObj(file);
     const reader = new FileReader();
     reader.onload = () => {
       setAadhaarFile(reader.result as string);
@@ -163,8 +170,7 @@ export default function OnboardingPage() {
     reader.readAsDataURL(file);
   };
 
-  // Mask and format Aadhaar Input: XXXX-XXXX-XXXX
-  const handleAadhaarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAadhaarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, "");
     if (val.length > 12) return;
 
@@ -177,6 +183,26 @@ export default function OnboardingPage() {
       formatted += val[i];
     }
     setAadhaar(formatted);
+
+    // Instant duplicate check
+    if (val.length === 12) {
+      try {
+        const docRef = doc(db, "aadhaar_registry", formatted);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          toast.error(
+            `This Aadhaar is already registered with mobile no ${data.maskedPhone || "unknown"}`,
+          );
+          setAadhaar(""); // clear to prevent submission
+        } else {
+          // It's not a duplicate, let them know the check ran!
+          toast.success("Aadhaar available for registration");
+        }
+      } catch (error) {
+        console.error("Error checking Aadhaar duplicate:", error);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -215,6 +241,10 @@ export default function OnboardingPage() {
       toast.error("Mobile Number is required");
       return;
     }
+    if (!email.trim()) {
+      toast.error("Email Address is required");
+      return;
+    }
     if (aadhaar.replace(/-/g, "").length !== 12) {
       toast.error("Aadhaar number must be exactly 12 digits");
       return;
@@ -227,27 +257,70 @@ export default function OnboardingPage() {
 
     setSubmitting(true);
     try {
-      const updatedProfile = {
-        ...profile,
-        fullName,
-        fatherName,
-        motherName: motherName.trim() || undefined,
-        gender,
-        dob,
-        age: Number(age),
-        district,
-        villageCity,
-        phoneNumber: phone,
-        email: email.trim() || undefined,
-        aadhaarNumber: aadhaar,
-        address: address.trim() || undefined,
-        profilePhotoUrl: profilePhoto,
-        aadhaarUploadUrl: aadhaarFile,
-        onboarded: true,
-      };
+      // Final duplicate check to prevent race conditions or pasted values
+      const aadhaarRef = doc(db, "aadhaar_registry", aadhaar);
+      const aadhaarSnap = await getDoc(aadhaarRef);
+      if (aadhaarSnap.exists()) {
+        const data = aadhaarSnap.data();
+        toast.error(
+          `This Aadhaar is already registered with mobile no ${data.maskedPhone || "unknown"}`,
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      let finalProfilePhotoUrl = profile?.profilePhotoUrl || "";
+      let finalAadhaarUploadUrl = profile?.aadhaarUploadUrl || "";
 
       if (user) {
+        const storage = getStorage(app);
+
+        // 1. Upload Profile Photo if changed
+        if (profilePhotoFile) {
+          const photoExtension = profilePhotoFile.name.split(".").pop();
+          const photoRef = ref(storage, `users/${user.uid}/profile_photo.${photoExtension}`);
+          const photoUploadResult = await uploadBytes(photoRef, profilePhotoFile);
+          finalProfilePhotoUrl = await getDownloadURL(photoUploadResult.ref);
+        }
+
+        // 2. Upload Aadhaar copy if changed
+        if (aadhaarFileObj) {
+          const aadhaarExtension = aadhaarFileObj.name.split(".").pop();
+          const aadhaarRef = ref(storage, `users/${user.uid}/aadhaar.${aadhaarExtension}`);
+          const aadhaarUploadResult = await uploadBytes(aadhaarRef, aadhaarFileObj);
+          finalAadhaarUploadUrl = await getDownloadURL(aadhaarUploadResult.ref);
+        }
+
+        const updatedProfile = {
+          ...profile,
+          fullName,
+          fatherName,
+          motherName: motherName.trim() || undefined,
+          gender,
+          dob,
+          age: Number(age),
+          district,
+          villageCity,
+          phoneNumber: phone,
+          email: email.trim() || undefined,
+          aadhaarNumber: aadhaar,
+          address: address.trim() || undefined,
+          profilePhotoUrl: finalProfilePhotoUrl,
+          aadhaarUploadUrl: finalAadhaarUploadUrl,
+          onboarded: true,
+          verificationStatus: "pending" as const,
+          rejectionReason: deleteField(),
+          verificationUpdatedAt: new Date().toISOString(),
+        };
+
         await setDoc(doc(db, "users", user.uid), updatedProfile, { merge: true });
+
+        // Add to Aadhaar Registry to prevent duplicates
+        const maskedPhone = phone.length >= 4 ? `******${phone.slice(-4)}` : "****";
+        await setDoc(doc(db, "aadhaar_registry", aadhaar), {
+          maskedPhone: maskedPhone,
+        });
+
         await refreshProfile();
         toast.success("Profile onboarding completed successfully!");
         router.push("/dashboard");
@@ -490,10 +563,11 @@ export default function OnboardingPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email">Email Address *</Label>
                     <Input
                       id="email"
                       type="email"
+                      required
                       placeholder="you@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}

@@ -10,7 +10,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, increment } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
 export interface UserProfile {
@@ -33,6 +33,10 @@ export interface UserProfile {
   aadhaarUploadUrl?: string;
   address?: string;
   profilePhotoUrl?: string;
+  // Verification workflow fields
+  verificationStatus?: "pending" | "verified" | "rejected";
+  rejectionReason?: string;
+  verificationUpdatedAt?: string;
 }
 
 interface AuthContextType {
@@ -93,9 +97,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           try {
             await setDoc(doc(db, "users", firebaseUser.uid), newProfile);
+            await setDoc(doc(db, "counters", "users"), { count: increment(1) }, { merge: true });
             prof = newProfile;
           } catch (e) {
-            console.error("Error setting default user profile:", e);
+            console.error("Error setting default user profile or counter:", e);
           }
         }
         setProfile(prof);
@@ -132,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         onboarded: false,
       };
       await setDoc(doc(db, "users", newUser.uid), newProfile);
+      await setDoc(doc(db, "counters", "users"), { count: increment(1) }, { merge: true });
       setProfile(newProfile);
     } catch (error) {
       setLoading(false);

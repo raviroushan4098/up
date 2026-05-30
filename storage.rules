@@ -1,0 +1,36 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow reading of any file by anyone (needed for images/videos to load on the website)
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Existing rule for profile photos
+    match /profiles/{userId}/{fileName} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Existing rule for aadhar documents
+    match /documents/{userId}/{fileName} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Rule for new unified users folder
+    match /users/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow video uploads to applications folder
+    // Users can only upload if the filename starts with their own userId
+    match /applications/{eventId}/{fileName} {
+      allow write: if request.auth != null && fileName.matches(request.auth.uid + '.*');
+    }
+    
+    // Allow banner uploads for events
+    // ONLY admins can upload to the events folder
+    match /events/{eventId}/{fileName} {
+      allow write: if request.auth != null && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}

@@ -29,6 +29,7 @@ import {
   dailyRegistrations,
   districtAnalytics,
 } from "@/data/mock";
+import { VerificationStatusBadge } from "@/components/layout/VerificationBanner";
 import {
   Area,
   AreaChart,
@@ -441,7 +442,10 @@ export default function DashboardHome() {
         <div className="absolute -right-10 -top-10 size-48 rounded-full bg-accent/30 blur-3xl" />
         <div className="relative">
           <p className="text-sm opacity-80">Welcome back,</p>
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl">{fullName} 👋</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="font-display font-extrabold text-2xl sm:text-3xl">{fullName} 👋</h1>
+            <VerificationStatusBadge status={profile?.verificationStatus} />
+          </div>
           <p className="mt-2 opacity-80 max-w-md">
             You have {appsList.filter((a) => a.status === "Under Review").length} applications under
             review and {events.length} opportunities currently open.

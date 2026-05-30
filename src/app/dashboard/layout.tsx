@@ -2,9 +2,18 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, CalendarSearch, FileText, Trophy, Bell, User } from "lucide-react";
+import {
+  LayoutDashboard,
+  CalendarSearch,
+  FileText,
+  Trophy,
+  Bell,
+  User,
+  ShieldCheck,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import { VerificationBanner } from "@/components/layout/VerificationBanner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth();
@@ -35,13 +44,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null;
   }
 
+  // Prevent flash of dashboard before redirect to onboarding kicks in
+  if (profile && !profile.onboarded) {
+    return null;
+  }
+
   const role = profile?.role || "user";
   let nav = [];
 
   if (role === "admin") {
     nav = [
       { to: "/dashboard", label: "Admin Console", icon: LayoutDashboard },
-      { to: "/dashboard/events", label: "Manage Events", icon: CalendarSearch },
+      { to: "/dashboard/verification", label: "Profile Verification", icon: ShieldCheck },
+      { to: "/dashboard/admin/events", label: "Manage Events", icon: CalendarSearch },
       { to: "/dashboard/applications", label: "All Applications", icon: FileText },
       { to: "/dashboard/results", label: "State Results", icon: Trophy },
       { to: "/dashboard/notifications", label: "System Alerts", icon: Bell },
@@ -68,6 +83,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <DashboardShell nav={nav} brandLabel="Bhavishya UP" brandSub={`${role.toUpperCase()} PORTAL`}>
+      {/* Show verification banner for citizens (non-admin) */}
+      {profile && role === "user" && <VerificationBanner profile={profile} />}
       {children}
     </DashboardShell>
   );
