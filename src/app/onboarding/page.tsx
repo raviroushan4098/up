@@ -64,6 +64,58 @@ export default function OnboardingPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  // Session Storage persistence
+  useEffect(() => {
+    const saved = sessionStorage.getItem("onboarding_form");
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.fullName) setFullName(data.fullName);
+        if (data.fatherName) setFatherName(data.fatherName);
+        if (data.motherName) setMotherName(data.motherName);
+        if (data.gender) setGender(data.gender);
+        if (data.dob) setDob(data.dob);
+        if (data.district) setDistrict(data.district);
+        if (data.villageCity) setVillageCity(data.villageCity);
+        if (data.phone) setPhone(data.phone);
+        if (data.email) setEmail(data.email);
+        if (data.aadhaar) setAadhaar(data.aadhaar);
+        if (data.address) setAddress(data.address);
+      } catch (e) {
+        console.error("Failed to load onboarding session data", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const data = {
+      fullName,
+      fatherName,
+      motherName,
+      gender,
+      dob,
+      district,
+      villageCity,
+      phone,
+      email,
+      aadhaar,
+      address,
+    };
+    sessionStorage.setItem("onboarding_form", JSON.stringify(data));
+  }, [
+    fullName,
+    fatherName,
+    motherName,
+    gender,
+    dob,
+    district,
+    villageCity,
+    phone,
+    email,
+    aadhaar,
+    address,
+  ]);
+
   // Route guards
   useEffect(() => {
     if (!loading) {
@@ -78,14 +130,19 @@ export default function OnboardingPage() {
   // Pre-fill fields from authentication credentials
   useEffect(() => {
     if (profile) {
-      setFullName(profile.fullName || "");
-      setEmail(profile.email || "");
+      if (!sessionStorage.getItem("onboarding_form") || !fullName) {
+        setFullName(profile.fullName || "");
+      }
+      if (!sessionStorage.getItem("onboarding_form") || !email) {
+        setEmail(profile.email || "");
+      }
       if (profile.phoneNumber) {
         setPhone(profile.phoneNumber);
       } else if (user?.phoneNumber) {
         setPhone(user.phoneNumber);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, user]);
 
   // Calculate age automatically when Date of Birth changes
@@ -322,6 +379,7 @@ export default function OnboardingPage() {
         });
 
         await refreshProfile();
+        sessionStorage.removeItem("onboarding_form");
         toast.success("Profile onboarding completed successfully!");
         router.push("/dashboard");
       }
