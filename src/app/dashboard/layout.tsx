@@ -10,6 +10,7 @@ import {
   Bell,
   User,
   ShieldCheck,
+  Ticket,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -58,13 +59,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard/verification", label: "Profile Verification", icon: ShieldCheck },
       { to: "/dashboard/admin/events", label: "Manage Events", icon: CalendarSearch },
       { to: "/dashboard/applications", label: "All Applications", icon: FileText },
+      { to: "/dashboard/admin/passes", label: "VIP Pass Generation", icon: Ticket },
       { to: "/dashboard/results", label: "State Results", icon: Trophy },
       { to: "/dashboard/notifications", label: "System Alerts", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
   } else if (role === "manager") {
     nav = [
+      { to: "/dashboard/manager", label: "Scanner Console", icon: LayoutDashboard },
       { to: "/dashboard", label: "District Review", icon: LayoutDashboard },
+      { to: "/dashboard/admin/passes", label: "VIP Pass Generation", icon: Ticket },
       { to: "/dashboard/applications", label: "Assigned Applications", icon: FileText },
       { to: "/dashboard/notifications", label: "Notifications", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },

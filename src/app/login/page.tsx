@@ -66,8 +66,12 @@ export default function LoginPage() {
       });
       (window as any).recaptchaVerifier = recaptchaVerifier;
       return recaptchaVerifier;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Recaptcha initialization error:", error);
+      if (error.message?.includes("already been rendered")) {
+        window.location.reload();
+        return;
+      }
       toast.error("Failed to initialize security verification. Please try again.");
     }
   };
@@ -91,8 +95,26 @@ export default function LoginPage() {
       setOtpSent(true);
       toast.success("OTP sent successfully to " + formattedPhone);
     } catch (error: any) {
-      toast.error(error.message || "Failed to send OTP");
       console.error("Phone send OTP error:", error);
+
+      if (error.message?.includes("already been rendered")) {
+        window.location.reload();
+        return;
+      }
+
+      let errorMessage = "Failed to send OTP. Please try again.";
+
+      if (
+        error.code === "auth/invalid-phone-number" ||
+        error.message?.includes("TOO_LONG") ||
+        error.message?.includes("TOO_SHORT")
+      ) {
+        errorMessage = "Please enter a valid 10-digit mobile number.";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage = "Too many attempts. Please try again later.";
+      }
+
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

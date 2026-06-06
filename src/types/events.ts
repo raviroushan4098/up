@@ -27,7 +27,10 @@ export interface EventApplication {
   applicationNo?: string; // e.g. BUP00012
   eventId: string;
   userId: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "selected" | "rejected";
+
+  passGenerated?: boolean;
+  passId?: string;
 
   // Application specific fields (collected on the form)
   schoolCollegeName: string;
@@ -39,8 +42,11 @@ export interface EventApplication {
   // Snapshotted profile data at time of application (optional, but good for historical record)
   applicantName: string;
   applicantEmail: string;
-  applicantPhone: string;
-  applicantDistrict: string;
+  applicantPhone?: string;
+  applicantDistrict?: string;
+
+  checkedIn?: boolean;
+  checkedInAt?: string;
 
   appliedAt: string;
 }

@@ -7,8 +7,8 @@ export function Footer() {
       <div className="container mx-auto px-4 py-14 grid gap-10 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="size-10 rounded-xl bg-gradient-saffron grid place-items-center">
-              <span className="font-display font-extrabold text-primary text-lg">भ</span>
+            <div className="size-10 rounded-xl bg-white overflow-hidden grid place-items-center">
+              <img src="/brandlogo2.svg" alt="Logo" className="w-full h-full object-contain p-1" />
             </div>
             <div>
               <div className="font-display font-bold">Bhavishya UP</div>

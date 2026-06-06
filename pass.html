@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Future Leaders Conclave 2026 – Participant Pass</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --saffron: #ff6b00;
+        --deep-red: #b91c1c;
+        --crimson: #dc2626;
+        --gold: #d97706;
+        --gold-light: #fcd34d;
+        --india-green: #15803d;
+        --navy: #1e3a8a;
+        --navy-dark: #0f2460;
+        --cream: #fffbf5;
+        --card-w: 340px;
+        --card-h: 560px;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "DM Sans", sans-serif;
+        background: #0a0a0a;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        background-image:
+          radial-gradient(ellipse at 20% 30%, rgba(185, 28, 28, 0.15) 0%, transparent 60%),
+          radial-gradient(ellipse at 80% 70%, rgba(255, 107, 0, 0.1) 0%, transparent 60%);
+      }
+
+      /* ── CARD SHELL ── */
+      .card {
+        width: var(--card-w);
+        height: var(--card-h);
+        border-radius: 22px;
+        overflow: hidden;
+        position: relative;
+        box-shadow:
+          0 0 0 1px rgba(255, 107, 0, 0.3),
+          0 30px 80px rgba(0, 0, 0, 0.8),
+          0 0 60px rgba(185, 28, 28, 0.2);
+        animation: floatIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      @keyframes floatIn {
+        from {
+          opacity: 0;
+          transform: translateY(40px) scale(0.96);
+        }
+
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* ── HEADER BAND ── */
+      .header {
+        height: 130px;
+        background: linear-gradient(135deg, #7f0000 0%, #b91c1c 40%, #ff6b00 100%);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: flex-end;
+        padding: 0 20px 14px;
+      }
+
+      /* decorative circles */
+      .header::before {
+        content: "";
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        top: -80px;
+        right: -60px;
+      }
+
+      .header::after {
+        content: "";
+        position: absolute;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        top: -30px;
+        right: -10px;
+      }
+
+      .ashoka-wheel {
+        position: absolute;
+        top: 12px;
+        right: 18px;
+        width: 52px;
+        height: 52px;
+        opacity: 0.18;
+      }
+
+      .org-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-right: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .org-logo svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      .header-text {
+        flex: 1;
+      }
+
+      .org-hindi {
+        font-family: "Noto Sans Devanagari", sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      }
+
+      .org-eng {
+        font-size: 9px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.75);
+        letter-spacing: 0.04em;
+        margin-top: 2px;
+      }
+
+      /* tricolor stripe */
+      .tricolor {
+        width: 100%;
+        height: 4px;
+        display: flex;
+      }
+
+      .tricolor span {
+        flex: 1;
+      }
+
+      .tricolor .s {
+        background: #ff9933;
+      }
+
+      .tricolor .w {
+        background: #ffffff;
+      }
+
+      .tricolor .g {
+        background: #138808;
+      }
+
+      /* ── EVENT TITLE BAND ── */
+      .event-band {
+        background: var(--cream);
+        padding: 14px 20px 12px;
+        text-align: center;
+        position: relative;
+        border-bottom: 1px solid rgba(185, 28, 28, 0.12);
+      }
+
+      .presents-tag {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.3em;
+        color: var(--gold);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+
+      .event-title {
+        font-family: "Playfair Display", serif;
+        font-size: 20px;
+        font-weight: 900;
+        color: var(--deep-red);
+        line-height: 1.05;
+        letter-spacing: -0.01em;
+      }
+
+      .event-sub {
+        font-size: 8.5px;
+        font-weight: 500;
+        color: var(--crimson);
+        margin-top: 5px;
+        letter-spacing: 0.02em;
+      }
+
+      /* ── PHOTO + BADGE AREA ── */
+      .badge-area {
+        background: var(--cream);
+        padding: 16px 20px;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        border-bottom: 1px dashed rgba(185, 28, 28, 0.2);
+      }
+
+      .photo-frame {
+        flex-shrink: 0;
+        position: relative;
+      }
+
+      .photo-box {
+        width: 88px;
+        height: 104px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+        border: 2.5px solid var(--navy);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-align: center;
+      }
+
+      .photo-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .role-pill {
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(90deg, var(--saffron), var(--india-green));
+        color: white;
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        padding: 3px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      }
+
+      .participant-info {
+        flex: 1;
+        padding-top: 2px;
+      }
+
+      .p-name {
+        font-family: "Playfair Display", serif;
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--navy-dark);
+        line-height: 1.15;
+        margin-bottom: 4px;
+      }
+
+      .p-id {
+        font-size: 10.5px;
+        font-weight: 700;
+        color: var(--crimson);
+        letter-spacing: 0.04em;
+        margin-bottom: 14px;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+
+      .info-cell {
+        background: white;
+        border-radius: 6px;
+        padding: 5px 8px;
+        border: 1px solid rgba(185, 28, 28, 0.1);
+      }
+
+      .info-cell .lbl {
+        font-size: 7.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: #9ca3af;
+        text-transform: uppercase;
+      }
+
+      .info-cell .val {
+        font-size: 10px;
+        font-weight: 700;
+        color: #1f2937;
+        margin-top: 1px;
+      }
+
+      /* ── BOTTOM BAND ── */
+      .bottom-band {
+        background: var(--cream);
+        padding: 20px 20px 16px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+      }
+
+      .qr-section {
+        text-align: center;
+      }
+
+      .qr-box {
+        width: 72px;
+        height: 72px;
+        border: 2px solid var(--navy);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        padding: 6px;
+      }
+
+      .qr-box svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .qr-label {
+        font-size: 8px;
+        font-weight: 600;
+        color: #6b7280;
+        letter-spacing: 0.06em;
+        margin-top: 5px;
+      }
+
+      .sig-section {
+        text-align: center;
+      }
+
+      .sig-line {
+        width: 110px;
+        height: 1px;
+        background: #1f2937;
+        margin-bottom: 5px;
+      }
+
+      .sig-name {
+        font-size: 8.5px;
+        font-weight: 700;
+        color: #1f2937;
+        letter-spacing: 0.03em;
+      }
+
+      .sig-title {
+        font-size: 8px;
+        color: #6b7280;
+        margin-top: 2px;
+      }
+
+      /* ── HOLOGRAPHIC STRIP ── */
+      .holo-strip {
+        height: 14px;
+        background: linear-gradient(
+          90deg,
+          #ff9933 0%,
+          #ff9933 33.3%,
+          #ffffff 33.3%,
+          #ffffff 66.6%,
+          #138808 66.6%,
+          #138808 100%
+        );
+        position: relative;
+        overflow: hidden;
+      }
+
+      .holo-strip::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 4px,
+          rgba(255, 255, 255, 0.15) 4px,
+          rgba(255, 255, 255, 0.15) 8px
+        );
+      }
+
+      /* ── FOOTER ── */
+      .card-footer {
+        background: linear-gradient(90deg, #7f0000, #b91c1c, #7f0000);
+        padding: 9px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .footer-url {
+        font-size: 8.5px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.85);
+        letter-spacing: 0.03em;
+      }
+
+      .footer-tag {
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: var(--gold-light);
+        text-transform: uppercase;
+      }
+
+      /* corner dots */
+      .corner-dot {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+      }
+
+      .corner-dot.tl {
+        top: 10px;
+        left: 10px;
+      }
+
+      .corner-dot.tr {
+        top: 10px;
+        right: 10px;
+      }
+
+      .corner-dot.bl {
+        bottom: 10px;
+        left: 10px;
+      }
+
+      .corner-dot.br {
+        bottom: 10px;
+        right: 10px;
+      }
+
+      /* ── PRINT HINT ── */
+      .print-hint {
+        margin-top: 28px;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.25);
+        font-size: 11px;
+        letter-spacing: 0.05em;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div style="display: flex; flex-direction: column; align-items: center">
+      <div class="card">
+        <!-- HEADER -->
+        <div class="header">
+          <!-- Ashoka Chakra decorative -->
+          <svg
+            class="ashoka-wheel"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="50" cy="50" r="46" stroke="white" stroke-width="3" />
+            <circle cx="50" cy="50" r="8" fill="white" />
+            <g stroke="white" stroke-width="1.5">
+              <line x1="50" y1="4" x2="50" y2="96" />
+              <line x1="4" y1="50" x2="96" y2="50" />
+              <line x1="18.6" y1="18.6" x2="81.4" y2="81.4" />
+              <line x1="81.4" y1="18.6" x2="18.6" y2="81.4" />
+              <line x1="8.6" y1="34.5" x2="91.4" y2="65.5" />
+              <line x1="91.4" y1="34.5" x2="8.6" y2="65.5" />
+              <line x1="34.5" y1="8.6" x2="65.5" y2="91.4" />
+              <line x1="65.5" y1="8.6" x2="34.5" y2="91.4" />
+              <line x1="13.4" y1="24" x2="86.6" y2="76" />
+              <line x1="86.6" y1="24" x2="13.4" y2="76" />
+              <line x1="24" y1="13.4" x2="76" y2="86.6" />
+              <line x1="76" y1="13.4" x2="24" y2="86.6" />
+            </g>
+          </svg>
+
+          <div class="org-logo">
+            <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="30" cy="30" r="28" fill="#B91C1C" />
+              <text
+                x="30"
+                y="36"
+                text-anchor="middle"
+                font-family="Georgia"
+                font-weight="900"
+                font-size="16"
+                fill="white"
+              >
+                UP
+              </text>
+              <circle cx="30" cy="30" r="26" stroke="#FF9933" stroke-width="1.5" fill="none" />
+            </svg>
+          </div>
+
+          <div class="header-text">
+            <div class="org-hindi">भविष्य-ए-उत्तर प्रदेश</div>
+            <div class="org-eng">Empowering Youth • Building Viksit Bharat 2047</div>
+          </div>
+        </div>
+
+        <!-- TRICOLOR -->
+        <div class="tricolor">
+          <span class="s"></span>
+          <span class="w"></span>
+          <span class="g"></span>
+        </div>
+
+        <!-- EVENT TITLE -->
+        <div class="event-band">
+          <div class="presents-tag">✦ Presents ✦</div>
+          <div class="event-title">FUTURE LEADERS<br />CONCLAVE 2026</div>
+          <div class="event-sub">
+            (Viksit Uttar Pradesh: The Growth Engine of Viksit Bharat @2047)
+          </div>
+        </div>
+
+        <!-- BADGE AREA -->
+        <div class="badge-area">
+          <div class="photo-frame">
+            <div class="photo-box">PHOTO<br />HERE</div>
+            <div class="role-pill">PARTICIPANT</div>
+          </div>
+
+          <div class="participant-info">
+            <div class="p-name">Ravi Roushan</div>
+            <div class="p-id">FLC26-UP-000125</div>
+            <div class="info-grid">
+              <div class="info-cell">
+                <div class="lbl">District</div>
+                <div class="val">Gautam Buddha Nagar</div>
+              </div>
+              <div class="info-cell">
+                <div class="lbl">Mobile</div>
+                <div class="val">98XXXXXXXX</div>
+              </div>
+              <div class="info-cell">
+                <div class="lbl">Status</div>
+                <div class="val" style="color: var(--india-green)">✔ Verified</div>
+              </div>
+              <div class="info-cell">
+                <div class="lbl">Category</div>
+                <div class="val">Youth Leader</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTTOM -->
+        <div class="bottom-band">
+          <div class="qr-section">
+            <!-- Minimal QR-style SVG placeholder -->
+            <div class="qr-box">
+              <svg viewBox="0 0 37 37" fill="#1E3A8A" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="10" height="10" rx="1" />
+                <rect x="3" y="3" width="6" height="6" rx="0.5" fill="#fff" />
+                <rect x="4" y="4" width="4" height="4" rx="0.3" />
+                <rect x="26" y="1" width="10" height="10" rx="1" />
+                <rect x="28" y="3" width="6" height="6" rx="0.5" fill="#fff" />
+                <rect x="29" y="4" width="4" height="4" rx="0.3" />
+                <rect x="1" y="26" width="10" height="10" rx="1" />
+                <rect x="3" y="28" width="6" height="6" rx="0.5" fill="#fff" />
+                <rect x="4" y="29" width="4" height="4" rx="0.3" />
+                <!-- data dots -->
+                <rect x="14" y="1" width="2" height="2" />
+                <rect x="17" y="1" width="2" height="2" />
+                <rect x="21" y="1" width="2" height="2" />
+                <rect x="14" y="4" width="2" height="2" />
+                <rect x="17" y="4" width="5" height="2" />
+                <rect x="14" y="7" width="2" height="2" />
+                <rect x="21" y="7" width="2" height="2" />
+                <rect x="14" y="10" width="5" height="2" />
+                <rect x="14" y="14" width="2" height="2" />
+                <rect x="17" y="14" width="2" height="2" />
+                <rect x="21" y="14" width="5" height="2" />
+                <rect x="1" y="14" width="5" height="2" />
+                <rect x="7" y="14" width="2" height="2" />
+                <rect x="1" y="17" width="2" height="2" />
+                <rect x="4" y="17" width="5" height="2" />
+                <rect x="14" y="17" width="2" height="2" />
+                <rect x="17" y="17" width="5" height="2" />
+                <rect x="25" y="14" width="2" height="2" />
+                <rect x="28" y="14" width="5" height="5" />
+                <rect x="1" y="21" width="2" height="5" />
+                <rect x="4" y="21" width="2" height="2" />
+                <rect x="7" y="21" width="5" height="2" />
+                <rect x="14" y="21" width="5" height="2" />
+                <rect x="21" y="21" width="2" height="2" />
+                <rect x="25" y="21" width="2" height="2" />
+                <rect x="28" y="21" width="5" height="2" />
+                <rect x="14" y="25" width="2" height="2" />
+                <rect x="17" y="25" width="5" height="2" />
+                <rect x="25" y="25" width="5" height="5" />
+                <rect x="14" y="28" width="2" height="5" />
+                <rect x="17" y="28" width="2" height="2" />
+                <rect x="21" y="28" width="2" height="5" />
+                <rect x="17" y="32" width="2" height="2" />
+                <rect x="21" y="34" width="5" height="2" />
+                <rect x="4" y="25" width="2" height="2" />
+                <rect x="7" y="25" width="2" height="5" />
+              </svg>
+            </div>
+            <div class="qr-label">SCAN TO VERIFY</div>
+          </div>
+          <div class="sigs-wrapper" style="display: flex; gap: 16px; text-align: center;">
+            <div class="sig-section">
+              <img src="/1.png" alt="Director Signature" style="height: 24px; object-fit: contain; margin: 0 auto 4px; display: block;" />
+              <div class="sig-line" style="width: 80px; margin: 0 auto 4px;"></div>
+              <div class="sig-name">Program Director</div>
+            </div>
+            <div class="sig-section">
+              <img src="/2.png" alt="General Secretary Signature" style="height: 24px; object-fit: contain; margin: 0 auto 4px; display: block;" />
+              <div class="sig-line" style="width: 80px; margin: 0 auto 4px;"></div>
+              <div class="sig-name">General Secretary</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HOLO STRIP -->
+        <div class="holo-strip"></div>
+
+        <!-- FOOTER -->
+        <div class="card-footer">
+          <div class="footer-url">www.bhavishyaeuttarpradesh.in</div>
+          <div class="footer-tag">Official Credential</div>
+        </div>
+      </div>
+
+      <div class="print-hint">
+        ⌘ + P to print &nbsp;•&nbsp; Set paper size to A6 or custom 340×560px
+      </div>
+    </div>
+  </body>
+</html>

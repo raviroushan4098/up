@@ -56,8 +56,8 @@ export function DashboardShell({
   const Sidebar = (
     <div className="flex flex-col h-full">
       <div className="px-6 h-16 flex items-center gap-3 border-b">
-        <div className="size-9 rounded-xl bg-gradient-saffron grid place-items-center">
-          <span className="font-display font-extrabold text-primary text-base">भ</span>
+        <div className="size-9 rounded-xl bg-white overflow-hidden grid place-items-center">
+          <img src="/brandlogo2.svg" alt="Logo" className="w-full h-full object-contain p-1" />
         </div>
         <div className="leading-tight">
           <div className="font-display font-bold text-sm text-primary">{brandLabel}</div>

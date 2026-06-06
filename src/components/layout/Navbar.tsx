@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Menu, X, ShieldCheck } from "lucide-react";
+import { Menu, X, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const nav = [
   { to: "/", label: "Home" },
@@ -16,6 +17,7 @@ const nav = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const { user, profile, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -50,8 +52,8 @@ export function Navbar() {
       >
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative size-10 rounded-xl bg-gradient-saffron grid place-items-center shadow-glow group-hover:scale-105 transition-spring">
-              <span className="font-display font-extrabold text-primary text-lg">भ</span>
+            <div className="relative size-10 rounded-xl bg-white grid place-items-center shadow-glow group-hover:scale-105 transition-spring overflow-hidden">
+              <img src="/brandlogo2.svg" alt="Logo" className="w-full h-full object-contain p-1" />
             </div>
             <div className="leading-tight">
               <div className="font-display font-bold text-base sm:text-lg text-primary">
@@ -83,16 +85,45 @@ export function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/login">Login</Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="bg-gradient-saffron text-primary hover:opacity-90 shadow-soft font-semibold"
-            >
-              <Link href="/register">Register Now</Link>
-            </Button>
+            {!loading && user ? (
+              <Button
+                asChild
+                variant="outline"
+                className="gap-2 rounded-full px-4 h-9 border-primary/20 hover:bg-primary/5"
+              >
+                <Link href="/dashboard">
+                  {profile?.profilePhotoUrl ? (
+                    <img
+                      src={profile.profilePhotoUrl}
+                      alt="Profile"
+                      className="size-6 rounded-full object-cover ring-2 ring-primary/20"
+                    />
+                  ) : (
+                    <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                      {profile?.fullName?.charAt(0) || user.email?.charAt(0) || (
+                        <User className="size-3" />
+                      )}
+                    </div>
+                  )}
+                  <span className="text-sm font-medium">Dashboard</span>
+                </Link>
+              </Button>
+            ) : !loading ? (
+              <>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/login">Login</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-gradient-saffron text-primary hover:opacity-90 shadow-soft font-semibold"
+                >
+                  <Link href="/register">Register Now</Link>
+                </Button>
+              </>
+            ) : (
+              <div className="w-40 h-9 animate-pulse bg-secondary rounded-md" />
+            )}
           </div>
 
           <button
@@ -127,12 +158,27 @@ export function Navbar() {
                   </Link>
                 ))}
                 <div className="flex gap-2 mt-3">
-                  <Button asChild variant="outline" className="flex-1">
-                    <Link href="/login">Login</Link>
-                  </Button>
-                  <Button asChild className="flex-1 bg-gradient-saffron text-primary font-semibold">
-                    <Link href="/register">Register</Link>
-                  </Button>
+                  {!loading && user ? (
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="flex-1 bg-primary/5 border-primary/20"
+                    >
+                      <Link href="/dashboard">Go to Dashboard</Link>
+                    </Button>
+                  ) : !loading ? (
+                    <>
+                      <Button asChild variant="outline" className="flex-1">
+                        <Link href="/login">Login</Link>
+                      </Button>
+                      <Button
+                        asChild
+                        className="flex-1 bg-gradient-saffron text-primary font-semibold"
+                      >
+                        <Link href="/register">Register</Link>
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </motion.div>

@@ -17,6 +17,8 @@ import {
 import { toast } from "sonner";
 import { app, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchLocationFromPincode } from "@/lib/location";
+import { formatInstagramHandle } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,9 +45,13 @@ export default function ProfilePage() {
   const [motherName, setMotherName] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [stateName, setStateName] = useState("");
   const [district, setDistrict] = useState("");
   const [villageCity, setVillageCity] = useState("");
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [phone, setPhone] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState("");
   const [address, setAddress] = useState("");
 
   // File upload
@@ -64,13 +70,35 @@ export default function ProfilePage() {
       setMotherName(profile.motherName || "");
       setGender(profile.gender || "");
       setDob(profile.dob || "");
+      setPincode(profile.pincode || "");
+      setStateName(profile.state || "");
       setDistrict(profile.district || "");
       setVillageCity(profile.villageCity || "");
       setPhone(profile.phoneNumber || "");
+      setInstagramHandle(profile.instagramHandle || "");
       setAddress(profile.address || "");
       if (profile.profilePhotoUrl) setProfilePhoto(profile.profilePhotoUrl);
     }
   }, [profile]);
+
+  // Auto-fetch location from Pincode
+  useEffect(() => {
+    if (pincode.length === 6) {
+      const fetchLocation = async () => {
+        setIsFetchingLocation(true);
+        const location = await fetchLocationFromPincode(pincode);
+        if (location) {
+          setStateName(location.state);
+          setDistrict(location.district);
+          toast.success(`Location found: ${location.district}, ${location.state}`);
+        } else {
+          toast.error("Invalid pincode or location not found");
+        }
+        setIsFetchingLocation(false);
+      };
+      fetchLocation();
+    }
+  }, [pincode]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -141,6 +169,10 @@ export default function ProfilePage() {
       toast.error("Date of Birth is required");
       return;
     }
+    if (!stateName) {
+      toast.error("State is required");
+      return;
+    }
     if (!district) {
       toast.error("District is required");
       return;
@@ -151,6 +183,10 @@ export default function ProfilePage() {
     }
     if (!phone.trim()) {
       toast.error("Mobile number is required");
+      return;
+    }
+    if (!instagramHandle.trim()) {
+      toast.error("Instagram handle is required");
       return;
     }
 
@@ -183,9 +219,12 @@ export default function ProfilePage() {
           motherName: motherName.trim() || undefined,
           gender,
           dob,
+          pincode,
+          state: stateName,
           district,
           villageCity,
           phoneNumber: phone,
+          instagramHandle: formatInstagramHandle(instagramHandle),
           address: address.trim() || undefined,
           profilePhotoUrl: finalProfilePhotoUrl,
           aadhaarUploadUrl: finalAadhaarUploadUrl,
@@ -387,25 +426,45 @@ export default function ProfilePage() {
               </h3>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="district">District *</Label>
-                  <Select
-                    value={district}
-                    onValueChange={setDistrict}
+                  <Label htmlFor="pincode">Pincode *</Label>
+                  <div className="relative">
+                    <Input
+                      id="pincode"
+                      required
+                      maxLength={6}
+                      placeholder="e.g. 226001"
+                      value={pincode}
+                      onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+                      disabled={submitting || isLocked || isFetchingLocation}
+                    />
+                    {isFetchingLocation && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-r-transparent"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="stateName">State *</Label>
+                  <Input
+                    id="stateName"
+                    required
+                    placeholder="State"
+                    value={stateName}
+                    onChange={(e) => setStateName(e.target.value)}
                     disabled={submitting || isLocked}
-                  >
-                    <SelectTrigger id="district">
-                      <SelectValue placeholder="Select District" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {districts
-                        .filter((d) => d !== "All Districts")
-                        .map((d) => (
-                          <SelectItem key={d} value={d}>
-                            {d}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="district">District *</Label>
+                  <Input
+                    id="district"
+                    required
+                    placeholder="District"
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    disabled={submitting || isLocked}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="villageCity">Village / City *</Label>
@@ -452,6 +511,18 @@ export default function ProfilePage() {
                     value={profile?.email || ""}
                     readOnly
                     className="bg-secondary text-muted-foreground"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="instagramHandle">Instagram Handle *</Label>
+                  <Input
+                    id="instagramHandle"
+                    required
+                    placeholder="@username"
+                    value={instagramHandle}
+                    onChange={(e) => setInstagramHandle(e.target.value)}
+                    onBlur={() => setInstagramHandle(formatInstagramHandle(instagramHandle))}
+                    disabled={submitting || isLocked}
                   />
                 </div>
               </div>

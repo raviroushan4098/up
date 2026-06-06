@@ -11,10 +11,14 @@ import {
   query,
   where,
   getDocs,
+  setDoc,
+  increment,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { sendApplicationSubmittedEmail } from "@/actions/email";
 import { app, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { UPEvent } from "@/types/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +33,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ShieldAlert, FileVideo, CheckCircle2, Upload, Loader2, ArrowLeft } from "lucide-react";
+import {
+  ShieldAlert,
+  FileVideo,
+  CheckCircle2,
+  Upload,
+  Loader2,
+  ArrowLeft,
+  WifiOff,
+} from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -46,6 +58,14 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [hasApplied, setHasApplied] = useState(false);
 
+  const { isSlowConnection } = useNetworkStatus();
+
+  // Telemetry state
+  const [uploadSpeed, setUploadSpeed] = useState("");
+  const [uploadETA, setUploadETA] = useState("");
+  const [uploadedSize, setUploadedSize] = useState("");
+  const [totalSize, setTotalSize] = useState("");
+
   // Form State
   const [schoolCollegeName, setSchoolCollegeName] = useState("");
   const [classCourse, setClassCourse] = useState("");
@@ -58,6 +78,33 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
       fetchEvent();
     }
   }, [eventId, user]);
+
+  // Load draft from local storage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && eventId) {
+      const draft = localStorage.getItem(`draft_application_${eventId}`);
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          if (parsed.schoolCollegeName) setSchoolCollegeName(parsed.schoolCollegeName);
+          if (parsed.classCourse) setClassCourse(parsed.classCourse);
+          if (parsed.selectedTopic) setSelectedTopic(parsed.selectedTopic);
+          if (typeof parsed.declarationAgreed === "boolean")
+            setDeclarationAgreed(parsed.declarationAgreed);
+        } catch (e) {
+          console.error("Failed to parse draft", e);
+        }
+      }
+    }
+  }, [eventId]);
+
+  // Save draft to local storage on change
+  useEffect(() => {
+    if (typeof window !== "undefined" && eventId) {
+      const draft = { schoolCollegeName, classCourse, selectedTopic, declarationAgreed };
+      localStorage.setItem(`draft_application_${eventId}`, JSON.stringify(draft));
+    }
+  }, [schoolCollegeName, classCourse, selectedTopic, declarationAgreed, eventId]);
 
   const fetchEvent = async () => {
     try {
@@ -148,7 +195,19 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
       const ext = videoFile.name.split(".").pop();
       const videoRef = ref(storage, `applications/${eventId}/${user!.uid}_video.${ext}`);
 
+      // format bytes helper
+      const formatBytes = (bytes: number) => {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      };
+
       const uploadTask = uploadBytesResumable(videoRef, videoFile);
+
+      let lastBytes = 0;
+      let lastTime = Date.now();
 
       const videoUrl = await new Promise<string>((resolve, reject) => {
         uploadTask.on(
@@ -156,6 +215,31 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             setUploadProgress(progress);
+            setUploadedSize(formatBytes(snapshot.bytesTransferred));
+            setTotalSize(formatBytes(snapshot.totalBytes));
+
+            const now = Date.now();
+            const timeDiff = (now - lastTime) / 1000; // in seconds
+
+            if (timeDiff > 0.5) {
+              // update every 500ms to avoid jitter
+              const bytesDiff = snapshot.bytesTransferred - lastBytes;
+              const speedBps = bytesDiff / timeDiff;
+              setUploadSpeed(formatBytes(speedBps) + "/s");
+
+              if (speedBps > 0) {
+                const remainingBytes = snapshot.totalBytes - snapshot.bytesTransferred;
+                const etaSeconds = remainingBytes / speedBps;
+                if (etaSeconds < 60) {
+                  setUploadETA(`${Math.round(etaSeconds)} sec left`);
+                } else {
+                  setUploadETA(`${Math.round(etaSeconds / 60)} min left`);
+                }
+              }
+
+              lastBytes = snapshot.bytesTransferred;
+              lastTime = now;
+            }
           },
           (error) => {
             reject(error);
@@ -203,11 +287,56 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
 
       await addDoc(collection(db, "applications"), applicationData);
 
+      // Increment global application counter
+      try {
+        await setDoc(
+          doc(db, "counters", "global"),
+          {
+            totalApplications: increment(1),
+          },
+          { merge: true },
+        );
+      } catch (e) {
+        console.error("Failed to update global application counter", e);
+      }
+
+      // 4. Send Email Notification
+      if (profile.email) {
+        await sendApplicationSubmittedEmail(
+          profile.email,
+          profile.fullName,
+          event.title,
+          applicationNo,
+        );
+      }
+
+      // Clear draft on successful submission
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(`draft_application_${eventId}`);
+      }
+
       toast.success("Application submitted successfully!");
       router.push("/dashboard/applications");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("An error occurred during submission.");
+      if (error.code === "storage/unknown") {
+        toast.error(
+          "Video upload failed due to a network interruption. Please check your connection and try again.",
+        );
+      } else if (error.code?.startsWith("storage/")) {
+        toast.error(
+          "Video upload failed. Please ensure your file is a valid video format and try again.",
+        );
+      } else if (
+        error.message?.includes("Could not reach Cloud Firestore backend") ||
+        error.message?.includes("Backend didn't respond")
+      ) {
+        toast.error(
+          "Network disconnected. Could not reach the server. Please check your internet connection.",
+        );
+      } else {
+        toast.error(error.message || "An error occurred during submission. Please try again.");
+      }
     } finally {
       setSubmitting(false);
       setUploadProgress(0);
@@ -320,7 +449,16 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
         {/* SECTION 4: Video Upload */}
         <Card className="border-0 shadow-elegant">
           <CardHeader className="border-b bg-secondary/50">
-            <CardTitle className="text-lg">Video Submission</CardTitle>
+            <CardTitle className="text-lg flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                Video Submission <span className="text-destructive">*</span>
+              </div>
+              {isSlowConnection && (
+                <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded-full flex items-center gap-1">
+                  <WifiOff className="size-3" /> Slow Connection
+                </span>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <label className="relative border-2 border-dashed border-border rounded-xl p-8 text-center hover:bg-accent/5 transition-base cursor-pointer flex flex-col items-center justify-center">
@@ -379,13 +517,26 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
         </Card>
 
         <div className="space-y-4">
-          {submitting && uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm font-medium text-primary">
-                <span>Uploading Video...</span>
-                <span>{Math.round(uploadProgress)}%</span>
+          {submitting && (
+            <div className="space-y-3 bg-secondary/30 p-4 rounded-xl border border-border animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex justify-between text-sm font-medium text-primary items-center">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  {uploadProgress < 100 ? "Uploading Video..." : "Processing Application..."}
+                </span>
+                <span className="font-bold text-primary">{Math.round(uploadProgress)}%</span>
               </div>
               <Progress value={uploadProgress} className="h-2" />
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="flex justify-between text-xs text-muted-foreground mt-2 font-mono">
+                  <span>
+                    {uploadSpeed} • {uploadETA}
+                  </span>
+                  <span>
+                    {uploadedSize} / {totalSize}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <Button
@@ -396,7 +547,7 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
             {submitting ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="size-5 animate-spin" />{" "}
-                {uploadProgress > 0 && uploadProgress < 100 ? "Uploading..." : "Processing..."}
+                {uploadProgress < 100 ? "Uploading..." : "Processing..."}
               </span>
             ) : (
               "Submit Application"

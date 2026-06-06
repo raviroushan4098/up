@@ -19,6 +19,9 @@ export interface UserProfile {
   fullName: string;
   role: "admin" | "manager" | "user";
   district?: string;
+  state?: string;
+  pincode?: string;
+  instagramHandle?: string;
   category?: string;
   createdAt: string;
   onboarded?: boolean;
@@ -90,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const newProfile: UserProfile = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || "",
-            fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Citizen",
+            fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
             role: "user",
             createdAt: new Date().toISOString(),
             onboarded: false,

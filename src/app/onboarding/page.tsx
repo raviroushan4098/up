@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { doc, setDoc, deleteField, getDoc } from "firebase/firestore";
+import { doc, setDoc, deleteField, getDoc, increment } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Upload, FileText, CheckCircle2, User, Landmark, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { app, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchLocationFromPincode } from "@/lib/location";
+import { formatInstagramHandle } from "@/lib/utils";
+import { sendVerificationOtpEmail, sendOnboardingCompleteEmail } from "@/actions/email";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,12 +39,16 @@ export default function OnboardingPage() {
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [pincode, setPincode] = useState("");
+  const [stateName, setStateName] = useState("");
   const [district, setDistrict] = useState("");
   const [villageCity, setVillageCity] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState("");
   const [aadhaar, setAadhaar] = useState("");
   const [address, setAddress] = useState("");
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   // File upload states
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -50,6 +57,13 @@ export default function OnboardingPage() {
   const [aadhaarFile, setAadhaarFile] = useState<string | null>(null);
   const [aadhaarFileName, setAadhaarFileName] = useState("");
   const [aadhaarFileError, setAadhaarFileError] = useState("");
+
+  // Email Verification States
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [enteredOtp, setEnteredOtp] = useState("");
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
 
   // Raw file objects for Storage
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
@@ -75,10 +89,13 @@ export default function OnboardingPage() {
         if (data.motherName) setMotherName(data.motherName);
         if (data.gender) setGender(data.gender);
         if (data.dob) setDob(data.dob);
+        if (data.pincode) setPincode(data.pincode);
+        if (data.stateName) setStateName(data.stateName);
         if (data.district) setDistrict(data.district);
         if (data.villageCity) setVillageCity(data.villageCity);
         if (data.phone) setPhone(data.phone);
         if (data.email) setEmail(data.email);
+        if (data.instagramHandle) setInstagramHandle(data.instagramHandle);
         if (data.aadhaar) setAadhaar(data.aadhaar);
         if (data.address) setAddress(data.address);
       } catch (e) {
@@ -94,10 +111,13 @@ export default function OnboardingPage() {
       motherName,
       gender,
       dob,
+      pincode,
+      stateName,
       district,
       villageCity,
       phone,
       email,
+      instagramHandle,
       aadhaar,
       address,
     };
@@ -108,10 +128,13 @@ export default function OnboardingPage() {
     motherName,
     gender,
     dob,
+    pincode,
+    stateName,
     district,
     villageCity,
     phone,
     email,
+    instagramHandle,
     aadhaar,
     address,
   ]);
@@ -135,6 +158,7 @@ export default function OnboardingPage() {
       }
       if (!sessionStorage.getItem("onboarding_form") || !email) {
         setEmail(profile.email || "");
+        if (profile.email) setIsEmailVerified(true);
       }
       if (profile.phoneNumber) {
         setPhone(profile.phoneNumber);
@@ -161,6 +185,25 @@ export default function OnboardingPage() {
     const calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970);
     setAge(calculatedAge);
   }, [dob]);
+
+  // Auto-fetch location from Pincode
+  useEffect(() => {
+    if (pincode.length === 6) {
+      const fetchLocation = async () => {
+        setIsFetchingLocation(true);
+        const location = await fetchLocationFromPincode(pincode);
+        if (location) {
+          setStateName(location.state);
+          setDistrict(location.district);
+          toast.success(`Location found: ${location.district}, ${location.state}`);
+        } else {
+          toast.error("Invalid pincode or location not found");
+        }
+        setIsFetchingLocation(false);
+      };
+      fetchLocation();
+    }
+  }, [pincode]);
 
   // Handle profile photo upload (Max 2MB, JPG/PNG)
   const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,6 +305,71 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleSendEmailOtp = async () => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    setSendingOtp(true);
+
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    try {
+      if (!user?.uid) throw new Error("Not logged in");
+      await setDoc(doc(db, "email_otps", user.uid), {
+        otp: generatedOtp,
+        expiresAt,
+      });
+
+      const res = await sendVerificationOtpEmail(email, generatedOtp);
+      if (res.success) {
+        setOtpSent(true);
+        toast.success("Verification code sent to your email!");
+      } else {
+        toast.error(res?.error || "Failed to send code");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate OTP.");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    if (!enteredOtp || enteredOtp.length !== 6) {
+      toast.error("Please enter a valid 6-digit code");
+      return;
+    }
+    setVerifyingEmail(true);
+
+    try {
+      if (!user?.uid) throw new Error("Not logged in");
+      const snap = await getDoc(doc(db, "email_otps", user.uid));
+
+      if (!snap.exists()) {
+        toast.error("No OTP found or it has expired");
+      } else {
+        const data = snap.data();
+        if (data.otp !== enteredOtp) {
+          toast.error("Invalid OTP code");
+        } else if (new Date(data.expiresAt) < new Date()) {
+          toast.error("OTP has expired");
+        } else {
+          setIsEmailVerified(true);
+          setOtpSent(false);
+          toast.success("Email verified successfully!");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to verify OTP");
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -286,6 +394,10 @@ export default function OnboardingPage() {
       toast.error("Date of Birth is required");
       return;
     }
+    if (!stateName) {
+      toast.error("State selection is required");
+      return;
+    }
     if (!district) {
       toast.error("District selection is required");
       return;
@@ -300,6 +412,14 @@ export default function OnboardingPage() {
     }
     if (!email.trim()) {
       toast.error("Email Address is required");
+      return;
+    }
+    if (!isEmailVerified) {
+      toast.error("Please verify your email address before submitting");
+      return;
+    }
+    if (!instagramHandle.trim()) {
+      toast.error("Instagram handle is required");
       return;
     }
     if (aadhaar.replace(/-/g, "").length !== 12) {
@@ -356,10 +476,13 @@ export default function OnboardingPage() {
           gender,
           dob,
           age: Number(age),
+          pincode,
+          state: stateName,
           district,
           villageCity,
           phoneNumber: phone,
           email: email.trim() || undefined,
+          instagramHandle: formatInstagramHandle(instagramHandle),
           aadhaarNumber: aadhaar,
           address: address.trim() || undefined,
           profilePhotoUrl: finalProfilePhotoUrl,
@@ -372,6 +495,29 @@ export default function OnboardingPage() {
 
         await setDoc(doc(db, "users", user.uid), updatedProfile, { merge: true });
 
+        // Update Global Counters
+        try {
+          await setDoc(
+            doc(db, "counters", "global"),
+            {
+              totalUsers: increment(1),
+            },
+            { merge: true },
+          );
+
+          // Update demographics map (cost-efficient unique states/districts tracking)
+          await setDoc(
+            doc(db, "counters", "demographics"),
+            {
+              [`states.${stateName}`]: increment(1),
+              [`districts.${district}`]: increment(1),
+            },
+            { merge: true },
+          );
+        } catch (e) {
+          console.error("Failed to update global counters", e);
+        }
+
         // Add to Aadhaar Registry to prevent duplicates
         const maskedPhone = phone.length >= 4 ? `******${phone.slice(-4)}` : "****";
         await setDoc(doc(db, "aadhaar_registry", aadhaar), {
@@ -381,6 +527,10 @@ export default function OnboardingPage() {
         await refreshProfile();
         sessionStorage.removeItem("onboarding_form");
         toast.success("Profile onboarding completed successfully!");
+
+        // Send Onboarding Complete Email (fire & forget to not block UI)
+        sendOnboardingCompleteEmail(email.trim(), fullName).catch(console.error);
+
         router.push("/dashboard");
       }
     } catch (error: any) {
@@ -561,21 +711,45 @@ export default function OnboardingPage() {
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
+                    <Label htmlFor="pincode">Pincode *</Label>
+                    <div className="relative">
+                      <Input
+                        id="pincode"
+                        required
+                        maxLength={6}
+                        placeholder="e.g. 226001"
+                        value={pincode}
+                        onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+                        disabled={submitting || isFetchingLocation}
+                      />
+                      {isFetchingLocation && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-r-transparent"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="stateName">State *</Label>
+                    <Input
+                      id="stateName"
+                      required
+                      placeholder="State"
+                      value={stateName}
+                      onChange={(e) => setStateName(e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="district">District *</Label>
-                    <Select value={district} onValueChange={setDistrict} disabled={submitting}>
-                      <SelectTrigger id="district">
-                        <SelectValue placeholder="Select District" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {districts
-                          .filter((d) => d !== "All Districts")
-                          .map((d) => (
-                            <SelectItem key={d} value={d}>
-                              {d}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="district"
+                      required
+                      placeholder="District"
+                      value={district}
+                      onChange={(e) => setDistrict(e.target.value)}
+                      disabled={submitting}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="villageCity">Village / City *</Label>
@@ -622,14 +796,71 @@ export default function OnboardingPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="email">Email Address *</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="email"
+                        type="email"
+                        required
+                        placeholder="you@email.com"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setIsEmailVerified(false);
+                          setOtpSent(false);
+                        }}
+                        disabled={submitting || (profile?.email ? true : false) || isEmailVerified}
+                        className="flex-1"
+                      />
+                      {!isEmailVerified && !profile?.email && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSendEmailOtp}
+                          disabled={sendingOtp || !email}
+                        >
+                          {sendingOtp ? "Sending..." : "Send OTP"}
+                        </Button>
+                      )}
+                    </div>
+                    {isEmailVerified && (
+                      <p className="text-xs text-success font-medium flex items-center mt-1">
+                        <CheckCircle2 className="size-3 mr-1" /> Email Verified
+                      </p>
+                    )}
+                    {otpSent && !isEmailVerified && (
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          placeholder="6-digit OTP"
+                          value={enteredOtp}
+                          onChange={(e) =>
+                            setEnteredOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                          }
+                          maxLength={6}
+                          className="w-32"
+                          disabled={verifyingEmail}
+                        />
+                        <Button
+                          type="button"
+                          variant="default"
+                          className="bg-primary text-primary-foreground"
+                          onClick={handleVerifyEmailOtp}
+                          disabled={verifyingEmail || enteredOtp.length !== 6}
+                        >
+                          {verifyingEmail ? "Verifying..." : "Verify OTP"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="instagramHandle">Instagram Handle *</Label>
                     <Input
-                      id="email"
-                      type="email"
+                      id="instagramHandle"
                       required
-                      placeholder="you@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={submitting || (profile?.email ? true : false)}
+                      placeholder="@username"
+                      value={instagramHandle}
+                      onChange={(e) => setInstagramHandle(e.target.value)}
+                      onBlur={() => setInstagramHandle(formatInstagramHandle(instagramHandle))}
+                      disabled={submitting}
                     />
                   </div>
                 </div>

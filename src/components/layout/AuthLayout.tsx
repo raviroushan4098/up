@@ -24,8 +24,8 @@ export function AuthLayout({
         </div>
         <div className="relative z-10 flex flex-col h-full w-full">
           <Link href="/" className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-gradient-saffron grid place-items-center">
-              <span className="font-display font-extrabold text-primary text-lg">भ</span>
+            <div className="size-10 rounded-xl bg-white overflow-hidden grid place-items-center">
+              <img src="/brandlogo2.svg" alt="Logo" className="w-full h-full object-contain p-1" />
             </div>
             <div className="leading-tight">
               <div className="font-display font-bold">Bhavishya UP</div>

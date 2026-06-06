@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserProfile } from "@/hooks/useAuth";
+import { sendProfileApprovedEmail, sendProfileRejectedEmail } from "@/actions/email";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -99,6 +100,9 @@ export default function VerificationPage() {
         ),
       );
       toast.success(`${citizen.fullName}'s profile has been verified ✅`);
+
+      // Fire and forget email notification
+      sendProfileApprovedEmail(citizen.email, citizen.fullName).catch(console.error);
     } catch (err) {
       console.error("Approve error:", err);
       toast.error("Failed to approve profile.");
@@ -153,6 +157,14 @@ export default function VerificationPage() {
         ),
       );
       toast.success(`${rejectTarget.fullName}'s profile has been rejected.`);
+
+      // Fire and forget email notification
+      sendProfileRejectedEmail(
+        rejectTarget.email,
+        rejectTarget.fullName,
+        rejectionReason.trim(),
+      ).catch(console.error);
+
       setRejectDialogOpen(false);
       setRejectTarget(null);
     } catch (err) {

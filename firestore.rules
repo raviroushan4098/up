@@ -38,19 +38,27 @@ service cloud.firestore {
 
     // Applications collection
     match /applications/{applicationId} {
-      // Admins can read all applications. Users can read only their own.
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
+      // Admins and managers can read all applications. Users can read only their own.
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin" || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "manager");
       
       // Users can create an application
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       
-      // Only admins can update/delete applications
-      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      // Admins and managers can update applications
+      allow update: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin" || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "manager");
+      
+      // Only admins can delete applications
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
     // Counters collection (used for generating BUP00001 IDs)
     match /counters/{counterId} {
       allow read, write: if request.auth != null;
+    }
+
+    // Email OTPs collection
+    match /email_otps/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

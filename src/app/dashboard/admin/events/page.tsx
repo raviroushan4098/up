@@ -13,6 +13,8 @@ import {
   Timestamp,
   updateDoc,
   doc,
+  setDoc,
+  increment,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "@/lib/firebase";
@@ -148,6 +150,20 @@ export default function AdminEventsPage() {
         eventData.image = ""; // placeholder
         const docRef = await addDoc(collection(db, "events"), eventData);
         targetDocId = docRef.id;
+
+        // Increment global event counter
+        try {
+          await setDoc(
+            doc(db, "counters", "global"),
+            {
+              totalEvents: increment(1),
+            },
+            { merge: true },
+          );
+        } catch (e) {
+          console.error("Failed to update global event counter", e);
+        }
+
         toast.success("Event created successfully!");
       }
 

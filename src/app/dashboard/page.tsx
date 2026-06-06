@@ -45,7 +45,7 @@ import {
 export default function DashboardHome() {
   const { profile } = useAuth();
   const role = profile?.role || "user";
-  const fullName = profile?.fullName || "Citizen";
+  const fullName = profile?.fullName || "";
 
   // Shared status management for Manager/Admin demo actions
   const [appsList, setAppsList] = useState(initialApplications);
