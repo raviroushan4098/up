@@ -169,12 +169,15 @@ export default function EventsPage() {
                         {e.districts && e.districts.length > 1 ? ` +${e.districts.length - 1}` : ""}
                       </span>
                     </div>
-                    {isDeadlinePassed(e.deadline) ? (
+                    {isDeadlinePassed(e.deadline) || e.status === "Closed" ? (
                       <Button
-                        disabled
-                        className="w-full mt-5 bg-muted text-muted-foreground font-semibold cursor-not-allowed"
+                        asChild
+                        variant="secondary"
+                        className="w-full mt-5 font-semibold text-primary"
                       >
-                        Deadline Passed
+                        <Link href={`/events/${e.id}`}>
+                          View Details <ArrowRight className="size-4 ml-1" />
+                        </Link>
                       </Button>
                     ) : (
                       <Button

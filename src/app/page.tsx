@@ -373,10 +373,13 @@ export default function HomePage() {
                             year: "numeric",
                           })}
                         </span>
-                        {isDeadlinePassed(e.deadline) ? (
-                          <span className="font-semibold text-muted-foreground inline-flex items-center gap-1">
-                            Closed
-                          </span>
+                        {isDeadlinePassed(e.deadline) || e.status === "Closed" ? (
+                          <Link
+                            href={`/events/${e.id}`}
+                            className="font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+                          >
+                            View Details <ArrowRight className="size-3.5" />
+                          </Link>
                         ) : (
                           <Link
                             href={`/events/${e.id}`}

@@ -191,24 +191,44 @@ export default function EventDetailPage() {
         <div className="lg:sticky lg:top-24 h-fit">
           <Card className="border-0 shadow-elegant bg-gradient-navy text-primary-foreground">
             <CardContent className="p-6">
-              <div className="text-sm opacity-80">Ready to apply?</div>
-              <div className="font-display font-extrabold text-2xl mt-1">
-                Start your application
-              </div>
-              <p className="text-sm opacity-80 mt-2">Free, secure and -verified.</p>
-              <Button
-                asChild
-                className="w-full mt-5 bg-accent text-primary font-semibold hover:bg-accent-glow h-11"
-              >
-                <Link href="/dashboard/apply">Apply Now</Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full mt-2 bg-transparent border-white/30 text-primary-foreground hover:bg-white/10"
-              >
-                <Link href="/login">Login to Continue</Link>
-              </Button>
+              {isDeadlinePassed(e.deadline) || e.status === "Closed" ? (
+                <>
+                  <div className="text-sm opacity-80">Registration Closed</div>
+                  <div className="font-display font-extrabold text-2xl mt-1 text-muted-foreground">
+                    Applications Closed
+                  </div>
+                  <p className="text-sm opacity-80 mt-2">
+                    This event is no longer accepting applications.
+                  </p>
+                  <Button
+                    disabled
+                    className="w-full mt-5 bg-white/10 text-white/50 font-semibold cursor-not-allowed h-11"
+                  >
+                    Closed
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm opacity-80">Ready to apply?</div>
+                  <div className="font-display font-extrabold text-2xl mt-1">
+                    Start your application
+                  </div>
+                  <p className="text-sm opacity-80 mt-2">Free, secure and -verified.</p>
+                  <Button
+                    asChild
+                    className="w-full mt-5 bg-accent text-primary font-semibold hover:bg-accent-glow h-11"
+                  >
+                    <Link href="/dashboard/apply">Apply Now</Link>
+                  </Button>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full mt-2 bg-transparent border-white/30 text-primary-foreground hover:bg-white/10"
+                  >
+                    <Link href="/login">Login to Continue</Link>
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
