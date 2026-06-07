@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Search, ArrowRight, Calendar, MapPin, SlidersHorizontal } from "lucide-react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { Input } from "@/components/ui/input";
@@ -16,25 +16,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { events, districts, categories } from "@/data/mock";
+import { districts, categories } from "@/data/mock";
 import { parseDateString, formatDateString, isDeadlinePassed } from "@/lib/utils";
+import { collection, query, getDocs, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { UPEvent } from "@/types/events";
+import { Loader2 } from "lucide-react";
 
 export default function EventsPage() {
   const [q, setQ] = useState("");
   const [district, setDistrict] = useState("All Districts");
   const [cat, setCat] = useState<string>("all");
   const [sort, setSort] = useState("deadline");
+  const [eventsList, setEventsList] = useState<UPEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const fetchedEvents = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as UPEvent[];
+        setEventsList(fetchedEvents);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   const filtered = useMemo(() => {
-    let list = events.filter((e) => {
+    let list = eventsList.filter((e) => {
       const matchQ =
         !q ||
         e.title.toLowerCase().includes(q.toLowerCase()) ||
         e.description.toLowerCase().includes(q.toLowerCase());
       const matchD =
         district === "All Districts" ||
-        e.districts.includes(district) ||
-        e.districts.includes("All Districts");
+        e.districts?.includes(district) ||
+        e.districts?.includes("All Districts");
       const matchC = cat === "all" || e.category === cat;
       return matchQ && matchD && matchC;
     });
@@ -46,7 +71,7 @@ export default function EventsPage() {
       });
     if (sort === "name") list = [...list].sort((a, b) => a.title.localeCompare(b.title));
     return list;
-  }, [q, district, cat, sort]);
+  }, [q, district, cat, sort, eventsList]);
 
   return (
     <PublicLayout>
@@ -118,14 +143,22 @@ export default function EventsPage() {
           </Select>
         </div>
 
-        {filtered.length === 0 ? (
-          <Card className="border-dashed border-2">
-            <CardContent className="p-12 text-center text-muted-foreground">
-              No events match your filters. Try resetting them.
-            </CardContent>
-          </Card>
+        {loading ? (
+          <div className="flex justify-center items-center py-32">
+            <Loader2 className="size-10 animate-spin text-primary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="inline-flex size-16 rounded-full bg-secondary items-center justify-center mb-4">
+              <Search className="size-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-bold text-primary">No events found</h3>
+            <p className="text-muted-foreground mt-2">
+              Try adjusting your search criteria or filters.
+            </p>
+          </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filtered.map((e, i) => (
               <motion.div
                 key={e.id}
@@ -148,9 +181,7 @@ export default function EventsPage() {
                           ? "bg-muted text-muted-foreground"
                           : e.status === "Open"
                             ? "bg-success text-success-foreground"
-                            : e.status === "Closing Soon"
-                              ? "bg-warning text-warning-foreground"
-                              : "bg-muted text-muted-foreground"
+                            : "bg-warning text-warning-foreground"
                       }`}
                     >
                       {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
@@ -176,8 +207,8 @@ export default function EventsPage() {
                         })}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <MapPin className="size-3.5" /> {e.districts[0]}
-                        {e.districts.length > 1 ? ` +${e.districts.length - 1}` : ""}
+                        <MapPin className="size-3.5" /> {e.districts?.[0] || "All Districts"}
+                        {e.districts && e.districts.length > 1 ? ` +${e.districts.length - 1}` : ""}
                       </span>
                     </div>
                     {isDeadlinePassed(e.deadline) ? (

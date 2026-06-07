@@ -53,6 +53,9 @@ export default function AdminEventsPage() {
   const [venue, setVenue] = useState("");
   const [contactInfo, setContactInfo] = useState("");
   const [agendaTopics, setAgendaTopics] = useState<{ title: string; description: string }[]>([]);
+  const [eligibility, setEligibility] = useState("");
+  const [benefits, setBenefits] = useState("");
+  const [schedule, setSchedule] = useState<{ date: string; label: string }[]>([]);
   const [customDeclaration, setCustomDeclaration] = useState("");
   const [requireEducation, setRequireEducation] = useState(true);
   const [requireTopic, setRequireTopic] = useState(true);
@@ -100,6 +103,9 @@ export default function AdminEventsPage() {
     setDressCode(ev.dressCode || "");
     setVenue(ev.venue || "");
     setContactInfo(ev.contactInfo || "");
+    setEligibility(ev.eligibility ? ev.eligibility.join("\n") : "");
+    setBenefits(ev.benefits ? ev.benefits.join("\n") : "");
+    setSchedule(ev.schedule || []);
 
     if (ev.agendaTopics) {
       if (typeof ev.agendaTopics[0] === "string") {
@@ -140,6 +146,9 @@ export default function AdminEventsPage() {
     setDressCode("");
     setVenue("");
     setContactInfo("");
+    setEligibility("");
+    setBenefits("");
+    setSchedule([]);
     setAgendaTopics([]);
     setCustomDeclaration("");
     setRequireEducation(true);
@@ -171,6 +180,15 @@ export default function AdminEventsPage() {
         dressCode,
         venue,
         contactInfo,
+        eligibility: eligibility
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        benefits: benefits
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        schedule: schedule.filter((s) => s.date.trim() || s.label.trim()),
         agendaTopics: validTopics,
         customDeclaration,
         formConfig: {
@@ -471,6 +489,26 @@ export default function AdminEventsPage() {
                   <Textarea value={rules} onChange={(e) => setRules(e.target.value)} rows={3} />
                 </div>
 
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Eligibility (One item per line)</Label>
+                  <Textarea
+                    value={eligibility}
+                    onChange={(e) => setEligibility(e.target.value)}
+                    rows={4}
+                    placeholder="E.g. Must be a student in UP&#10;Must be between 18-25 years old"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Benefits of Participation (One item per line)</Label>
+                  <Textarea
+                    value={benefits}
+                    onChange={(e) => setBenefits(e.target.value)}
+                    rows={4}
+                    placeholder="E.g. Certificate of Participation&#10;Mentorship from industry leaders"
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                   <Label>Dress Code</Label>
                   <Input
@@ -553,6 +591,69 @@ export default function AdminEventsPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     These will appear in the dropdown for applicants. Both Title and Description are
                     required for each topic.
+                  </p>
+                </div>
+
+                <div className="space-y-4 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Event Schedule Timeline</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSchedule([...schedule, { date: "", label: "" }])}
+                    >
+                      <Plus className="size-4 mr-2" /> Add Schedule Item
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {schedule.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex gap-3 items-start border p-3 rounded-lg bg-secondary/30"
+                      >
+                        <div className="flex-1 grid sm:grid-cols-2 gap-3">
+                          <Input
+                            placeholder="Date/Time (e.g., 10 Oct, 9:00 AM)"
+                            value={item.date}
+                            onChange={(e) => {
+                              const newArr = [...schedule];
+                              newArr[i].date = e.target.value;
+                              setSchedule(newArr);
+                            }}
+                          />
+                          <Input
+                            placeholder="Label (e.g., Opening Ceremony)"
+                            value={item.label}
+                            onChange={(e) => {
+                              const newArr = [...schedule];
+                              newArr[i].label = e.target.value;
+                              setSchedule(newArr);
+                            }}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            const newArr = [...schedule];
+                            newArr.splice(i, 1);
+                            setSchedule(newArr);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {schedule.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">
+                        No schedule items added.
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This displays a vertical timeline of the event on the public details page.
                   </p>
                 </div>
 

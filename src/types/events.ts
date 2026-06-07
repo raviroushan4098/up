@@ -22,6 +22,12 @@ export interface UPEvent {
   startDate?: string;
   endDate?: string;
 
+  // Additional fields from mock that might be added to DB later
+  titleHi?: string;
+  eligibility?: string[];
+  benefits?: string[];
+  schedule?: { date: string; label: string }[];
+
   formConfig?: {
     requireEducation: boolean;
     requireTopic: boolean;

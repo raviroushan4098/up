@@ -1,15 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  User,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  signInWithPopup,
-  GoogleAuthProvider,
-} from "firebase/auth";
+import { User, onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, increment } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
@@ -46,9 +38,6 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-  loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -116,49 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  const loginWithEmail = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      setLoading(false);
-      throw error;
-    }
-  };
-
-  const registerWithEmail = async (email: string, password: string, fullName: string) => {
-    setLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const newUser = userCredential.user;
-      const newProfile: UserProfile = {
-        uid: newUser.uid,
-        email: newUser.email || "",
-        fullName,
-        role: "user", // default role
-        createdAt: new Date().toISOString(),
-        onboarded: false,
-      };
-      await setDoc(doc(db, "users", newUser.uid), newProfile);
-      await setDoc(doc(db, "counters", "users"), { count: increment(1) }, { merge: true });
-      setProfile(newProfile);
-    } catch (error) {
-      setLoading(false);
-      throw error;
-    }
-  };
-
-  const loginWithGoogle = async () => {
-    setLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      setLoading(false);
-      throw error;
-    }
-  };
-
   const logout = async () => {
     setLoading(true);
     try {
@@ -176,9 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         profile,
         loading,
-        loginWithEmail,
-        registerWithEmail,
-        loginWithGoogle,
         logout,
         refreshProfile,
       }}

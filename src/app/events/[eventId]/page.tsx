@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -8,12 +9,44 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { events } from "@/data/mock";
+import { Loader2 } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { UPEvent } from "@/types/events";
+import { isDeadlinePassed, formatDateString } from "@/lib/utils";
 
 export default function EventDetailPage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const e = events.find((x) => x.id === eventId);
+  const [e, setE] = useState<UPEvent | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const docRef = doc(db, "events", eventId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setE({ id: docSnap.id, ...docSnap.data() } as UPEvent);
+        }
+      } catch (error) {
+        console.error("Error fetching event:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (eventId) fetchEvent();
+  }, [eventId]);
+
+  if (loading) {
+    return (
+      <PublicLayout>
+        <div className="flex justify-center items-center py-32">
+          <Loader2 className="size-10 animate-spin text-primary" />
+        </div>
+      </PublicLayout>
+    );
+  }
 
   if (!e) {
     return (
@@ -48,14 +81,14 @@ export default function EventDetailPage() {
                   <Badge className="bg-accent text-primary">{e.category}</Badge>
                   <Badge
                     className={
-                      e.status === "Open"
-                        ? "bg-success text-success-foreground"
-                        : e.status === "Closing Soon"
-                          ? "bg-warning text-warning-foreground"
+                      isDeadlinePassed(e.deadline) || e.status === "Closed"
+                        ? "bg-muted text-muted-foreground"
+                        : e.status === "Open"
+                          ? "bg-success text-success-foreground"
                           : "bg-muted text-muted-foreground"
                     }
                   >
-                    {e.status}
+                    {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
                   </Badge>
                 </div>
                 <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-primary">
@@ -70,7 +103,7 @@ export default function EventDetailPage() {
                     <div>
                       <div className="text-xs text-muted-foreground">Deadline</div>
                       <div className="font-semibold text-primary">
-                        {new Date(e.deadline).toLocaleDateString("en-IN", {
+                        {formatDateString(e.deadline, {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
@@ -83,9 +116,11 @@ export default function EventDetailPage() {
                     <div>
                       <div className="text-xs text-muted-foreground">Districts</div>
                       <div className="font-semibold text-primary">
-                        {e.districts.length === 1
-                          ? e.districts[0]
-                          : `${e.districts.length} districts`}
+                        {!e.districts || e.districts.length === 0
+                          ? "All Districts"
+                          : e.districts.length === 1
+                            ? e.districts[0]
+                            : `${e.districts.length} districts`}
                       </div>
                     </div>
                   </div>
@@ -109,7 +144,7 @@ export default function EventDetailPage() {
             <CardContent className="p-6 sm:p-8">
               <h2 className="font-display font-bold text-xl text-primary mb-4">Eligibility</h2>
               <ul className="space-y-3">
-                {e.eligibility.map((x, i) => (
+                {e.eligibility?.map((x, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <CheckCircle2 className="size-5 text-success shrink-0 mt-0.5" />
                     <span className="text-foreground/90">{x}</span>
@@ -125,7 +160,7 @@ export default function EventDetailPage() {
                 Benefits of Participation
               </h2>
               <div className="grid sm:grid-cols-2 gap-3">
-                {e.benefits.map((b, i) => (
+                {e.benefits?.map((b, i) => (
                   <div key={i} className="rounded-xl bg-gradient-soft p-4 flex items-start gap-3">
                     <div className="size-8 rounded-lg bg-gradient-saffron grid place-items-center shrink-0">
                       <Sparkles className="size-4 text-primary" />
@@ -141,7 +176,7 @@ export default function EventDetailPage() {
             <CardContent className="p-6 sm:p-8">
               <h2 className="font-display font-bold text-xl text-primary mb-4">Event Schedule</h2>
               <div className="relative pl-6 border-l-2 border-dashed border-primary/20">
-                {e.schedule.map((s, i) => (
+                {e.schedule?.map((s, i) => (
                   <div key={i} className="relative mb-5 last:mb-0">
                     <div className="absolute -left-[1.85rem] top-1 size-4 rounded-full bg-gradient-saffron" />
                     <div className="text-xs text-muted-foreground">{s.date}</div>

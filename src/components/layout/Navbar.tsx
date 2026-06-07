@@ -34,10 +34,8 @@ export function Navbar() {
         <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
           <span className="flex items-center gap-2">
             <ShieldCheck className="size-3.5 shrink-0" />
-            <span className="hidden sm:inline">
-              Government of Uttar Pradesh — Official Registration Portal
-            </span>
-            <span className="sm:hidden">UP Govt Official Portal</span>
+            <span className="hidden sm:inline">Official Registration Portal</span>
+            <span className="sm:hidden">Official Registration Portal</span>
           </span>
           <span className="hidden md:inline opacity-80">Helpline · 1800-180-5555</span>
         </div>
@@ -110,15 +108,12 @@ export function Navbar() {
               </Button>
             ) : !loading ? (
               <>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/login">Login</Link>
-                </Button>
                 <Button
                   asChild
                   size="sm"
                   className="bg-gradient-saffron text-primary hover:opacity-90 shadow-soft font-semibold"
                 >
-                  <Link href="/register">Register Now</Link>
+                  <Link href="/login">Login / Get Started</Link>
                 </Button>
               </>
             ) : (
@@ -168,14 +163,11 @@ export function Navbar() {
                     </Button>
                   ) : !loading ? (
                     <>
-                      <Button asChild variant="outline" className="flex-1">
-                        <Link href="/login">Login</Link>
-                      </Button>
                       <Button
                         asChild
                         className="flex-1 bg-gradient-saffron text-primary font-semibold"
                       >
-                        <Link href="/register">Register</Link>
+                        <Link href="/login">Login / Get Started</Link>
                       </Button>
                     </>
                   ) : null}

@@ -8,12 +8,12 @@ export const defaultLandingCMS: LandingPageCMS = {
     titleGradient: "नया भविष्य",
     subtitle:
       "The official registration platform for Government of Uttar Pradesh youth initiatives — innovation, skills, scholarships, culture and more. One portal, every opportunity.",
-    stat1Label: "Govt. Verified",
-    stat1Value: "ShieldCheck",
-    stat2Label: "2.4 Lakh+ Registered",
-    stat2Value: "Users",
-    stat3Label: "75 Districts",
-    stat3Value: "MapPin",
+    stat1Label: "",
+    stat1Value: "",
+    stat2Label: "",
+    stat2Value: "",
+    stat3Label: "",
+    stat3Value: "",
   },
   stats: stats.map((s) => ({
     icon: s.icon,

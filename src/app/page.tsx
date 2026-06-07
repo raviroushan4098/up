@@ -179,8 +179,8 @@ export default function HomePage() {
                     size="lg"
                     className="bg-gradient-saffron text-primary font-semibold shadow-glow hover:opacity-95 h-12 px-7"
                   >
-                    <Link href="/register">
-                      Register Now <ArrowRight className="ml-1.5 size-4" />
+                    <Link href="/login">
+                      Login / Get Started <ArrowRight className="ml-1.5 size-4" />
                     </Link>
                   </Button>
                   <Button
@@ -612,8 +612,8 @@ export default function HomePage() {
                   size="lg"
                   className="mt-7 h-12 px-8 bg-accent text-primary font-semibold hover:bg-accent-glow"
                 >
-                  <Link href="/register">
-                    Get Started Free <ArrowRight className="ml-1.5 size-4" />
+                  <Link href="/login">
+                    Login / Get Started <ArrowRight className="ml-1.5 size-4" />
                   </Link>
                 </Button>
               </div>
