@@ -261,7 +261,7 @@ export async function sendDigitalPassEmail(
           <p style="margin: 0; color: #1f2937;"><strong>Status:</strong> <span style="color: #15803D;">✔ Verified</span></p>
         </div>
         <p>Please <strong>download and print the attached PDF</strong> or present it on your mobile device at the venue.</p>
-        <p style="color: #6b7280; font-size: 13px;"><em>Important: You must carry a valid physical Government ID (Aadhaar/PAN) that matches your profile name for entry.</em></p>
+        <p style="color: #6b7280; font-size: 13px;"><em>Important: You must carry a valid physical   ID (Aadhaar/PAN) that matches your profile name for entry.</em></p>
         <br/>
         <p>We look forward to welcoming you!</p>
         <p style="margin-bottom: 0;">Best regards,</p>

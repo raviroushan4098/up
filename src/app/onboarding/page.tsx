@@ -660,7 +660,7 @@ export default function OnboardingPage() {
                     <Input
                       id="fatherName"
                       required
-                      placeholder="Government verification standard"
+                      placeholder="  verification standard"
                       value={fatherName}
                       onChange={(e) => setFatherName(e.target.value)}
                       disabled={submitting}
@@ -879,7 +879,7 @@ export default function OnboardingPage() {
               {/* Identification Documents */}
               <div className="space-y-4 pt-4 border-t">
                 <h3 className="font-display font-bold text-lg text-primary border-l-4 border-accent pl-2.5">
-                  Government Verification
+                  Verification
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-4 items-start">
                   <div className="space-y-1.5">

@@ -58,7 +58,7 @@ export default function PassesPage() {
       try {
         const eventsSnapshot = await getDocs(collection(db, "events"));
         eventsSnapshot.docs.forEach((docSnap) => {
-          eventsObj[docSnap.id] = docSnap.data().title || "Government of UP Event";
+          eventsObj[docSnap.id] = docSnap.data().title || "  UP Event";
         });
         setEventsMap(eventsObj);
       } catch (e) {
@@ -102,7 +102,7 @@ export default function PassesPage() {
     try {
       // 1. Fetch Event Details for Email
       const eventDoc = await getDoc(doc(db, "events", app.eventId));
-      let eventTitle = "Government of UP Event";
+      let eventTitle = "  UP Event";
       let eventLocation = "Check Official Portal";
       if (eventDoc.exists()) {
         const eventData = eventDoc.data() as UPEvent;

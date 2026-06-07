@@ -10,8 +10,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { defaultLandingCMS } from "@/data/cms-defaults";
 
 export default function ContactPage() {
+  const [contact, setContact] = useState(defaultLandingCMS.contact);
+
+  useEffect(() => {
+    const fetchCMS = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, "settings", "landingPage"));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.contact) {
+            setContact(data.contact);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchCMS();
+  }, []);
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     toast.success("Message sent! We'll reply within 24 hours.");
@@ -42,10 +64,10 @@ export default function ContactPage() {
           className="lg:col-span-2 space-y-4"
         >
           {[
-            { i: Phone, t: "Helpline (Toll Free)", d: "1800-180-5555" },
-            { i: Mail, t: "Email Support", d: "support@bhavishyaup.gov.in" },
-            { i: MapPin, t: "Office", d: "Yojana Bhawan, Lucknow, UP 226001" },
-            { i: MessageCircle, t: "WhatsApp", d: "+91 90000 90000" },
+            { i: Phone, t: "Helpline (Toll Free)", d: contact.helpline },
+            { i: Mail, t: "Email Support", d: contact.email },
+            { i: MapPin, t: "Office", d: contact.office },
+            { i: MessageCircle, t: "WhatsApp", d: contact.whatsapp },
           ].map((c, i) => (
             <Card key={i} className="border-0 shadow-card hover:shadow-elegant transition-base">
               <CardContent className="p-5 flex items-center gap-4">

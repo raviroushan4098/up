@@ -71,8 +71,8 @@ export default function AboutPage() {
             Empowering the youth of <span className="text-gradient-saffron">Uttar Pradesh</span>
           </h1>
           <p className="mt-5 text-lg text-muted-foreground">
-            A Government of Uttar Pradesh flagship programme connecting 24+ crore citizens to
-            opportunities in technology, skills, education, culture and entrepreneurship.
+            A Uttar Pradesh flagship programme connecting 24+ crore citizens to opportunities in
+            technology, skills, education, culture and entrepreneurship.
           </p>
         </div>
       </section>

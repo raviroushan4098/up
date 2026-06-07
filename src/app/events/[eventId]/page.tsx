@@ -195,7 +195,7 @@ export default function EventDetailPage() {
               <div className="font-display font-extrabold text-2xl mt-1">
                 Start your application
               </div>
-              <p className="text-sm opacity-80 mt-2">Free, secure and government-verified.</p>
+              <p className="text-sm opacity-80 mt-2">Free, secure and -verified.</p>
               <Button
                 asChild
                 className="w-full mt-5 bg-accent text-primary font-semibold hover:bg-accent-glow h-11"

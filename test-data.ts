@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, limit, query, where } from "firebase/firestore";
 
 const firebaseConfig = {
   projectId: "upproject-a9200",

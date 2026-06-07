@@ -34,7 +34,7 @@ import heroImg from "@/assets/hero-up.jpg";
 
 // CMS & Firebase
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, orderBy, getDocs } from "firebase/firestore";
 import { LandingPageCMS } from "@/types/cms";
 
 const fadeUp = {
@@ -76,18 +76,23 @@ export default function HomePage() {
           console.error("Landing page CMS not seeded in Firebase yet!");
         }
 
-        // 2. Fetch Actual Live Events (Top 3 Open)
+        // 2. Fetch Actual Live Events (Top 3 prioritized by Open status)
         const eventsRef = collection(db, "events");
-        const q = query(
-          eventsRef,
-          where("status", "==", "Open"),
-          orderBy("createdAt", "desc"),
-          limit(3),
-        );
-        const eventsSnap = await getDocs(q);
+        const qEvents = query(eventsRef, orderBy("createdAt", "desc"));
+        const eventsSnap = await getDocs(qEvents);
         if (!eventsSnap.empty) {
           const fetchedEvents = eventsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          setLiveEvents(fetchedEvents);
+
+          fetchedEvents.sort((a: any, b: any) => {
+            const aIsClosed = isDeadlinePassed(a.deadline) || a.status === "Closed";
+            const bIsClosed = isDeadlinePassed(b.deadline) || b.status === "Closed";
+            if (aIsClosed !== bIsClosed) {
+              return aIsClosed ? 1 : -1;
+            }
+            return 0;
+          });
+
+          setLiveEvents(fetchedEvents.slice(0, 3));
         }
 
         // 3. Fetch Total Applications & Global Stats
@@ -148,166 +153,149 @@ export default function HomePage() {
           transition={{ duration: 0.5 }}
         >
           {/* HERO */}
-          <section className="relative overflow-hidden bg-gradient-soft">
-            <div className="absolute inset-0 -z-10">
-              <div className="absolute -top-32 -right-32 size-[28rem] rounded-full bg-accent/20 blur-3xl" />
-              <div className="absolute -bottom-32 -left-32 size-[28rem] rounded-full bg-primary/15 blur-3xl" />
-            </div>
-            <div className="container mx-auto px-4 pt-12 pb-20 lg:pt-20 lg:pb-28 grid lg:grid-cols-2 gap-12 items-center">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7 }}
-              >
-                <Badge
-                  variant="secondary"
-                  className="rounded-full px-4 py-1.5 bg-accent/15 text-primary border-accent/30 mb-5"
-                >
-                  <Sparkles className="size-3.5 mr-1.5" /> {cms.hero.badgeText}
-                </Badge>
-                <h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] text-primary">
-                  {cms.hero.titleLine1}
-                  <br />
-                  <span className="text-gradient-saffron">{cms.hero.titleGradient}</span>
-                </h1>
-                <p className="mt-5 text-lg text-muted-foreground max-w-xl leading-relaxed">
-                  {cms.hero.subtitle}
-                </p>
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <Button
-                    asChild
-                    size="lg"
-                    className="bg-gradient-saffron text-primary font-semibold shadow-glow hover:opacity-95 h-12 px-7"
-                  >
-                    <Link href="/login">
-                      Login / Get Started <ArrowRight className="ml-1.5 size-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="outline"
-                    className="h-12 px-7 border-primary/20 hover:bg-primary hover:text-primary-foreground"
-                  >
-                    <Link href="/events">View Events</Link>
-                  </Button>
-                </div>
-                <div className="mt-8 flex flex-wrap gap-6 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-2">
-                    {(() => {
-                      const I1 = IconMap[cms.hero.stat1Value] || ShieldCheck;
-                      return <I1 className="size-4 text-success" />;
-                    })()}
-                    {cms.hero.stat1Label}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {(() => {
-                      const I2 = IconMap[cms.hero.stat2Value] || Users;
-                      return <I2 className="size-4 text-primary" />;
-                    })()}
-                    {cms.hero.stat2Label}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {(() => {
-                      const I3 = IconMap[cms.hero.stat3Value] || MapPin;
-                      return <I3 className="size-4 text-accent" />;
-                    })()}
-                    {cms.hero.stat3Label}
-                  </span>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, delay: 0.1 }}
-                className="relative"
-              >
-                <div className="absolute inset-0 bg-gradient-saffron rounded-3xl rotate-3 opacity-20 blur-2xl" />
-                <div className="relative rounded-3xl overflow-hidden shadow-elegant border bg-card">
-                  <img
-                    src={heroImg.src}
-                    alt="Youth of Uttar Pradesh"
-                    width={1536}
-                    height={1024}
-                    className="w-full h-auto"
-                  />
-                </div>
+          {cms.visibility?.hero !== false && (
+            <section className="relative overflow-hidden bg-gradient-soft">
+              <div className="absolute inset-0 -z-10">
+                <div className="absolute -top-32 -right-32 size-[28rem] rounded-full bg-accent/20 blur-3xl" />
+                <div className="absolute -bottom-32 -left-32 size-[28rem] rounded-full bg-primary/15 blur-3xl" />
+              </div>
+              <div className="container mx-auto px-4 pt-12 pb-20 lg:pt-20 lg:pb-28 grid lg:grid-cols-2 gap-12 items-center">
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="absolute -left-3 sm:-left-6 bottom-6 glass rounded-2xl shadow-elegant p-4 flex items-center gap-3"
+                  transition={{ duration: 0.7 }}
                 >
-                  <div className="size-10 rounded-full bg-success/15 grid place-items-center">
-                    <CheckCircle2 className="size-5 text-success" />
-                  </div>
-                  <div className="text-sm">
-                    <div className="font-semibold text-primary">
-                      {totalApplications !== null ? totalApplications.toLocaleString() : ""}{" "}
-                      approved
-                    </div>
-                    <div className="text-xs text-muted-foreground">Total Registrations</div>
+                  <Badge
+                    variant="secondary"
+                    className="rounded-full px-4 py-1.5 bg-accent/15 text-primary border-accent/30 mb-5"
+                  >
+                    <Sparkles className="size-3.5 mr-1.5" /> {cms.hero.badgeText}
+                  </Badge>
+                  <h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] text-primary">
+                    {cms.hero.titleLine1}
+                    <br />
+                    <span className="text-gradient-saffron">{cms.hero.titleGradient}</span>
+                  </h1>
+                  <p className="mt-5 text-lg text-muted-foreground max-w-xl leading-relaxed">
+                    {cms.hero.subtitle}
+                  </p>
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    <Button
+                      asChild
+                      size="lg"
+                      className="bg-gradient-saffron text-primary font-semibold shadow-glow hover:opacity-95 h-12 px-7"
+                    >
+                      <Link href="/login">
+                        Login / Get Started <ArrowRight className="ml-1.5 size-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      size="lg"
+                      variant="outline"
+                      className="h-12 px-7 border-primary/20 hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <Link href="/events">View Events</Link>
+                    </Button>
                   </div>
                 </motion.div>
-              </motion.div>
-            </div>
-          </section>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.8, delay: 0.1 }}
+                  className="relative"
+                >
+                  <div className="absolute inset-0 bg-gradient-saffron rounded-3xl rotate-3 opacity-20 blur-2xl" />
+                  <div className="relative rounded-3xl overflow-hidden shadow-elegant border bg-card">
+                    <img
+                      src={cms.hero.image || heroImg.src}
+                      alt="Youth of Uttar Pradesh"
+                      width={1536}
+                      height={1024}
+                      className="w-full h-auto"
+                    />
+                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="absolute -left-3 sm:-left-6 bottom-6 glass rounded-2xl shadow-elegant p-4 flex items-center gap-3"
+                  >
+                    <div className="size-10 rounded-full bg-success/15 grid place-items-center">
+                      <CheckCircle2 className="size-5 text-success" />
+                    </div>
+                    <div className="text-sm">
+                      <div className="font-semibold text-primary">
+                        {totalApplications !== null ? totalApplications.toLocaleString() : ""}{" "}
+                        approved
+                      </div>
+                      <div className="text-xs text-muted-foreground">Total Registrations</div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              </div>
+            </section>
+          )}
 
           {/* STATS */}
-          <section className="container mx-auto px-4 -mt-10 relative z-10">
-            <motion.div {...fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  label: cms.stats[0]?.label || "Total Registrations",
-                  value: globalStats?.totalApplications || 0,
-                  icon: cms.stats[0]?.icon || "Users",
-                },
-                {
-                  label: cms.stats[1]?.label || "Active Citizens",
-                  value: globalStats?.totalUsers || 0,
-                  icon: cms.stats[1]?.icon || "Users",
-                },
-                {
-                  label: cms.stats[2]?.label || "Approved Applications",
-                  value: globalStats?.approvedApplications || 0,
-                  icon: cms.stats[2]?.icon || "CheckCircle2",
-                },
-                {
-                  label: cms.stats[3]?.label || "Events Hosted",
-                  value: globalStats?.totalEvents || 0,
-                  icon: cms.stats[3]?.icon || "Award",
-                },
-              ].map((s, i) => {
-                const Icon = IconMap[s.icon] || Users;
+          {cms.visibility?.stats !== false && (
+            <section className="container mx-auto px-4 -mt-10 relative z-10">
+              <motion.div {...fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    label: cms.stats[0]?.label || "Total Registrations",
+                    value: globalStats?.totalApplications || 0,
+                    icon: cms.stats[0]?.icon || "Users",
+                  },
+                  {
+                    label: cms.stats[1]?.label || "Active Citizens",
+                    value: globalStats?.totalUsers || 0,
+                    icon: cms.stats[1]?.icon || "Users",
+                  },
+                  {
+                    label: cms.stats[2]?.label || "Approved Applications",
+                    value: globalStats?.approvedApplications || 0,
+                    icon: cms.stats[2]?.icon || "CheckCircle2",
+                  },
+                  {
+                    label: cms.stats[3]?.label || "Events Hosted",
+                    value: globalStats?.totalEvents || 0,
+                    icon: cms.stats[3]?.icon || "Award",
+                  },
+                ].map((s, i) => {
+                  const Icon = IconMap[s.icon] || Users;
 
-                const formatNum = (n: number) => {
-                  if (n >= 100000) return (n / 100000).toFixed(1) + "L+";
-                  if (n >= 1000) return (n / 1000).toFixed(1) + "K+";
-                  return n.toString();
-                };
+                  const formatNum = (n: number) => {
+                    if (n >= 100000) return (n / 100000).toFixed(1) + "L+";
+                    if (n >= 1000) return (n / 1000).toFixed(1) + "K+";
+                    return n.toString();
+                  };
 
-                return (
-                  <Card
-                    key={i}
-                    className="border-0 shadow-card overflow-hidden group hover:shadow-elegant transition-base"
-                  >
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="size-10 rounded-xl bg-gradient-saffron grid place-items-center shadow-soft group-hover:scale-110 transition-spring">
-                          <Icon className="size-5 text-primary" />
+                  return (
+                    <Card
+                      key={i}
+                      className="border-0 shadow-card overflow-hidden group hover:shadow-elegant transition-base"
+                    >
+                      <CardContent className="p-5 sm:p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="size-10 rounded-xl bg-gradient-saffron grid place-items-center shadow-soft group-hover:scale-110 transition-spring">
+                            <Icon className="size-5 text-primary" />
+                          </div>
                         </div>
-                      </div>
-                      <div className="font-display font-extrabold text-2xl sm:text-3xl text-primary">
-                        {globalStats ? formatNum(s.value as number) : "..."}
-                      </div>
-                      <div className="text-xs sm:text-sm text-muted-foreground mt-1">{s.label}</div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </motion.div>
-          </section>
+                        <div className="font-display font-extrabold text-2xl sm:text-3xl text-primary">
+                          {globalStats ? formatNum(s.value as number) : "..."}
+                        </div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-1">
+                          {s.label}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </motion.div>
+            </section>
+          )}
 
           {/* FEATURED EVENTS */}
           <section className="container mx-auto px-4 py-20">
@@ -323,8 +311,7 @@ export default function HomePage() {
                   Live Events & Opportunities
                 </h2>
                 <p className="text-muted-foreground mt-2 max-w-xl">
-                  Hand-picked programmes from the Government of Uttar Pradesh, open for registration
-                  right now.
+                  Hand-picked programmes from the Uttar Pradesh, open for registration right now.
                 </p>
               </div>
               <Button asChild variant="ghost" className="hidden sm:flex">
@@ -407,188 +394,198 @@ export default function HomePage() {
           </section>
 
           {/* TIMELINE */}
-          <section className="bg-gradient-soft py-20">
-            <div className="container mx-auto px-4">
-              <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
-                <Badge variant="outline" className="mb-3">
-                  Roadmap
-                </Badge>
-                <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
-                  Important Dates 2026
-                </h2>
-                <p className="text-muted-foreground mt-2">
-                  Mark your calendar — every milestone you need to know.
-                </p>
-              </motion.div>
-              <div className="grid md:grid-cols-4 gap-4 relative">
-                <div className="hidden md:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-tricolor" />
-                {cms.timeline.map((t, i) => (
-                  <motion.div
-                    key={i}
-                    {...fadeUp}
-                    transition={{ ...fadeUp.transition, delay: i * 0.1 }}
-                    className="relative"
-                  >
-                    <div className="mx-auto size-8 rounded-full bg-gradient-saffron grid place-items-center shadow-glow z-10 relative">
-                      <span className="size-2.5 rounded-full bg-primary" />
-                    </div>
-                    <Card className="mt-5 border-0 shadow-card text-center">
-                      <CardContent className="p-5">
-                        <div className="text-xs font-semibold text-accent-foreground bg-accent/15 inline-block px-3 py-1 rounded-full mb-2">
-                          {t.date}
-                        </div>
-                        <h3 className="font-display font-bold text-primary">{t.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">{t.desc}</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+          {cms.visibility?.timeline !== false && (
+            <section className="bg-gradient-soft py-20">
+              <div className="container mx-auto px-4">
+                <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
+                  <Badge variant="outline" className="mb-3">
+                    Roadmap
+                  </Badge>
+                  <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
+                    Important Dates 2026
+                  </h2>
+                  <p className="text-muted-foreground mt-2">
+                    Mark your calendar — every milestone you need to know.
+                  </p>
+                </motion.div>
+                <div className="grid md:grid-cols-4 gap-4 relative">
+                  <div className="hidden md:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-tricolor" />
+                  {cms.timeline.map((t, i) => (
+                    <motion.div
+                      key={i}
+                      {...fadeUp}
+                      transition={{ ...fadeUp.transition, delay: i * 0.1 }}
+                      className="relative"
+                    >
+                      <div className="mx-auto size-8 rounded-full bg-gradient-saffron grid place-items-center shadow-glow z-10 relative">
+                        <span className="size-2.5 rounded-full bg-primary" />
+                      </div>
+                      <Card className="mt-5 border-0 shadow-card text-center">
+                        <CardContent className="p-5">
+                          <div className="text-xs font-semibold text-accent-foreground bg-accent/15 inline-block px-3 py-1 rounded-full mb-2">
+                            {t.date}
+                          </div>
+                          <h3 className="font-display font-bold text-primary">{t.title}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">{t.desc}</p>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* BENEFITS */}
-          <section className="container mx-auto px-4 py-20">
-            <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
-              <Badge variant="outline" className="mb-3">
-                Why Apply
-              </Badge>
-              <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
-                Benefits for Every Citizen
-              </h2>
-            </motion.div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {cms.benefits.map((b, i) => {
-                const Icon = IconMap[b.icon] || Award;
-                return (
-                  <motion.div
-                    key={i}
-                    {...fadeUp}
-                    transition={{ ...fadeUp.transition, delay: i * 0.06 }}
-                  >
-                    <Card className="h-full border-0 shadow-card hover:shadow-elegant hover:-translate-y-1 transition-spring">
-                      <CardContent className="p-6">
-                        <div className="size-12 rounded-2xl bg-gradient-saffron grid place-items-center shadow-soft mb-4">
-                          <Icon className="size-6 text-primary" />
-                        </div>
-                        <h3 className="font-display font-bold text-primary">{b.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-2">{b.desc}</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </section>
+          {cms.visibility?.benefits !== false && (
+            <section className="container mx-auto px-4 py-20">
+              <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
+                <Badge variant="outline" className="mb-3">
+                  Why Apply
+                </Badge>
+                <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
+                  Benefits for Every Citizen
+                </h2>
+              </motion.div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {cms.benefits.map((b, i) => {
+                  const Icon = IconMap[b.icon] || Award;
+                  return (
+                    <motion.div
+                      key={i}
+                      {...fadeUp}
+                      transition={{ ...fadeUp.transition, delay: i * 0.06 }}
+                    >
+                      <Card className="h-full border-0 shadow-card hover:shadow-elegant hover:-translate-y-1 transition-spring">
+                        <CardContent className="p-6">
+                          <div className="size-12 rounded-2xl bg-gradient-saffron grid place-items-center shadow-soft mb-4">
+                            <Icon className="size-6 text-primary" />
+                          </div>
+                          <h3 className="font-display font-bold text-primary">{b.title}</h3>
+                          <p className="text-sm text-muted-foreground mt-2">{b.desc}</p>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           {/* HOW IT WORKS */}
-          <section className="bg-gradient-navy text-primary-foreground py-20 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute -top-20 -right-20 size-96 rounded-full bg-accent blur-3xl" />
-            </div>
-            <div className="container mx-auto px-4 relative">
+          {cms.visibility?.howItWorks !== false && (
+            <section className="bg-gradient-navy text-primary-foreground py-20 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute -top-20 -right-20 size-96 rounded-full bg-accent blur-3xl" />
+              </div>
+              <div className="container mx-auto px-4 relative">
+                <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
+                  <Badge className="bg-white/10 text-primary-foreground border-white/20 mb-3">
+                    Process
+                  </Badge>
+                  <h2 className="font-display font-bold text-3xl sm:text-4xl">How It Works</h2>
+                  <p className="opacity-80 mt-2">
+                    Three simple steps to register for any UP initiative.
+                  </p>
+                </motion.div>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {cms.howItWorks.map((s, i) => (
+                    <motion.div
+                      key={i}
+                      {...fadeUp}
+                      transition={{ ...fadeUp.transition, delay: i * 0.08 }}
+                      className="glass-dark rounded-2xl p-6 border border-white/10"
+                    >
+                      <div className="font-display font-extrabold text-5xl text-accent-glow">
+                        {s.n}
+                      </div>
+                      <h3 className="font-display font-bold text-xl mt-3">{s.t}</h3>
+                      <p className="text-sm opacity-80 mt-2">{s.d}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* TESTIMONIALS */}
+          {cms.visibility?.testimonials !== false && (
+            <section className="container mx-auto px-4 py-20">
               <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
-                <Badge className="bg-white/10 text-primary-foreground border-white/20 mb-3">
-                  Process
+                <Badge variant="outline" className="mb-3">
+                  Voices of UP
                 </Badge>
-                <h2 className="font-display font-bold text-3xl sm:text-4xl">How It Works</h2>
-                <p className="opacity-80 mt-2">
-                  Three simple steps to register for any UP Government initiative.
-                </p>
+                <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
+                  Real Stories, Real Impact
+                </h2>
               </motion.div>
               <div className="grid md:grid-cols-3 gap-6">
-                {cms.howItWorks.map((s, i) => (
+                {cms.testimonials.map((t, i) => (
                   <motion.div
                     key={i}
                     {...fadeUp}
                     transition={{ ...fadeUp.transition, delay: i * 0.08 }}
-                    className="glass-dark rounded-2xl p-6 border border-white/10"
                   >
-                    <div className="font-display font-extrabold text-5xl text-accent-glow">
-                      {s.n}
-                    </div>
-                    <h3 className="font-display font-bold text-xl mt-3">{s.t}</h3>
-                    <p className="text-sm opacity-80 mt-2">{s.d}</p>
+                    <Card className="h-full border-0 shadow-card relative">
+                      <CardContent className="p-6">
+                        <Quote className="size-8 text-accent mb-3" />
+                        <p className="text-sm leading-relaxed text-foreground/90">"{t.quote}"</p>
+                        <div className="mt-5 pt-5 border-t flex items-center gap-3">
+                          <div className="size-11 rounded-full bg-gradient-saffron grid place-items-center font-display font-bold text-primary">
+                            {t.name
+                              .split(" ")
+                              .map((s) => s[0])
+                              .join("")
+                              .slice(0, 2)}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-primary text-sm">{t.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {t.role} · {t.district}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </motion.div>
                 ))}
               </div>
-            </div>
-          </section>
-
-          {/* TESTIMONIALS */}
-          <section className="container mx-auto px-4 py-20">
-            <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
-              <Badge variant="outline" className="mb-3">
-                Voices of UP
-              </Badge>
-              <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
-                Real Stories, Real Impact
-              </h2>
-            </motion.div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {cms.testimonials.map((t, i) => (
-                <motion.div
-                  key={i}
-                  {...fadeUp}
-                  transition={{ ...fadeUp.transition, delay: i * 0.08 }}
-                >
-                  <Card className="h-full border-0 shadow-card relative">
-                    <CardContent className="p-6">
-                      <Quote className="size-8 text-accent mb-3" />
-                      <p className="text-sm leading-relaxed text-foreground/90">"{t.quote}"</p>
-                      <div className="mt-5 pt-5 border-t flex items-center gap-3">
-                        <div className="size-11 rounded-full bg-gradient-saffron grid place-items-center font-display font-bold text-primary">
-                          {t.name
-                            .split(" ")
-                            .map((s) => s[0])
-                            .join("")
-                            .slice(0, 2)}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-primary text-sm">{t.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {t.role} · {t.district}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* FAQ */}
-          <section className="bg-gradient-soft py-20">
-            <div className="container mx-auto px-4 max-w-3xl">
-              <motion.div {...fadeUp} className="text-center mb-10">
-                <Badge variant="outline" className="mb-3">
-                  Help
-                </Badge>
-                <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
-                  Frequently Asked Questions
-                </h2>
-              </motion.div>
-              <motion.div {...fadeUp}>
-                <Accordion
-                  type="single"
-                  collapsible
-                  className="bg-card rounded-2xl shadow-card border-0 px-2"
-                >
-                  {cms.faqs.map((f, i) => (
-                    <AccordionItem key={i} value={`item-${i}`} className="border-b last:border-0">
-                      <AccordionTrigger className="px-4 text-left font-semibold text-primary hover:no-underline">
-                        {f.q}
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 text-muted-foreground">
-                        {f.a}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </motion.div>
-            </div>
-          </section>
+          {cms.visibility?.faqs !== false && (
+            <section className="bg-gradient-soft py-20">
+              <div className="container mx-auto px-4 max-w-3xl">
+                <motion.div {...fadeUp} className="text-center mb-10">
+                  <Badge variant="outline" className="mb-3">
+                    Help
+                  </Badge>
+                  <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
+                    Frequently Asked Questions
+                  </h2>
+                </motion.div>
+                <motion.div {...fadeUp}>
+                  <Accordion
+                    type="single"
+                    collapsible
+                    className="bg-card rounded-2xl shadow-card border-0 px-2"
+                  >
+                    {cms.faqs.map((f, i) => (
+                      <AccordionItem key={i} value={`item-${i}`} className="border-b last:border-0">
+                        <AccordionTrigger className="px-4 text-left font-semibold text-primary hover:no-underline">
+                          {f.q}
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 text-muted-foreground">
+                          {f.a}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </motion.div>
+              </div>
+            </section>
+          )}
 
           {/* CTA */}
           <section className="container mx-auto px-4 py-20">

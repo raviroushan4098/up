@@ -68,7 +68,7 @@ export const events: UPEvent[] = [
     category: "Skill Development",
     status: "Open",
     benefits: [
-      "Government-recognised certification",
+      " -recognised certification",
       "Stipend of ₹3,000/month during training",
       "Job placement assistance",
       "Tool kit on completion",
@@ -209,7 +209,7 @@ export const testimonials = [
     role: "Winner, Tech Challenge 2025",
     district: "Lucknow",
     quote:
-      "Bhavishya UP gave my idea a stage. From a college project to government incubation in 6 months — life-changing.",
+      "Bhavishya UP gave my idea a stage. From a college project to   incubation in 6 months — life-changing.",
   },
   {
     name: "Priya Verma",
@@ -223,7 +223,7 @@ export const testimonials = [
     role: "Krishi Yuva Fellow",
     district: "Bareilly",
     quote:
-      "Drone training and a ₹1.5 L grant transformed my 3-acre farm. Thank you to the UP Government for this initiative.",
+      "Drone training and a ₹1.5 L grant transformed my 3-acre farm. Thank you to the UP   for this initiative.",
   },
 ];
 
@@ -234,7 +234,7 @@ export const faqs = [
   },
   {
     q: "Is there any registration fee?",
-    a: "No. All Government of Uttar Pradesh events listed on this platform are completely free to apply for.",
+    a: "No. All   Uttar Pradesh events listed on this platform are completely free to apply for.",
   },
   {
     q: "Which documents do I need to keep ready?",

@@ -1,7 +1,31 @@
+"use client";
+
 import Link from "next/link";
 import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube } from "lucide-react";
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { defaultLandingCMS } from "@/data/cms-defaults";
 
 export function Footer() {
+  const [contact, setContact] = useState(defaultLandingCMS.contact);
+
+  useEffect(() => {
+    const fetchCMS = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, "settings", "landingPage"));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.contact) {
+            setContact(data.contact);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchCMS();
+  }, []);
   return (
     <footer className="mt-24 border-t bg-gradient-navy text-primary-foreground">
       <div className="container mx-auto px-4 py-14 grid gap-10 md:grid-cols-4">
@@ -12,12 +36,12 @@ export function Footer() {
             </div>
             <div>
               <div className="font-display font-bold">Bhavishya UP</div>
-              <div className="text-xs opacity-70">Government of Uttar Pradesh</div>
+              <div className="text-xs opacity-70"> Uttar Pradesh</div>
             </div>
           </div>
           <p className="text-sm opacity-80 leading-relaxed">
-            नए उत्तर प्रदेश का नया भविष्य. Official registration platform for Government of Uttar
-            Pradesh initiatives.
+            नए उत्तर प्रदेश का नया भविष्य. Official registration platform for Uttar Pradesh
+            initiatives.
           </p>
         </div>
 
@@ -56,13 +80,13 @@ export function Footer() {
           <h4 className="font-semibold mb-4 text-accent-glow">Contact</h4>
           <ul className="space-y-3 text-sm opacity-90">
             <li className="flex items-start gap-2">
-              <MapPin className="size-4 mt-0.5 shrink-0" /> Yojana Bhawan, Lucknow, UP 226001
+              <MapPin className="size-4 mt-0.5 shrink-0" /> {contact.office}
             </li>
             <li className="flex items-center gap-2">
-              <Phone className="size-4" /> 1800-180-5555 (Toll Free)
+              <Phone className="size-4" /> {contact.helpline}
             </li>
             <li className="flex items-center gap-2">
-              <Mail className="size-4" /> support@bhavishyaup.gov.in
+              <Mail className="size-4" /> {contact.email}
             </li>
           </ul>
         </div>
@@ -81,14 +105,14 @@ export function Footer() {
             ))}
           </div>
           <p className="text-xs opacity-70 mt-6 leading-relaxed">
-            Secure, accessible and government-grade. Your data is protected under IT Act 2000.
+            Secure, accessible and -grade. Your data is protected under IT Act 2000.
           </p>
         </div>
       </div>
 
       <div className="h-0.5 bg-gradient-tricolor" />
       <div className="container mx-auto px-4 py-5 text-xs flex flex-col md:flex-row items-center justify-between gap-3 opacity-80">
-        <span>© 2026 Government of Uttar Pradesh · All rights reserved</span>
+        <span>© 2026 Uttar Pradesh · All rights reserved</span>
         <span>Designed in भारत — Made with care for the youth of UP</span>
       </div>
     </footer>

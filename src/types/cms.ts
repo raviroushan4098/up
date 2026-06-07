@@ -9,6 +9,7 @@ export interface CMSHero {
   stat2Value: string;
   stat3Label: string;
   stat3Value: string;
+  image?: string;
 }
 
 export interface CMSStat {
@@ -47,6 +48,13 @@ export interface CMSFaq {
   a: string;
 }
 
+export interface CMSContact {
+  helpline: string;
+  email: string;
+  office: string;
+  whatsapp: string;
+}
+
 export interface LandingPageCMS {
   hero: CMSHero;
   stats: CMSStat[];
@@ -55,4 +63,14 @@ export interface LandingPageCMS {
   howItWorks: CMSHowItWorksStep[];
   testimonials: CMSTestimonial[];
   faqs: CMSFaq[];
+  contact: CMSContact;
+  visibility: {
+    hero: boolean;
+    stats: boolean;
+    timeline: boolean;
+    benefits: boolean;
+    howItWorks: boolean;
+    testimonials: boolean;
+    faqs: boolean;
+  };
 }

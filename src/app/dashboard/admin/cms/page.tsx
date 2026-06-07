@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { db } from "@/lib/firebase";
+import { db, app } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { LandingPageCMS } from "@/types/cms";
 import { defaultLandingCMS } from "@/data/cms-defaults";
 import { toast } from "sonner";
@@ -12,19 +13,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Plus, Trash2, RefreshCw } from "lucide-react";
+import { Save, Plus, Trash2, RefreshCw, ImagePlus } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function CMSPage() {
   const { user, profile, loading: authLoading } = useAuth();
   const [data, setData] = useState<LandingPageCMS>(defaultLandingCMS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [heroFile, setHeroFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!authLoading && profile?.role === "admin") {
@@ -37,7 +41,15 @@ export default function CMSPage() {
       const docRef = doc(db, "settings", "landingPage");
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setData({ ...defaultLandingCMS, ...docSnap.data() } as LandingPageCMS);
+        const docData = docSnap.data();
+        setData({
+          ...defaultLandingCMS,
+          ...docData,
+          visibility: {
+            ...defaultLandingCMS.visibility,
+            ...(docData.visibility || {}),
+          },
+        } as LandingPageCMS);
       }
     } catch (error) {
       console.error("Error fetching CMS data:", error);
@@ -48,14 +60,33 @@ export default function CMSPage() {
   };
 
   const handleSave = async () => {
-    if (!profile || profile.role !== "admin") return;
     setSaving(true);
     try {
+      let heroImageUrl = data.hero.image;
+      if (heroFile) {
+        const storage = getStorage(app);
+        const ext = heroFile.name.split(".").pop();
+        const imageRef = ref(storage, `cms/hero_${Date.now()}.${ext}`);
+        const uploadResult = await uploadBytes(imageRef, heroFile);
+        heroImageUrl = await getDownloadURL(uploadResult.ref);
+      }
+
+      const payload = {
+        ...data,
+        hero: {
+          ...data.hero,
+          image: heroImageUrl || "",
+        },
+      };
+
       const docRef = doc(db, "settings", "landingPage");
-      await setDoc(docRef, data);
-      toast.success("Landing Page updated successfully!");
+      await setDoc(docRef, payload);
+
+      setData(payload as LandingPageCMS);
+      setHeroFile(null);
+      toast.success("Landing page content updated successfully");
     } catch (error) {
-      console.error("Error saving CMS data:", error);
+      console.error(error);
       toast.error("Failed to save changes");
     } finally {
       setSaving(false);
@@ -116,7 +147,7 @@ export default function CMSPage() {
         </div>
 
         <Tabs defaultValue="hero" className="w-full">
-          <TabsList className="mb-4 grid w-full grid-cols-4 lg:grid-cols-7 h-auto">
+          <TabsList className="mb-4 grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
             <TabsTrigger value="hero">Hero</TabsTrigger>
             <TabsTrigger value="stats">Stats</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
@@ -124,14 +155,27 @@ export default function CMSPage() {
             <TabsTrigger value="howItWorks">How It Works</TabsTrigger>
             <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
             <TabsTrigger value="faqs">FAQs</TabsTrigger>
+            <TabsTrigger value="contact">Contact</TabsTrigger>
           </TabsList>
 
           {/* HERO SECTION */}
           <TabsContent value="hero">
             <Card>
-              <CardHeader>
-                <CardTitle>Hero Section</CardTitle>
-                <CardDescription>The main banner at the top of the homepage.</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Hero Section</CardTitle>
+                  <CardDescription>The main banner at the top of the homepage.</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="hero-visibility">Visible</Label>
+                  <Switch
+                    id="hero-visibility"
+                    checked={data.visibility?.hero ?? true}
+                    onCheckedChange={(checked) =>
+                      setData({ ...data, visibility: { ...data.visibility, hero: checked } })
+                    }
+                  />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-2">
@@ -172,6 +216,35 @@ export default function CMSPage() {
                     }
                   />
                 </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Hero Image</label>
+                  <div className="flex items-center gap-4">
+                    {data.hero.image || heroFile ? (
+                      <img
+                        src={heroFile ? URL.createObjectURL(heroFile) : data.hero.image}
+                        alt="Hero"
+                        className="h-20 w-32 object-cover rounded-md border"
+                      />
+                    ) : (
+                      <div className="h-20 w-32 bg-muted rounded-md flex items-center justify-center border border-dashed">
+                        <ImagePlus className="size-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setHeroFile(e.target.files[0]);
+                        }
+                      }}
+                      className="max-w-xs"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Upload a high-quality image (recommended: 1536x1024px).
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -179,9 +252,21 @@ export default function CMSPage() {
           {/* STATS SECTION */}
           <TabsContent value="stats">
             <Card>
-              <CardHeader>
-                <CardTitle>Statistics</CardTitle>
-                <CardDescription>The 4 large numbers displayed below the hero.</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Statistics</CardTitle>
+                  <CardDescription>The 4 large numbers displayed below the hero.</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="stats-visibility">Visible</Label>
+                  <Switch
+                    id="stats-visibility"
+                    checked={data.visibility?.stats ?? true}
+                    onCheckedChange={(checked) =>
+                      setData({ ...data, visibility: { ...data.visibility, stats: checked } })
+                    }
+                  />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.stats.map((stat, i) => (
@@ -222,20 +307,32 @@ export default function CMSPage() {
                   <CardTitle>Timeline Roadmap</CardTitle>
                   <CardDescription>Important dates for the current season.</CardDescription>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setData({
-                      ...data,
-                      timeline: [
-                        ...data.timeline,
-                        { date: "New Date", title: "New Milestone", desc: "Description..." },
-                      ],
-                    });
-                  }}
-                >
-                  <Plus className="size-4 mr-2" /> Add
-                </Button>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="timeline-visibility">Visible</Label>
+                    <Switch
+                      id="timeline-visibility"
+                      checked={data.visibility?.timeline ?? true}
+                      onCheckedChange={(checked) =>
+                        setData({ ...data, visibility: { ...data.visibility, timeline: checked } })
+                      }
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setData({
+                        ...data,
+                        timeline: [
+                          ...data.timeline,
+                          { date: "New Date", title: "New Milestone", desc: "Description..." },
+                        ],
+                      });
+                    }}
+                  >
+                    <Plus className="size-4 mr-2" /> Add
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.timeline.map((item, i) => (
@@ -294,8 +391,18 @@ export default function CMSPage() {
           {/* BENEFITS SECTION */}
           <TabsContent value="benefits">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Benefits Grid</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="benefits-visibility">Visible</Label>
+                  <Switch
+                    id="benefits-visibility"
+                    checked={data.visibility?.benefits ?? true}
+                    onCheckedChange={(checked) =>
+                      setData({ ...data, visibility: { ...data.visibility, benefits: checked } })
+                    }
+                  />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.benefits.map((item, i) => (
@@ -331,8 +438,18 @@ export default function CMSPage() {
           {/* HOW IT WORKS SECTION */}
           <TabsContent value="howItWorks">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>How It Works</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="how-it-works-visibility">Visible</Label>
+                  <Switch
+                    id="how-it-works-visibility"
+                    checked={data.visibility?.howItWorks ?? true}
+                    onCheckedChange={(checked) =>
+                      setData({ ...data, visibility: { ...data.visibility, howItWorks: checked } })
+                    }
+                  />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.howItWorks.map((item, i) => (
@@ -373,20 +490,40 @@ export default function CMSPage() {
                   <CardTitle>Testimonials</CardTitle>
                   <CardDescription>Stories and quotes from citizens.</CardDescription>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setData({
-                      ...data,
-                      testimonials: [
-                        ...data.testimonials,
-                        { name: "New Person", role: "Student", district: "Lucknow", quote: "..." },
-                      ],
-                    });
-                  }}
-                >
-                  <Plus className="size-4 mr-2" /> Add
-                </Button>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="testimonials-visibility">Visible</Label>
+                    <Switch
+                      id="testimonials-visibility"
+                      checked={data.visibility?.testimonials ?? true}
+                      onCheckedChange={(checked) =>
+                        setData({
+                          ...data,
+                          visibility: { ...data.visibility, testimonials: checked },
+                        })
+                      }
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setData({
+                        ...data,
+                        testimonials: [
+                          ...data.testimonials,
+                          {
+                            name: "New Person",
+                            role: "Student",
+                            district: "Lucknow",
+                            quote: "...",
+                          },
+                        ],
+                      });
+                    }}
+                  >
+                    <Plus className="size-4 mr-2" /> Add
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Accordion type="single" collapsible className="w-full">
@@ -468,17 +605,29 @@ export default function CMSPage() {
                   <CardTitle>FAQs</CardTitle>
                   <CardDescription>Frequently asked questions on the landing page.</CardDescription>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setData({
-                      ...data,
-                      faqs: [...data.faqs, { q: "New Question?", a: "New Answer." }],
-                    });
-                  }}
-                >
-                  <Plus className="size-4 mr-2" /> Add
-                </Button>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="faqs-visibility">Visible</Label>
+                    <Switch
+                      id="faqs-visibility"
+                      checked={data.visibility?.faqs ?? true}
+                      onCheckedChange={(checked) =>
+                        setData({ ...data, visibility: { ...data.visibility, faqs: checked } })
+                      }
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setData({
+                        ...data,
+                        faqs: [...data.faqs, { q: "New Question?", a: "New Answer." }],
+                      });
+                    }}
+                  >
+                    <Plus className="size-4 mr-2" /> Add
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Accordion type="single" collapsible className="w-full">
@@ -522,6 +671,67 @@ export default function CMSPage() {
                     </AccordionItem>
                   ))}
                 </Accordion>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          {/* CONTACT SECTION */}
+          <TabsContent value="contact">
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Information</CardTitle>
+                <CardDescription>
+                  Update the contact details shown in the footer and contact page.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Helpline (Toll Free)</label>
+                  <Input
+                    value={data.contact?.helpline || ""}
+                    onChange={(e) =>
+                      setData({
+                        ...data,
+                        contact: { ...data.contact, helpline: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Email Support</label>
+                  <Input
+                    value={data.contact?.email || ""}
+                    onChange={(e) =>
+                      setData({
+                        ...data,
+                        contact: { ...data.contact, email: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Office Address</label>
+                  <Input
+                    value={data.contact?.office || ""}
+                    onChange={(e) =>
+                      setData({
+                        ...data,
+                        contact: { ...data.contact, office: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">WhatsApp</label>
+                  <Input
+                    value={data.contact?.whatsapp || ""}
+                    onChange={(e) =>
+                      setData({
+                        ...data,
+                        contact: { ...data.contact, whatsapp: e.target.value },
+                      })
+                    }
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

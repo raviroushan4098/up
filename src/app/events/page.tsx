@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
 import { Search, ArrowRight, Calendar, MapPin, SlidersHorizontal } from "lucide-react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { districts, categories } from "@/data/mock";
 import { parseDateString, formatDateString, isDeadlinePassed } from "@/lib/utils";
 import { collection, query, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -24,9 +22,6 @@ import { UPEvent } from "@/types/events";
 import { Loader2 } from "lucide-react";
 
 export default function EventsPage() {
-  const [q, setQ] = useState("");
-  const [district, setDistrict] = useState("All Districts");
-  const [cat, setCat] = useState<string>("all");
   const [sort, setSort] = useState("deadline");
   const [eventsList, setEventsList] = useState<UPEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,27 +46,29 @@ export default function EventsPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    let list = eventsList.filter((e) => {
-      const matchQ =
-        !q ||
-        e.title.toLowerCase().includes(q.toLowerCase()) ||
-        e.description.toLowerCase().includes(q.toLowerCase());
-      const matchD =
-        district === "All Districts" ||
-        e.districts?.includes(district) ||
-        e.districts?.includes("All Districts");
-      const matchC = cat === "all" || e.category === cat;
-      return matchQ && matchD && matchC;
-    });
-    if (sort === "deadline")
-      list = [...list].sort((a, b) => {
+    const list = [...eventsList];
+
+    list.sort((a, b) => {
+      const aIsClosed = isDeadlinePassed(a.deadline) || a.status === "Closed";
+      const bIsClosed = isDeadlinePassed(b.deadline) || b.status === "Closed";
+
+      if (aIsClosed !== bIsClosed) {
+        return aIsClosed ? 1 : -1;
+      }
+
+      if (sort === "deadline") {
         const da = parseDateString(a.deadline)?.getTime() || Infinity;
         const db = parseDateString(b.deadline)?.getTime() || Infinity;
         return da - db;
-      });
-    if (sort === "name") list = [...list].sort((a, b) => a.title.localeCompare(b.title));
+      }
+      if (sort === "name") {
+        return a.title.localeCompare(b.title);
+      }
+      return 0;
+    });
+
     return list;
-  }, [q, district, cat, sort, eventsList]);
+  }, [sort, eventsList]);
 
   return (
     <PublicLayout>
@@ -84,51 +81,12 @@ export default function EventsPage() {
             Find your <span className="text-gradient-saffron">opportunity</span>
           </h1>
           <p className="mt-4 text-muted-foreground">
-            Explore live programmes from the Government of Uttar Pradesh.
+            Explore live programmes from the Uttar Pradesh.
           </p>
         </div>
       </section>
 
       <section className="container mx-auto px-4 py-10">
-        <Card className="border-0 shadow-card mb-8">
-          <CardContent className="p-4 sm:p-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="relative lg:col-span-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search events..."
-                className="pl-9 h-11"
-              />
-            </div>
-            <Select value={district} onValueChange={setDistrict}>
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="District" />
-              </SelectTrigger>
-              <SelectContent>
-                {districts.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={cat} onValueChange={setCat}>
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
         <div className="flex items-center justify-between mb-5">
           <p className="text-sm text-muted-foreground">{filtered.length} events found</p>
           <Select value={sort} onValueChange={setSort}>

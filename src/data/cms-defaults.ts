@@ -7,13 +7,14 @@ export const defaultLandingCMS: LandingPageCMS = {
     titleLine1: "नए उत्तर प्रदेश का",
     titleGradient: "नया भविष्य",
     subtitle:
-      "The official registration platform for Government of Uttar Pradesh youth initiatives — innovation, skills, scholarships, culture and more. One portal, every opportunity.",
+      "The official registration platform for   Uttar Pradesh youth initiatives — innovation, skills, scholarships, culture and more. One portal, every opportunity.",
     stat1Label: "",
     stat1Value: "",
     stat2Label: "",
     stat2Value: "",
     stat3Label: "",
     stat3Value: "",
+    image: "",
   },
   stats: stats.map((s) => ({
     icon: s.icon,
@@ -28,8 +29,8 @@ export const defaultLandingCMS: LandingPageCMS = {
   benefits: [
     {
       icon: "Award",
-      title: "Govt. Certification",
-      desc: "Recognised certificates from Govt. of UP.",
+      title: " . Certification",
+      desc: "Recognised certificates from   UP.",
     },
     {
       icon: "HeartHandshake",
@@ -39,7 +40,7 @@ export const defaultLandingCMS: LandingPageCMS = {
     {
       icon: "Rocket",
       title: "Mentorship",
-      desc: "Learn from industry and government leaders.",
+      desc: "Learn from industry and   leaders.",
     },
     {
       icon: "GraduationCap",
@@ -74,4 +75,19 @@ export const defaultLandingCMS: LandingPageCMS = {
     q: f.q,
     a: f.a,
   })),
+  contact: {
+    helpline: "1800-180-5555",
+    email: "support@bhavishyaup.gov.in",
+    office: "Yojana Bhawan, Lucknow, UP 226001",
+    whatsapp: "+91 90000 90000",
+  },
+  visibility: {
+    hero: true,
+    stats: true,
+    timeline: true,
+    benefits: true,
+    howItWorks: true,
+    testimonials: true,
+    faqs: true,
+  },
 };

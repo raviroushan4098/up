@@ -29,7 +29,7 @@ export function AuthLayout({
             </div>
             <div className="leading-tight">
               <div className="font-display font-bold">Bhavishya UP</div>
-              <div className="text-xs opacity-80">Govt. of Uttar Pradesh</div>
+              <div className="text-xs opacity-80"> Uttar Pradesh</div>
             </div>
           </Link>
           <div className="my-auto">
@@ -47,12 +47,11 @@ export function AuthLayout({
               <span className="text-accent-glow">नया भविष्य</span>
             </h2>
             <p className="mt-3 opacity-80 max-w-md">
-              Join 2.4 lakh+ citizens accessing government opportunities through a single, secure
-              portal.
+              Join 2.4 lakh+ citizens accessing opportunities through a single, secure portal.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm opacity-80">
-            <ShieldCheck className="size-4" /> Secured under IT Act 2000 · Govt. of India
+            <ShieldCheck className="size-4" /> Secured under IT Act 2000 · India
           </div>
         </div>
       </div>
