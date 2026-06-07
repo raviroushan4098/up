@@ -1,0 +1,77 @@
+import { LandingPageCMS } from "@/types/cms";
+import { stats, timeline, testimonials, faqs } from "./mock";
+
+export const defaultLandingCMS: LandingPageCMS = {
+  hero: {
+    badgeText: "Registrations Live · 2026 Season",
+    titleLine1: "नए उत्तर प्रदेश का",
+    titleGradient: "नया भविष्य",
+    subtitle:
+      "The official registration platform for Government of Uttar Pradesh youth initiatives — innovation, skills, scholarships, culture and more. One portal, every opportunity.",
+    stat1Label: "Govt. Verified",
+    stat1Value: "ShieldCheck",
+    stat2Label: "2.4 Lakh+ Registered",
+    stat2Value: "Users",
+    stat3Label: "75 Districts",
+    stat3Value: "MapPin",
+  },
+  stats: stats.map((s) => ({
+    icon: s.icon,
+    value: s.value,
+    label: s.label,
+  })),
+  timeline: timeline.map((t) => ({
+    date: t.date,
+    title: t.title,
+    desc: t.desc,
+  })),
+  benefits: [
+    {
+      icon: "Award",
+      title: "Govt. Certification",
+      desc: "Recognised certificates from Govt. of UP.",
+    },
+    {
+      icon: "HeartHandshake",
+      title: "Stipend & Grants",
+      desc: "Up to ₹5 Lakh in support and prizes.",
+    },
+    {
+      icon: "Rocket",
+      title: "Mentorship",
+      desc: "Learn from industry and government leaders.",
+    },
+    {
+      icon: "GraduationCap",
+      title: "Career Boost",
+      desc: "Placement, internships and incubation.",
+    },
+  ],
+  howItWorks: [
+    {
+      n: "01",
+      t: "Create Account",
+      d: "Sign up with mobile OTP or email in under 60 seconds.",
+    },
+    {
+      n: "02",
+      t: "Choose Event",
+      d: "Browse 24+ active programmes across all 75 districts.",
+    },
+    {
+      n: "03",
+      t: "Submit Application",
+      d: "Fill the form, upload documents and track your status.",
+    },
+  ],
+  testimonials: testimonials.map((t) => ({
+    name: t.name,
+    role: t.role,
+    district: t.district,
+    quote: t.quote,
+  })),
+  faqs: faqs.map((f) => ({
+    q: f.q,
+    a: f.a,
+  })),
+};

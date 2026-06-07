@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Target, Eye, Users, Award, GraduationCap, HeartHandshake } from "lucide-react";
+import { Target, Eye, Users, Award, Landmark, Flag, HeartHandshake, Rocket } from "lucide-react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { timeline } from "@/data/mock";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -15,6 +19,47 @@ const fadeUp = {
 };
 
 export default function AboutPage() {
+  const [stats, setStats] = useState<{ v: string; l: string }[] | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const docRef = doc(db, "counters", "global");
+        const docSnap = await getDoc(docRef);
+
+        const formatNumber = (num: number) => {
+          if (!num) return "0";
+          if (num >= 100000) return (num / 100000).toFixed(1) + "L+";
+          if (num >= 1000) return (num / 1000).toFixed(1) + "K+";
+          return num.toString();
+        };
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setStats([
+            { v: "75", l: "Districts Covered" },
+            { v: formatNumber(data.totalUsers || 0), l: "Active Citizens" },
+            { v: formatNumber(data.approvedApplications || 0), l: "Approved Applications" },
+          ]);
+        } else {
+          setStats([
+            { v: "75", l: "Districts Covered" },
+            { v: "2.4L+", l: "Active Citizens" },
+            { v: "1.1L+", l: "Approved Applications" },
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+        setStats([
+          { v: "75", l: "Districts Covered" },
+          { v: "2.4L+", l: "Active Citizens" },
+          { v: "1.1L+", l: "Approved Applications" },
+        ]);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <PublicLayout>
       <section className="bg-gradient-soft py-20">
@@ -37,12 +82,12 @@ export default function AboutPage() {
           {
             icon: Target,
             t: "Our Mission",
-            d: "To create a single, transparent and trusted digital platform that unlocks government opportunities for every citizen of Uttar Pradesh — regardless of district, gender or background.",
+            d: "Bhavishya-E-Uttar Pradesh is committed to creating a powerful platform where young minds can think, express, lead, and contribute towards nation-building. We believe that the true strength of India lies in its youth, and our mission is to connect every aspiring young individual with opportunities, ideas, leadership development, and meaningful dialogue.Through youth parliaments, constitutional awareness initiatives, leadership development programs, social outreach campaigns, environmental initiatives, and policy discussions, we strive to cultivate democratic values, civic responsibility, public speaking skills, leadership capabilities, and a spirit of national service among young citizens.Our mission is not limited to organizing events; it is about building a generation that is thoughtful, responsible, confident, and committed to the progress of society and the nation.We aim to ensure that every young person, regardless of their background, receives a platform where their voice is heard, their talent is recognized, and their potential is transformed into meaningful leadership.We believe that when youth are given the right direction, the right opportunities, and the right platform, they become the driving force behind social transformation, innovation, and national development.",
           },
           {
             icon: Eye,
             t: "Our Vision",
-            d: "An Uttar Pradesh where every young citizen has equal access to skill, knowledge, capital and a stage to showcase their talent — powered by Digital India.",
+            d: "Our vision is to build a nationwide youth leadership movement that inspires, empowers, and connects young citizens across India. We envision a future where every young individual has equal access to opportunities, mentorship, knowledge, and leadership platforms that enable them to actively participate in shaping the future of the nation.We aspire to create a generation that understands democratic values, respects constitutional principles, embraces social responsibility, and possesses the confidence to lead positive change in their communities and beyond. By bringing together youth from diverse regions, cultures, languages, and backgrounds, we seek to foster meaningful dialogue, collaboration, and collective action for national progress.Bhavishya-E-Uttar Pradesh envisions an India where leadership is determined not by privilege or circumstance, but by vision, capability, dedication, and character. We strive to create a platform where talent is celebrated, ideas are respected, and every young citizen has the opportunity to contribute towards building a stronger, more inclusive, and globally respected India.Our vision is rooted in a simple belief: when empowered youth lead with purpose, they become the architects of a better future for society, the nation, and generations to come.",
           },
         ].map((b, i) => (
           <motion.div key={i} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.1 }}>
@@ -69,12 +114,38 @@ export default function AboutPage() {
               What we aim to achieve
             </h2>
           </motion.div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { i: Users, t: "Reach 1 Crore Youth", d: "Onboard one crore citizens by 2027." },
-              { i: GraduationCap, t: "Skill 5 Lakh +", d: "Certified skilling across 25 trades." },
-              { i: Award, t: "Recognise Talent", d: "Annual state awards for innovators." },
-              { i: HeartHandshake, t: "Connect Industry", d: "Partner with 500+ employers." },
+              {
+                i: Users,
+                t: "Youth Leadership Development",
+                d: "Empowering young minds through leadership programs, youth parliaments, debates, and experiential learning opportunities that prepare them to become responsible leaders of tomorrow.",
+              },
+              {
+                i: Landmark,
+                t: "Constitutional Awareness",
+                d: "Promoting democratic values, constitutional understanding, civic responsibility, and informed participation to create aware, responsible, and active citizens.",
+              },
+              {
+                i: Award,
+                t: "Talent Recognition",
+                d: "Providing a meaningful platform where talented youth can showcase their ideas, skills, and potential while receiving recognition, mentorship, and growth opportunities.",
+              },
+              {
+                i: Flag,
+                t: "Nation Building",
+                d: "Encouraging young citizens to actively contribute towards social progress, policy dialogue, community development, and the collective advancement of the nation.",
+              },
+              {
+                i: HeartHandshake,
+                t: "Social Responsibility",
+                d: "Inspiring youth to address social, educational, cultural, and environmental challenges through service, awareness campaigns, and community engagement initiatives.",
+              },
+              {
+                i: Rocket,
+                t: "Youth Empowerment",
+                d: "Creating equal opportunities for every young individual by connecting them with knowledge, mentorship, leadership platforms, and pathways for personal and professional growth.",
+              },
             ].map((o, i) => (
               <motion.div
                 key={i}
@@ -127,18 +198,25 @@ export default function AboutPage() {
           {...fadeUp}
           className="rounded-3xl bg-gradient-navy text-primary-foreground p-10 md:p-14 grid md:grid-cols-3 gap-6 text-center shadow-elegant"
         >
-          {[
-            { v: "75", l: "Districts Covered" },
-            { v: "2.4L+", l: "Active Citizens" },
-            { v: "1.1L+", l: "Approved Applications" },
-          ].map((s, i) => (
-            <div key={i}>
-              <div className="font-display font-extrabold text-4xl md:text-5xl text-accent-glow">
-                {s.v}
+          {stats ? (
+            stats.map((s, i) => (
+              <div key={i}>
+                <div className="font-display font-extrabold text-4xl md:text-5xl text-accent-glow">
+                  {s.v}
+                </div>
+                <div className="text-sm opacity-80 mt-1">{s.l}</div>
               </div>
-              <div className="text-sm opacity-80 mt-1">{s.l}</div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex flex-col items-center justify-center">
+                  <Skeleton className="h-12 w-24 bg-white/20 rounded-md mb-2" />
+                  <Skeleton className="h-4 w-32 bg-white/10 rounded-sm" />
+                </div>
+              ))}
+            </>
+          )}
         </motion.div>
       </section>
     </PublicLayout>

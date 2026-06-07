@@ -11,6 +11,7 @@ import {
   User,
   ShieldCheck,
   Ticket,
+  LayoutTemplate,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -60,6 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard/admin/events", label: "Manage Events", icon: CalendarSearch },
       { to: "/dashboard/applications", label: "All Applications", icon: FileText },
       { to: "/dashboard/admin/passes", label: "VIP Pass Generation", icon: Ticket },
+      { to: "/dashboard/admin/cms", label: "Landing Page CMS", icon: LayoutTemplate },
       { to: "/dashboard/results", label: "State Results", icon: Trophy },
       { to: "/dashboard/notifications", label: "System Alerts", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },

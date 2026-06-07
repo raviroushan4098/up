@@ -252,27 +252,51 @@ export const faqs = [
 
 export const timeline = [
   {
-    date: "May 2026",
-    title: "Portal Launch",
-    desc: "Bhavishya UP opens for nationwide registrations.",
+    date: "Sep 2025",
+    title: "Digital Shakti Sansad",
+    desc: "India's largest digital youth parliament initiative dedicated to women's leadership, empowerment, and nation-building with participation from 101 young women.",
   },
   {
-    date: "Jun 2026",
-    title: "Event Registrations",
-    desc: "All flagship events open across 75 districts.",
+    date: "Oct 2025",
+    title: "Student Parliament 2025",
+    desc: "Over 200 students from multiple states participated in parliamentary debates, policy discussions, and leadership development activities.",
   },
   {
-    date: "Jul 2026",
-    title: "District Auditions",
-    desc: "Shortlisting and district-level rounds begin.",
+    date: "Nov 2025",
+    title: "Children's Day Initiative",
+    desc: "Educational materials and learning resources were distributed to children, promoting education, opportunity, and social responsibility.",
+  },
+  {
+    date: "Nov 2025",
+    title: "Constitution Day Seminar",
+    desc: "A special seminar was organized to promote constitutional awareness, democratic values, civic duties, and responsible citizenship among youth.",
+  },
+  {
+    date: "Dec 2025",
+    title: "Wildlife Conservation Day",
+    desc: "Environmental awareness campaigns, competitions, and conservation activities encouraged youth participation in protecting biodiversity and nature.",
+  },
+  {
+    date: "Jan 2026",
+    title: "Parakram Diwas",
+    desc: "A tribute to Netaji Subhas Chandra Bose, inspiring patriotism, courage, leadership, and dedication towards national service.",
+  },
+  {
+    date: "Feb 2026",
+    title: "Legislative Assembly Study Visit",
+    desc: "Student Parliament winners and team members visited the Legislative Assembly to gain practical exposure to democratic institutions and governance.",
+  },
+  {
+    date: "Mar – Aug 2026",
+    title: "Youth Leadership & Outreach Programs",
+    desc: "Leadership workshops, constitutional awareness initiatives, and youth dialogues expanded engagement across districts and communities.",
   },
   {
     date: "Aug 2026",
-    title: "State Finale",
-    desc: "Winners felicitated at the state capital, Lucknow.",
+    title: "Bhavishya-E-Uttar Pradesh 2.0",
+    desc: "The organization's flagship mega-event bringing together thousands of youth leaders, volunteers, experts, and changemakers from across India.",
   },
 ];
-
 export const applications = [
   {
     id: "BUP-2026-00821",
