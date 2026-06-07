@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateString, isDeadlinePassed } from "@/lib/utils";
 import {
   Accordion,
   AccordionItem,
@@ -354,14 +355,16 @@ export default function HomePage() {
                       />
                       <Badge
                         className={`absolute top-3 right-3 ${
-                          e.status === "Open"
-                            ? "bg-success text-success-foreground"
-                            : e.status === "Closing Soon"
-                              ? "bg-warning text-warning-foreground"
-                              : "bg-muted text-muted-foreground"
+                          isDeadlinePassed(e.deadline) || e.status === "Closed"
+                            ? "bg-muted text-muted-foreground"
+                            : e.status === "Open"
+                              ? "bg-success text-success-foreground"
+                              : e.status === "Closing Soon"
+                                ? "bg-warning text-warning-foreground"
+                                : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {e.status}
+                        {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
                       </Badge>
                     </div>
                     <CardContent className="p-5 flex-1 flex flex-col">
@@ -377,17 +380,24 @@ export default function HomePage() {
                       <div className="flex items-center justify-between mt-5 pt-4 border-t text-xs text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="size-3.5" /> Deadline{" "}
-                          {new Date(e.deadline).toLocaleDateString("en-IN", {
+                          {formatDateString(e.deadline, {
                             day: "numeric",
                             month: "short",
+                            year: "numeric",
                           })}
                         </span>
-                        <Link
-                          href={`/events/${e.id}`}
-                          className="font-semibold text-primary hover:text-accent-glow inline-flex items-center gap-1"
-                        >
-                          Apply <ArrowRight className="size-3.5" />
-                        </Link>
+                        {isDeadlinePassed(e.deadline) ? (
+                          <span className="font-semibold text-muted-foreground inline-flex items-center gap-1">
+                            Closed
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/events/${e.id}`}
+                            className="font-semibold text-primary hover:text-accent-glow inline-flex items-center gap-1"
+                          >
+                            Apply <ArrowRight className="size-3.5" />
+                          </Link>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

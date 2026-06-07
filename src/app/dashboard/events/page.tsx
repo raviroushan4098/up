@@ -11,6 +11,7 @@ import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UPEvent } from "@/types/events";
 import { toast } from "sonner";
+import { formatDateString, isDeadlinePassed } from "@/lib/utils";
 
 export default function OpenEvents() {
   const { user } = useAuth();
@@ -82,9 +83,15 @@ export default function OpenEvents() {
                   </div>
                 )}
                 <Badge
-                  className={`absolute top-3 right-3 ${e.status === "Open" ? "bg-success text-success-foreground" : "bg-warning text-warning-foreground"}`}
+                  className={`absolute top-3 right-3 ${
+                    isDeadlinePassed(e.deadline) || e.status === "Closed"
+                      ? "bg-muted text-muted-foreground"
+                      : e.status === "Open"
+                        ? "bg-success text-success-foreground"
+                        : "bg-warning text-warning-foreground"
+                  }`}
                 >
-                  {e.status}
+                  {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
                 </Badge>
               </div>
               <CardContent className="p-5 flex-1 flex flex-col">
@@ -96,7 +103,12 @@ export default function OpenEvents() {
 
                 <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 mb-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Calendar className="size-3.5 text-primary" /> {e.deadline}
+                    <Calendar className="size-3.5 text-primary" />{" "}
+                    {formatDateString(e.deadline, {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </span>
                   <span className="flex items-center gap-1">
                     <MapPin className="size-3.5 text-primary" />
@@ -114,6 +126,13 @@ export default function OpenEvents() {
                       className="w-full text-success border-success/50 bg-success/10 font-semibold hover:bg-success/20"
                     >
                       <Link href={`/dashboard/applications`}>Already Registered</Link>
+                    </Button>
+                  ) : isDeadlinePassed(e.deadline) ? (
+                    <Button
+                      disabled
+                      className="w-full bg-muted text-muted-foreground font-semibold cursor-not-allowed border-0"
+                    >
+                      Deadline Passed
                     </Button>
                   ) : (
                     <Button

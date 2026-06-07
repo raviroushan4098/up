@@ -15,6 +15,7 @@ import {
   doc,
   setDoc,
   increment,
+  deleteDoc,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "@/lib/firebase";
@@ -24,8 +25,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { CalendarSearch, Plus, List, Loader2, Image as ImageIcon } from "lucide-react";
+import { CalendarSearch, Plus, List, Loader2, Image as ImageIcon, Trash2 } from "lucide-react";
 
 export default function AdminEventsPage() {
   const { profile, loading: authLoading } = useAuth();
@@ -39,16 +41,22 @@ export default function AdminEventsPage() {
 
   // Form State
   const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [videoGuidelines, setVideoGuidelines] = useState("");
   const [rules, setRules] = useState("");
   const [dressCode, setDressCode] = useState("");
   const [venue, setVenue] = useState("");
   const [contactInfo, setContactInfo] = useState("");
-  const [agendaTopics, setAgendaTopics] = useState("");
+  const [agendaTopics, setAgendaTopics] = useState<{ title: string; description: string }[]>([]);
   const [customDeclaration, setCustomDeclaration] = useState("");
+  const [requireEducation, setRequireEducation] = useState(true);
+  const [requireTopic, setRequireTopic] = useState(true);
+  const [requireVideo, setRequireVideo] = useState(true);
 
   useEffect(() => {
     if (!authLoading && profile?.role !== "admin") {
@@ -84,32 +92,60 @@ export default function AdminEventsPage() {
     setEditEventId(ev.id);
     setTitle(ev.title);
     setDescription(ev.description);
-    setDeadline(ev.deadline);
+    setDeadline(ev.deadline || "");
+    setStartDate(ev.startDate || "");
+    setEndDate(ev.endDate || "");
     setVideoGuidelines(ev.videoGuidelines || "");
     setRules(ev.rules || "");
     setDressCode(ev.dressCode || "");
     setVenue(ev.venue || "");
     setContactInfo(ev.contactInfo || "");
-    setAgendaTopics(ev.agendaTopics?.join(", ") || "");
+
+    if (ev.agendaTopics) {
+      if (typeof ev.agendaTopics[0] === "string") {
+        setAgendaTopics(ev.agendaTopics.map((t: string) => ({ title: t, description: "" })));
+      } else {
+        setAgendaTopics(ev.agendaTopics);
+      }
+    } else {
+      setAgendaTopics([]);
+    }
+
+    const conf = ev.formConfig || {
+      requireEducation: true,
+      requireTopic: true,
+      requireVideo: true,
+    };
+    setRequireEducation(conf.requireEducation ?? true);
+    setRequireTopic(conf.requireTopic ?? true);
+    setRequireVideo(conf.requireVideo ?? true);
+
     setCustomDeclaration(ev.customDeclaration || "");
     setBannerFile(null);
+    setIsDragging(false);
     setActiveTab("create");
   };
 
   const resetForm = () => {
     setEditEventId(null);
     setBannerFile(null);
+    setIsDragging(false);
     setTitle("");
     setDescription("");
     setDeadline("");
+    setStartDate("");
+    setEndDate("");
     setVideoGuidelines("");
     setRules("");
     setDressCode("");
     setVenue("");
     setContactInfo("");
-    setAgendaTopics("");
+    setAgendaTopics([]);
     setCustomDeclaration("");
-    setActiveTab("list");
+    setRequireEducation(true);
+    setRequireTopic(true);
+    setRequireVideo(true);
+    setIsDragging(false);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -121,22 +157,27 @@ export default function AdminEventsPage() {
 
     setSubmitting(true);
     try {
-      const topicsArray = agendaTopics
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0);
+      // Validate topics
+      const validTopics = agendaTopics.filter((t) => t.title.trim().length > 0);
 
       const eventData: any = {
         title,
         description,
         deadline,
+        startDate,
+        endDate,
         videoGuidelines,
         rules,
         dressCode,
         venue,
         contactInfo,
-        agendaTopics: topicsArray,
+        agendaTopics: validTopics,
         customDeclaration,
+        formConfig: {
+          requireEducation,
+          requireTopic,
+          requireVideo,
+        },
         status: "Open", // Default to open for now
       };
 
@@ -186,6 +227,40 @@ export default function AdminEventsPage() {
       console.error(error);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event? This action cannot be undone."))
+      return;
+
+    try {
+      await deleteDoc(doc(db, "events", eventId));
+      toast.success("Event deleted successfully");
+      fetchEvents();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete event");
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith("image/")) {
+        setBannerFile(file);
+      } else {
+        toast.error("Please upload an image file");
+      }
     }
   };
 
@@ -263,6 +338,14 @@ export default function AdminEventsPage() {
                         >
                           Edit
                         </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(event.id)}
+                          className="h-7 text-xs px-2"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">Due: {event.deadline}</p>
                     </div>
@@ -284,7 +367,12 @@ export default function AdminEventsPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>Event Banner Image</Label>
-                  <label className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/5 transition-base">
+                  <label
+                    className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-base ${isDragging ? "border-primary bg-primary/10" : "border-border hover:bg-accent/5"}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
                     <input
                       type="file"
                       className="sr-only"
@@ -298,12 +386,16 @@ export default function AdminEventsPage() {
                     />
                     {bannerFile ? (
                       <span className="font-semibold text-sm text-primary">
-                        {bannerFile.name} (Click to change)
+                        {bannerFile.name} (Click or drag to change)
                       </span>
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                        <ImageIcon className="size-6" />
-                        <span className="text-sm">Click to upload banner image</span>
+                        <ImageIcon
+                          className={`size-6 ${isDragging ? "text-primary animate-bounce" : ""}`}
+                        />
+                        <span className="text-sm">
+                          {isDragging ? "Drop image here" : "Click or drag to upload banner image"}
+                        </span>
                       </div>
                     )}
                   </label>
@@ -324,13 +416,34 @@ export default function AdminEventsPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label>Deadline Date *</Label>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Application Deadline *</Label>
                   <Input
-                    type="date"
+                    type="text"
+                    placeholder="DD/MM/YYYY"
                     value={deadline}
                     onChange={(e) => setDeadline(e.target.value)}
                     required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Event Start Date</Label>
+                  <Input
+                    type="text"
+                    placeholder="DD/MM/YYYY"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Event End Date</Label>
+                  <Input
+                    type="text"
+                    placeholder="DD/MM/YYYY"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
                   />
                 </div>
 
@@ -376,15 +489,70 @@ export default function AdminEventsPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Agenda Topics (Comma separated)</Label>
-                  <Input
-                    value={agendaTopics}
-                    onChange={(e) => setAgendaTopics(e.target.value)}
-                    placeholder="Topic 1, Topic 2, Topic 3"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    These will appear in the dropdown for applicants.
+                <div className="space-y-4 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Agenda Topics</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setAgendaTopics([...agendaTopics, { title: "", description: "" }])
+                      }
+                    >
+                      <Plus className="size-4 mr-2" /> Add Topic
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {agendaTopics.map((topic, i) => (
+                      <div
+                        key={i}
+                        className="flex gap-3 items-start border p-3 rounded-lg bg-secondary/30"
+                      >
+                        <div className="flex-1 space-y-3">
+                          <Input
+                            placeholder="Topic Title (e.g., Youth Leadership)"
+                            value={topic.title}
+                            onChange={(e) => {
+                              const newArr = [...agendaTopics];
+                              newArr[i].title = e.target.value;
+                              setAgendaTopics(newArr);
+                            }}
+                            required
+                          />
+                          <Textarea
+                            placeholder="Topic Description"
+                            value={topic.description}
+                            onChange={(e) => {
+                              const newArr = [...agendaTopics];
+                              newArr[i].description = e.target.value;
+                              setAgendaTopics(newArr);
+                            }}
+                            rows={2}
+                            required
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            const newArr = [...agendaTopics];
+                            newArr.splice(i, 1);
+                            setAgendaTopics(newArr);
+                          }}
+                        >
+                          X
+                        </Button>
+                      </div>
+                    ))}
+                    {agendaTopics.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">No topics added.</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    These will appear in the dropdown for applicants. Both Title and Description are
+                    required for each topic.
                   </p>
                 </div>
 
@@ -396,6 +564,46 @@ export default function AdminEventsPage() {
                     rows={2}
                     placeholder="I hereby declare that..."
                   />
+                </div>
+
+                <div className="sm:col-span-2 mt-6 p-5 border rounded-xl bg-primary/5 space-y-4">
+                  <h3 className="font-semibold text-lg border-b border-primary/10 pb-2">
+                    Student Application Form Requirements
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Toggle sections on/off for the student application form. Disabled sections will
+                    be completely hidden from applicants.
+                  </p>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-background shadow-sm">
+                    <div>
+                      <Label className="text-base font-medium">Educational Details</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Require applicants to provide school/college name and course details.
+                      </p>
+                    </div>
+                    <Switch checked={requireEducation} onCheckedChange={setRequireEducation} />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-background shadow-sm">
+                    <div>
+                      <Label className="text-base font-medium">Agenda/Topic Selection</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Require applicants to select a specific agenda topic.
+                      </p>
+                    </div>
+                    <Switch checked={requireTopic} onCheckedChange={setRequireTopic} />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-background shadow-sm">
+                    <div>
+                      <Label className="text-base font-medium">Video Submission</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Require applicants to upload a video entry.
+                      </p>
+                    </div>
+                    <Switch checked={requireVideo} onCheckedChange={setRequireVideo} />
+                  </div>
                 </div>
               </div>
 

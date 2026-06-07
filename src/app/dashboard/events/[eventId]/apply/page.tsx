@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   doc,
@@ -20,6 +20,7 @@ import { app, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { UPEvent } from "@/types/events";
+import { isDeadlinePassed as checkDeadlinePassed } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -41,6 +42,7 @@ import {
   Loader2,
   ArrowLeft,
   WifiOff,
+  UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -72,6 +74,19 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
   const [selectedTopic, setSelectedTopic] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [declarationAgreed, setDeclarationAgreed] = useState(false);
+
+  // Check if deadline is passed
+  const isDeadlinePassed = useMemo(() => {
+    if (!event?.deadline) return false;
+    return checkDeadlinePassed(event.deadline);
+  }, [event]);
+
+  // Read dynamic form config
+  const formConfig = event?.formConfig || {
+    requireEducation: true,
+    requireTopic: true,
+    requireVideo: true,
+  };
 
   useEffect(() => {
     if (user) {
@@ -181,75 +196,103 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
     );
   }
 
+  if (isDeadlinePassed) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center max-w-md mx-auto">
+        <div className="size-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-6">
+          <ShieldAlert className="size-10" />
+        </div>
+        <h1 className="font-display font-bold text-2xl text-primary">Deadline Passed</h1>
+        <p className="text-muted-foreground">
+          The application deadline for this event has passed. You can no longer apply.
+        </p>
+        <Button asChild className="mt-4">
+          <Link href="/dashboard/events">Back to Events</Link>
+        </Button>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!schoolCollegeName || !classCourse || !selectedTopic || !videoFile || !declarationAgreed) {
+    const isEducationValid = !formConfig.requireEducation || (schoolCollegeName && classCourse);
+    const isTopicValid = !formConfig.requireTopic || selectedTopic;
+    const isVideoValid = !formConfig.requireVideo || videoFile;
+
+    if (!isEducationValid || !isTopicValid || !isVideoValid || !declarationAgreed) {
       toast.error("Please fill all required fields and upload your video.");
       return;
     }
 
     setSubmitting(true);
     try {
-      // 1. Upload Video
-      const storage = getStorage(app);
-      const ext = videoFile.name.split(".").pop();
-      const videoRef = ref(storage, `applications/${eventId}/${user!.uid}_video.${ext}`);
+      let videoUrl = "";
 
-      // format bytes helper
-      const formatBytes = (bytes: number) => {
-        if (bytes === 0) return "0 B";
-        const k = 1024;
-        const sizes = ["B", "KB", "MB", "GB"];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-      };
+      // 1. Upload Video if required and provided
+      if (formConfig.requireVideo && videoFile) {
+        const storage = getStorage(app);
+        const ext = videoFile.name.split(".").pop();
+        const videoRef = ref(storage, `applications/${eventId}/${user!.uid}_video.${ext}`);
 
-      const uploadTask = uploadBytesResumable(videoRef, videoFile);
+        // format bytes helper
+        const formatBytes = (bytes: number) => {
+          if (bytes === 0) return "0 B";
+          const k = 1024;
+          const sizes = ["B", "KB", "MB", "GB"];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+        };
 
-      let lastBytes = 0;
-      let lastTime = Date.now();
+        const uploadTask = uploadBytesResumable(videoRef, videoFile);
 
-      const videoUrl = await new Promise<string>((resolve, reject) => {
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-            setUploadedSize(formatBytes(snapshot.bytesTransferred));
-            setTotalSize(formatBytes(snapshot.totalBytes));
+        let lastBytes = 0;
+        let lastTime = Date.now();
 
-            const now = Date.now();
-            const timeDiff = (now - lastTime) / 1000; // in seconds
+        videoUrl = await new Promise<string>((resolve, reject) => {
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(progress);
+              setUploadedSize(formatBytes(snapshot.bytesTransferred));
+              setTotalSize(formatBytes(snapshot.totalBytes));
 
-            if (timeDiff > 0.5) {
-              // update every 500ms to avoid jitter
-              const bytesDiff = snapshot.bytesTransferred - lastBytes;
-              const speedBps = bytesDiff / timeDiff;
-              setUploadSpeed(formatBytes(speedBps) + "/s");
+              const now = Date.now();
+              const timeDiff = (now - lastTime) / 1000; // in seconds
 
-              if (speedBps > 0) {
-                const remainingBytes = snapshot.totalBytes - snapshot.bytesTransferred;
-                const etaSeconds = remainingBytes / speedBps;
-                if (etaSeconds < 60) {
-                  setUploadETA(`${Math.round(etaSeconds)} sec left`);
-                } else {
-                  setUploadETA(`${Math.round(etaSeconds / 60)} min left`);
+              if (timeDiff > 0.5) {
+                // update every 500ms to avoid jitter
+                const bytesDiff = snapshot.bytesTransferred - lastBytes;
+                const speedBps = bytesDiff / timeDiff;
+                setUploadSpeed(formatBytes(speedBps) + "/s");
+
+                if (speedBps > 0) {
+                  const remainingBytes = snapshot.totalBytes - snapshot.bytesTransferred;
+                  const etaSeconds = remainingBytes / speedBps;
+                  if (etaSeconds < 60) {
+                    setUploadETA(`${Math.round(etaSeconds)} sec left`);
+                  } else {
+                    setUploadETA(`${Math.round(etaSeconds / 60)} min left`);
+                  }
                 }
-              }
 
-              lastBytes = snapshot.bytesTransferred;
-              lastTime = now;
-            }
-          },
-          (error) => {
-            reject(error);
-          },
-          async () => {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadURL);
-          },
-        );
-      });
+                lastBytes = snapshot.bytesTransferred;
+                lastTime = now;
+              }
+            },
+            (error) => {
+              reject(error);
+            },
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
+            },
+          );
+        });
+      } else {
+        // Automatically skip if video is not required
+        setUploadProgress(100);
+      }
 
       // 2. Generate unique application ID (BUP00012)
       const counterRef = doc(db, "counters", "applications");
@@ -396,102 +439,174 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
         </Card>
 
         {/* SECTION 2: Education Input */}
-        <Card className="border-0 shadow-elegant">
-          <CardHeader className="border-b bg-secondary/50">
-            <CardTitle className="text-lg">Educational Details</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 grid sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>School/College Name *</Label>
-              <Input
-                value={schoolCollegeName}
-                onChange={(e) => setSchoolCollegeName(e.target.value)}
-                required
-                disabled={submitting}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Class/Course *</Label>
-              <Input
-                value={classCourse}
-                onChange={(e) => setClassCourse(e.target.value)}
-                required
-                disabled={submitting}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {formConfig.requireEducation && (
+          <Card className="border-0 shadow-elegant">
+            <CardHeader className="border-b bg-secondary/50">
+              <CardTitle className="text-lg">Educational Details</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 grid sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>School/College Name *</Label>
+                <Input
+                  value={schoolCollegeName}
+                  onChange={(e) => setSchoolCollegeName(e.target.value)}
+                  required
+                  disabled={submitting}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Class/Course *</Label>
+                <Input
+                  value={classCourse}
+                  onChange={(e) => setClassCourse(e.target.value)}
+                  required
+                  disabled={submitting}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* SECTION 3: Event Specific (Topic) */}
-        <Card className="border-0 shadow-elegant">
-          <CardHeader className="border-b bg-secondary/50">
-            <CardTitle className="text-lg">Topic Selection</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-1.5">
-              <Label>Select Agenda/Topic *</Label>
-              <Select value={selectedTopic} onValueChange={setSelectedTopic} disabled={submitting}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a topic..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {event.agendaTopics?.map((topic, i) => (
-                    <SelectItem key={i} value={topic}>
-                      {topic}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+        {formConfig.requireTopic && (
+          <Card className="border-0 shadow-elegant">
+            <CardHeader className="border-b bg-secondary/50">
+              <CardTitle className="text-lg">Topic Selection</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-1.5">
+                <Label>Select Agenda/Topic *</Label>
+                <Select
+                  value={selectedTopic}
+                  onValueChange={setSelectedTopic}
+                  disabled={submitting}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a topic..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {event.agendaTopics?.map((topic: any, i) => {
+                      const title = typeof topic === "string" ? topic : topic.title;
+                      return (
+                        <SelectItem key={i} value={title}>
+                          {title}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Show Topic Description if available */}
+              {selectedTopic && (
+                <div className="mt-4">
+                  {(() => {
+                    const topicObj = event.agendaTopics?.find(
+                      (t: any) => (typeof t === "string" ? t : t.title) === selectedTopic,
+                    );
+                    if (topicObj && typeof topicObj !== "string" && topicObj.description) {
+                      return (
+                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm text-primary/80 leading-relaxed">
+                          <strong className="font-semibold block mb-1 text-primary">
+                            About this topic:
+                          </strong>
+                          {topicObj.description}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* SECTION 4: Video Upload */}
-        <Card className="border-0 shadow-elegant">
-          <CardHeader className="border-b bg-secondary/50">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                Video Submission <span className="text-destructive">*</span>
-              </div>
-              {isSlowConnection && (
-                <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded-full flex items-center gap-1">
-                  <WifiOff className="size-3" /> Slow Connection
-                </span>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <label className="relative border-2 border-dashed border-border rounded-xl p-8 text-center hover:bg-accent/5 transition-base cursor-pointer flex flex-col items-center justify-center">
-              <input
-                type="file"
-                className="sr-only"
-                accept="video/mp4,video/quicktime,video/webm"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setVideoFile(e.target.files[0]);
-                  }
-                }}
-                disabled={submitting}
-                required
-              />
-              {videoFile ? (
-                <div className="flex flex-col items-center gap-2">
-                  <FileVideo className="size-10 text-success shrink-0" />
-                  <span className="font-semibold text-sm text-primary truncate max-w-[200px] sm:max-w-[400px] w-full block">
-                    {videoFile.name}
+        {formConfig.requireVideo && (
+          <Card className="border-0 shadow-elegant">
+            <CardHeader className="border-b bg-secondary/50">
+              <CardTitle className="text-lg flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  Video Submission <span className="text-destructive">*</span>
+                </div>
+                {isSlowConnection && (
+                  <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded-full flex items-center gap-1">
+                    <WifiOff className="size-3" /> Slow Connection
                   </span>
-                  <span className="text-xs text-muted-foreground block mt-1">Click to replace</span>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <Upload className="size-10 text-muted-foreground" />
-                  <span className="font-semibold text-sm text-primary">Upload your video</span>
-                  <span className="text-xs text-muted-foreground">MP4, MOV, WEBM (Max 50MB)</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <label className="relative border-2 border-dashed border-border rounded-xl p-8 text-center hover:bg-accent/5 transition-base cursor-pointer flex flex-col items-center justify-center">
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setVideoFile(e.target.files[0]);
+                    }
+                  }}
+                  disabled={submitting}
+                  required
+                />
+                {videoFile ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="size-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                      <UploadCloud className="size-6" />
+                    </div>
+                    <span className="font-medium text-primary break-all">{videoFile.name}</span>
+                    <span className="text-xs text-muted-foreground">Click to replace</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="size-14 bg-secondary rounded-full flex items-center justify-center text-muted-foreground">
+                      <UploadCloud className="size-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium">Click to browse or drag and drop</p>
+                      <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                        MP4, MOV, WEBM. Keep file size reasonable. Ensure good lighting and clear
+                        audio.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </label>
+
+              {/* Upload Progress */}
+              {submitting && uploadProgress > 0 && (
+                <div className="mt-6 space-y-2 border rounded-xl p-4 bg-secondary/30">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin text-primary" /> Uploading Video...
+                    </span>
+                    <span className="text-primary">{Math.round(uploadProgress)}%</span>
+                  </div>
+                  <div className="h-2.5 bg-secondary rounded-full overflow-hidden border">
+                    <div
+                      className="h-full bg-primary transition-all duration-300 ease-out relative"
+                      style={{ width: `${uploadProgress}%` }}
+                    >
+                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                    <span>
+                      {uploadedSize} / {totalSize}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      {uploadSpeed && <span>{uploadSpeed}</span>}
+                      {uploadETA && <span>ETA: {uploadETA}</span>}
+                    </span>
+                  </div>
                 </div>
               )}
-            </label>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* SECTION 5: Declaration */}
         <Card className="border-0 shadow-elegant">

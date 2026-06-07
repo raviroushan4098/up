@@ -16,8 +16,17 @@ export interface UPEvent {
   dressCode: string;
   venue: string;
   contactInfo: string;
-  agendaTopics: string[];
+  agendaTopics: any[]; // Array of { title: string, description: string } or legacy string
   customDeclaration: string;
+
+  startDate?: string;
+  endDate?: string;
+
+  formConfig?: {
+    requireEducation: boolean;
+    requireTopic: boolean;
+    requireVideo: boolean;
+  };
 
   createdAt: string;
 }

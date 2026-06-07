@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
@@ -21,6 +21,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { isDeadlinePassed as checkDeadlinePassed, formatDateString } from "@/lib/utils";
 
 export default function EventDetailsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const router = useRouter();
@@ -37,6 +38,11 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
       fetchEvent();
     }
   }, [eventId, user]);
+
+  const isDeadlinePassed = useMemo(() => {
+    if (!event?.deadline) return false;
+    return checkDeadlinePassed(event.deadline);
+  }, [event]);
 
   const fetchEvent = async () => {
     try {
@@ -91,8 +97,16 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
           <div className="absolute inset-0 bg-gradient-saffron opacity-20"></div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-6 sm:p-10">
-          <Badge className="w-fit mb-3 bg-success/20 text-green-300 border-success/30 backdrop-blur-md">
-            {event.status}
+          <Badge
+            className={`w-fit mb-3 backdrop-blur-md ${
+              isDeadlinePassed
+                ? "bg-muted text-muted-foreground border-muted/30"
+                : event.status === "Open"
+                  ? "bg-success/20 text-green-300 border-success/30"
+                  : "bg-warning/20 text-yellow-300 border-warning/30"
+            }`}
+          >
+            {isDeadlinePassed ? "Closed" : event.status}
           </Badge>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-white leading-tight">
             {event.title}
@@ -140,10 +154,21 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                   <h3 className="font-semibold text-lg text-primary flex items-center gap-2 mb-2">
                     <Users className="size-5 text-success" /> Agenda Topics
                   </h3>
-                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                    {event.agendaTopics.map((topic, idx) => (
-                      <li key={idx}>{topic}</li>
-                    ))}
+                  <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                    {event.agendaTopics.map((topic: any, idx) => {
+                      const title = typeof topic === "string" ? topic : topic.title;
+                      const desc = typeof topic === "string" ? "" : topic.description;
+                      return (
+                        <li key={idx}>
+                          <span className="font-medium text-primary/90">{title}</span>
+                          {desc && (
+                            <span className="block text-xs mt-0.5 leading-relaxed text-muted-foreground">
+                              {desc}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -162,6 +187,13 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                 >
                   <Link href={`/dashboard/applications`}>Already Registered</Link>
                 </Button>
+              ) : isDeadlinePassed ? (
+                <Button
+                  disabled
+                  className="w-full h-12 text-base font-bold bg-muted text-muted-foreground cursor-not-allowed border-0"
+                >
+                  Deadline Passed
+                </Button>
               ) : (
                 <Button
                   asChild
@@ -176,7 +208,13 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                   <Calendar className="size-5 text-primary shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-primary">Deadline</p>
-                    <p className="text-muted-foreground">{event.deadline}</p>
+                    <p className="text-muted-foreground">
+                      {formatDateString(event.deadline, {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
                   </div>
                 </div>
 

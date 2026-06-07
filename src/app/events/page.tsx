@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { events, districts, categories } from "@/data/mock";
+import { parseDateString, formatDateString, isDeadlinePassed } from "@/lib/utils";
 
 export default function EventsPage() {
   const [q, setQ] = useState("");
@@ -38,7 +39,11 @@ export default function EventsPage() {
       return matchQ && matchD && matchC;
     });
     if (sort === "deadline")
-      list = [...list].sort((a, b) => +new Date(a.deadline) - +new Date(b.deadline));
+      list = [...list].sort((a, b) => {
+        const da = parseDateString(a.deadline)?.getTime() || Infinity;
+        const db = parseDateString(b.deadline)?.getTime() || Infinity;
+        return da - db;
+      });
     if (sort === "name") list = [...list].sort((a, b) => a.title.localeCompare(b.title));
     return list;
   }, [q, district, cat, sort]);
@@ -139,14 +144,16 @@ export default function EventsPage() {
                     />
                     <Badge
                       className={`absolute top-3 right-3 ${
-                        e.status === "Open"
-                          ? "bg-success text-success-foreground"
-                          : e.status === "Closing Soon"
-                            ? "bg-warning text-warning-foreground"
-                            : "bg-muted text-muted-foreground"
+                        isDeadlinePassed(e.deadline) || e.status === "Closed"
+                          ? "bg-muted text-muted-foreground"
+                          : e.status === "Open"
+                            ? "bg-success text-success-foreground"
+                            : e.status === "Closing Soon"
+                              ? "bg-warning text-warning-foreground"
+                              : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {e.status}
+                      {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
                     </Badge>
                   </div>
                   <CardContent className="p-5">
@@ -162,9 +169,10 @@ export default function EventsPage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-4">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="size-3.5" />{" "}
-                        {new Date(e.deadline).toLocaleDateString("en-IN", {
+                        {formatDateString(e.deadline, {
                           day: "numeric",
                           month: "short",
+                          year: "numeric",
                         })}
                       </span>
                       <span className="flex items-center gap-1.5">
@@ -172,14 +180,23 @@ export default function EventsPage() {
                         {e.districts.length > 1 ? ` +${e.districts.length - 1}` : ""}
                       </span>
                     </div>
-                    <Button
-                      asChild
-                      className="w-full mt-5 bg-gradient-saffron text-primary font-semibold hover:opacity-95"
-                    >
-                      <Link href={`/events/${e.id}`}>
-                        Apply Now <ArrowRight className="size-4 ml-1" />
-                      </Link>
-                    </Button>
+                    {isDeadlinePassed(e.deadline) ? (
+                      <Button
+                        disabled
+                        className="w-full mt-5 bg-muted text-muted-foreground font-semibold cursor-not-allowed"
+                      >
+                        Deadline Passed
+                      </Button>
+                    ) : (
+                      <Button
+                        asChild
+                        className="w-full mt-5 bg-gradient-saffron text-primary font-semibold hover:opacity-95"
+                      >
+                        <Link href={`/events/${e.id}`}>
+                          Apply Now <ArrowRight className="size-4 ml-1" />
+                        </Link>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

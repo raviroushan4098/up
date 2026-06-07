@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { doc, setDoc, deleteField, getDoc, increment } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Upload, FileText, CheckCircle2, User, Landmark, ShieldCheck } from "lucide-react";
+import { Upload, FileText, CheckCircle2, User, Landmark, ShieldCheck, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { app, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,7 +29,7 @@ import { districts } from "@/data/mock";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, profile, loading, refreshProfile } = useAuth();
+  const { user, profile, loading, refreshProfile, logout } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   // Form states
@@ -558,7 +558,17 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-gradient-soft py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header Banner */}
-        <div className="text-center space-y-2">
+        <div className="relative text-center space-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => logout().then(() => router.push("/login"))}
+            className="absolute right-0 top-0 text-muted-foreground hover:text-destructive"
+          >
+            <LogOut className="size-4 mr-2" />
+            Logout
+          </Button>
+
           <div className="inline-flex size-14 rounded-2xl bg-gradient-saffron items-center justify-center shadow-glow mb-2">
             <Landmark className="size-7 text-primary" />
           </div>
