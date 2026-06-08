@@ -44,8 +44,9 @@ export function Footer() {
             </div>
           </div>
           <p className="text-sm opacity-80 leading-relaxed">
-            विकसित भारत की सीढ़ी आज की युवा पीढ़ी Official registration platform for Uttar Pradesh
-            initiatives.
+            विकसित भारत की सीढ़ी
+            <br />
+            आज की युवा पीढ़ी
           </p>
         </div>
 

@@ -21,11 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  sendApplicationAcceptedEmail,
-  sendApplicationSelectedEmail,
-  sendApplicationRejectedEmail,
-} from "@/actions/email";
+import { sendApplicationSelectedEmail, sendApplicationRejectedEmail } from "@/actions/email";
 import {
   Loader2,
   FileText,
@@ -102,13 +98,7 @@ export default function ApplicationsPage() {
 
       // Trigger the appropriate email action
       if (appData.applicantEmail) {
-        if (newStatus === "accepted") {
-          await sendApplicationAcceptedEmail(
-            appData.applicantEmail,
-            appData.applicantName,
-            eventTitle,
-          );
-        } else if (newStatus === "selected") {
+        if (newStatus === "selected") {
           await sendApplicationSelectedEmail(
             appData.applicantEmail,
             appData.applicantName,

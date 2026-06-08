@@ -4,7 +4,7 @@ import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Bell, LogOut } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -135,12 +135,6 @@ export function DashboardShell({
             <h2 className="font-display font-bold text-primary text-lg">Dashboard</h2>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="size-4" />
-              <Badge className="absolute -top-1 -right-1 size-4 p-0 grid place-items-center text-[10px] bg-accent text-primary">
-                3
-              </Badge>
-            </Button>
             <div className="size-9 rounded-full bg-gradient-saffron grid place-items-center font-display font-bold text-primary text-sm uppercase">
               {getInitials()}
             </div>
