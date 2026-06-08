@@ -62,6 +62,21 @@ export default function HomePage() {
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [globalStats, setGlobalStats] = useState<any>(null);
   const [totalApplications, setTotalApplications] = useState<number | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const heroImages = cms?.hero?.images?.length
+    ? cms.hero.images
+    : cms?.hero?.image
+      ? [cms.hero.image]
+      : [heroImg.src];
+
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % heroImages.length);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [heroImages.length]);
 
   // Strict Firebase Fetch
   useEffect(() => {
@@ -165,6 +180,9 @@ export default function HomePage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.7 }}
                 >
+                  <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-gradient-saffron mb-4 tracking-wide">
+                    भविष्य-ए-उत्तर प्रदेश
+                  </h2>
                   <Badge
                     variant="secondary"
                     className="rounded-full px-4 py-1.5 bg-accent/15 text-primary border-accent/30 mb-5"
@@ -208,31 +226,21 @@ export default function HomePage() {
                 >
                   <div className="absolute inset-0 bg-gradient-saffron rounded-3xl rotate-3 opacity-20 blur-2xl" />
                   <div className="relative rounded-3xl overflow-hidden shadow-elegant border bg-card">
-                    <img
-                      src={cms.hero.image || heroImg.src}
-                      alt="Youth of Uttar Pradesh"
-                      width={1536}
-                      height={1024}
-                      className="w-full h-auto"
-                    />
+                    <AnimatePresence mode="popLayout">
+                      <motion.img
+                        key={activeIndex}
+                        initial={{ opacity: 0, x: 100 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8, ease: "easeInOut" }}
+                        src={heroImages[activeIndex]}
+                        alt="Youth of Uttar Pradesh"
+                        width={1536}
+                        height={1024}
+                        className="w-full h-auto object-cover"
+                      />
+                    </AnimatePresence>
                   </div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="absolute -left-3 sm:-left-6 bottom-6 glass rounded-2xl shadow-elegant p-4 flex items-center gap-3"
-                  >
-                    <div className="size-10 rounded-full bg-success/15 grid place-items-center">
-                      <CheckCircle2 className="size-5 text-success" />
-                    </div>
-                    <div className="text-sm">
-                      <div className="font-semibold text-primary">
-                        {totalApplications !== null ? totalApplications.toLocaleString() : ""}{" "}
-                        approved
-                      </div>
-                      <div className="text-xs text-muted-foreground">Total Registrations</div>
-                    </div>
-                  </motion.div>
                 </motion.div>
               </div>
             </section>
@@ -298,7 +306,7 @@ export default function HomePage() {
           )}
 
           {/* FEATURED EVENTS */}
-          <section className="container mx-auto px-4 py-20">
+          <section className="container mx-auto px-4 pt-20 pb-8">
             <motion.div {...fadeUp} className="flex items-end justify-between gap-4 mb-10">
               <div>
                 <Badge
@@ -398,11 +406,11 @@ export default function HomePage() {
 
           {/* TIMELINE */}
           {cms.visibility?.timeline !== false && (
-            <section className="bg-gradient-soft py-20">
+            <section className="bg-gradient-soft pt-8 pb-20">
               <div className="container mx-auto px-4">
                 <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-12">
                   <Badge variant="outline" className="mb-3">
-                    Roadmap
+                    Schedule
                   </Badge>
                   <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
                     Important Dates 2026
@@ -411,8 +419,24 @@ export default function HomePage() {
                     Mark your calendar — every milestone you need to know.
                   </p>
                 </motion.div>
-                <div className="grid md:grid-cols-4 gap-4 relative">
-                  <div className="hidden md:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-tricolor" />
+                <div
+                  className={`grid gap-4 relative max-w-5xl mx-auto ${
+                    cms.timeline.length === 1
+                      ? "md:grid-cols-1"
+                      : cms.timeline.length === 2
+                        ? "md:grid-cols-2"
+                        : cms.timeline.length === 3
+                          ? "md:grid-cols-3"
+                          : "md:grid-cols-4"
+                  }`}
+                >
+                  <div
+                    className="hidden md:block absolute top-12 h-0.5 bg-gradient-tricolor"
+                    style={{
+                      left: `${100 / (2 * Math.min(cms.timeline.length || 1, 4))}%`,
+                      right: `${100 / (2 * Math.min(cms.timeline.length || 1, 4))}%`,
+                    }}
+                  />
                   {cms.timeline.map((t, i) => (
                     <motion.div
                       key={i}

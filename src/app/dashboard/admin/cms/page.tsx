@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Plus, Trash2, RefreshCw, ImagePlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Save, Plus, Trash2, RefreshCw, ImagePlus, UploadCloud, Loader2 } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -29,8 +30,9 @@ export default function CMSPage() {
   const [aboutData, setAboutData] = useState<AboutPageCMS>(emptyAboutCMS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [heroFiles, setHeroFiles] = useState<File[]>([]);
   const [activeTopTab, setActiveTopTab] = useState("landing");
+  const [uploadingMemberId, setUploadingMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && profile?.role === "admin") {
@@ -76,20 +78,30 @@ export default function CMSPage() {
     setSaving(true);
     try {
       if (activeTopTab === "landing") {
-        let heroImageUrl = data.hero.image;
-        if (heroFile) {
-          const storage = getStorage(app);
-          const ext = heroFile.name.split(".").pop();
-          const imageRef = ref(storage, `cms/hero_${Date.now()}.${ext}`);
-          const uploadResult = await uploadBytes(imageRef, heroFile);
-          heroImageUrl = await getDownloadURL(uploadResult.ref);
+        let newHeroImages = [...(data.hero.images || [])];
+        const storage = getStorage(app);
+
+        // Upload new array of images
+        if (heroFiles.length > 0) {
+          const uploadPromises = heroFiles.map(async (file, idx) => {
+            const ext = file.name.split(".").pop();
+            const imageRef = ref(storage, `cms/hero_multi_${Date.now()}_${idx}.${ext}`);
+            const uploadResult = await uploadBytes(imageRef, file);
+            return await getDownloadURL(uploadResult.ref);
+          });
+          const uploadedUrls = await Promise.all(uploadPromises);
+          newHeroImages = [...newHeroImages, ...uploadedUrls];
         }
+
+        // Backward compatibility: set image to the first image if available
+        const heroImageUrl = newHeroImages.length > 0 ? newHeroImages[0] : data.hero.image || "";
 
         const payload = {
           ...data,
           hero: {
             ...data.hero,
-            image: heroImageUrl || "",
+            image: heroImageUrl,
+            images: newHeroImages,
           },
         };
 
@@ -97,7 +109,7 @@ export default function CMSPage() {
         await setDoc(docRef, payload);
 
         setData(payload as LandingPageCMS);
-        setHeroFile(null);
+        setHeroFiles([]);
         toast.success("Landing page content updated successfully");
       } else {
         const docRef = doc(db, "settings", "aboutPage");
@@ -251,32 +263,84 @@ export default function CMSPage() {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <label className="text-sm font-medium">Hero Image</label>
-                      <div className="flex items-center gap-4">
-                        {data.hero.image || heroFile ? (
-                          <img
-                            src={heroFile ? URL.createObjectURL(heroFile) : data.hero.image}
-                            alt="Hero"
-                            className="h-20 w-32 object-cover rounded-md border"
-                          />
-                        ) : (
-                          <div className="h-20 w-32 bg-muted rounded-md flex items-center justify-center border border-dashed">
-                            <ImagePlus className="size-6 text-muted-foreground" />
+                      <label className="text-sm font-medium">Hero Images Carousel</label>
+                      <div className="flex flex-wrap gap-4 items-start">
+                        {/* Existing Images */}
+                        {(data.hero.images?.length
+                          ? data.hero.images
+                          : data.hero.image
+                            ? [data.hero.image]
+                            : []
+                        ).map((url, i) => (
+                          <div key={i} className="relative group">
+                            <img
+                              src={url}
+                              alt="Hero"
+                              className="h-20 w-32 object-cover rounded-md border"
+                            />
+                            <button
+                              onClick={() => {
+                                const newImages = [
+                                  ...(data.hero.images ||
+                                    (data.hero.image ? [data.hero.image] : [])),
+                                ];
+                                newImages.splice(i, 1);
+                                setData({ ...data, hero: { ...data.hero, images: newImages } });
+                              }}
+                              className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 shadow-sm hover:bg-destructive/90 transition-colors"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
                           </div>
-                        )}
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              setHeroFile(e.target.files[0]);
-                            }
-                          }}
-                          className="max-w-xs"
-                        />
+                        ))}
+
+                        {/* New Uploading Images */}
+                        {heroFiles.map((file, i) => (
+                          <div key={`new-${i}`} className="relative group">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt="Hero Preview"
+                              className="h-20 w-32 object-cover rounded-md border opacity-70"
+                            />
+                            <button
+                              onClick={() => {
+                                const newFiles = [...heroFiles];
+                                newFiles.splice(i, 1);
+                                setHeroFiles(newFiles);
+                              }}
+                              className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 shadow-sm hover:bg-destructive/90 transition-colors"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Add Image Tile */}
+                        <label className="h-20 w-32 border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-colors rounded-md flex flex-col items-center justify-center cursor-pointer shrink-0">
+                          <Plus className="size-6 text-primary mb-1" />
+                          <span className="text-[10px] font-medium text-primary">Add Image</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                setHeroFiles([...heroFiles, ...Array.from(e.target.files)]);
+                              }
+                              // Reset the input value so the same file can be selected again if needed
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="flex items-center gap-4 mt-2">
+                        {/* The file input has been moved to the Add Image Tile in the grid above */}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Upload a high-quality image (recommended: 1536x1024px).
+                        Upload high-quality images (recommended: 1536x1024px). These will rotate
+                        every 10 seconds.
                       </p>
                     </div>
                   </CardContent>
@@ -340,7 +404,7 @@ export default function CMSPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                      <CardTitle>Timeline Roadmap</CardTitle>
+                      <CardTitle>Timeline</CardTitle>
                       <CardDescription>Important dates for the current season.</CardDescription>
                     </div>
                     <div className="flex items-center gap-4">
@@ -788,11 +852,12 @@ export default function CMSPage() {
           {/* ABOUT PAGE EDITOR */}
           <TabsContent value="about">
             <Tabs defaultValue="aboutHero" className="w-full">
-              <TabsList className="mb-4 grid w-full grid-cols-4 h-auto">
+              <TabsList className="mb-4 grid w-full grid-cols-5 h-auto">
                 <TabsTrigger value="aboutHero">Hero</TabsTrigger>
                 <TabsTrigger value="aboutMission">Mission & Vision</TabsTrigger>
                 <TabsTrigger value="aboutObjectives">Objectives</TabsTrigger>
                 <TabsTrigger value="aboutTimeline">Timeline</TabsTrigger>
+                <TabsTrigger value="aboutTeam">Team</TabsTrigger>
               </TabsList>
 
               <TabsContent value="aboutHero">
@@ -1077,6 +1142,252 @@ export default function CMSPage() {
                             >
                               <Trash2 className="size-4 mr-2" /> Remove
                             </Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="aboutTeam">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Team Categories</CardTitle>
+                      <CardDescription>
+                        Add founders, directors, and other team members.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        const newCat = {
+                          id: Date.now().toString(),
+                          categoryName: "New Category",
+                          members: [],
+                        };
+                        setAboutData({
+                          ...aboutData,
+                          teamCategories: [...(aboutData.teamCategories || []), newCat],
+                        });
+                      }}
+                    >
+                      <Plus className="size-4 mr-2" /> Add Category
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                      {(aboutData.teamCategories || []).map((cat, catIdx) => (
+                        <AccordionItem key={cat.id} value={`cat-${cat.id}`}>
+                          <AccordionTrigger className="hover:no-underline">
+                            <div className="flex items-center justify-between w-full pr-4">
+                              <span className="font-semibold">{cat.categoryName}</span>
+                              <Badge variant="secondary">{cat.members.length} Members</Badge>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-6 pt-4 border-t mt-2">
+                            <div className="flex items-center justify-between gap-4">
+                              <Input
+                                value={cat.categoryName}
+                                onChange={(e) => {
+                                  const newArr = [...(aboutData.teamCategories || [])];
+                                  newArr[catIdx].categoryName = e.target.value;
+                                  setAboutData({ ...aboutData, teamCategories: newArr });
+                                }}
+                                className="max-w-xs font-semibold"
+                                placeholder="Category Name (e.g. Founders)"
+                              />
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  const newArr = (aboutData.teamCategories || []).filter(
+                                    (_, idx) => idx !== catIdx,
+                                  );
+                                  setAboutData({ ...aboutData, teamCategories: newArr });
+                                }}
+                              >
+                                <Trash2 className="size-4 mr-2" /> Remove Category
+                              </Button>
+                            </div>
+
+                            <div className="space-y-4">
+                              {cat.members.map((member, memberIdx) => (
+                                <div
+                                  key={member.id}
+                                  className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-900 space-y-4"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <h4 className="font-medium text-sm">Member {memberIdx + 1}</h4>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => {
+                                        const newCategories = [...(aboutData.teamCategories || [])];
+                                        newCategories[catIdx].members = newCategories[
+                                          catIdx
+                                        ].members.filter((_, mIdx) => mIdx !== memberIdx);
+                                        setAboutData({
+                                          ...aboutData,
+                                          teamCategories: newCategories,
+                                        });
+                                      }}
+                                    >
+                                      <Trash2 className="size-4" />
+                                    </Button>
+                                  </div>
+
+                                  <div className="flex flex-col sm:flex-row gap-6">
+                                    {/* Image Upload */}
+                                    <div className="shrink-0 flex flex-col gap-2">
+                                      <div className="size-32 rounded-lg border-2 border-dashed bg-white dark:bg-slate-950 flex flex-col items-center justify-center overflow-hidden relative group">
+                                        {uploadingMemberId === member.id ? (
+                                          <div className="text-center p-2 flex flex-col items-center">
+                                            <Loader2 className="size-6 text-primary mx-auto mb-1 animate-spin" />
+                                            <span className="text-[10px] text-muted-foreground font-medium">
+                                              Uploading...
+                                            </span>
+                                          </div>
+                                        ) : member.image ? (
+                                          <img
+                                            src={member.image}
+                                            className="w-full h-full object-cover"
+                                            alt={member.name}
+                                          />
+                                        ) : (
+                                          <div className="text-center p-2">
+                                            <UploadCloud className="size-6 text-muted-foreground mx-auto mb-1" />
+                                            <span className="text-[10px] text-muted-foreground">
+                                              Upload Image
+                                            </span>
+                                          </div>
+                                        )}
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          disabled={uploadingMemberId === member.id}
+                                          className={`absolute inset-0 opacity-0 ${uploadingMemberId === member.id ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                          onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            try {
+                                              setUploadingMemberId(member.id);
+                                              const { ref, uploadBytes, getDownloadURL } =
+                                                await import("firebase/storage");
+                                              const { storage } = await import("@/lib/firebase");
+                                              const fileRef = ref(
+                                                storage,
+                                                `cms/team/${Date.now()}-${file.name}`,
+                                              );
+                                              await uploadBytes(fileRef, file);
+                                              const url = await getDownloadURL(fileRef);
+
+                                              const newCategories = [
+                                                ...(aboutData.teamCategories || []),
+                                              ];
+                                              newCategories[catIdx].members[memberIdx].image = url;
+                                              setAboutData({
+                                                ...aboutData,
+                                                teamCategories: newCategories,
+                                              });
+                                              setUploadingMemberId(null);
+                                            } catch (error) {
+                                              console.error("Upload error:", error);
+                                              setUploadingMemberId(null);
+                                              toast.error(
+                                                "Failed to upload image. Make sure you are an admin and the rules are deployed.",
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Member Details */}
+                                    <div className="flex-1 space-y-4">
+                                      <div className="grid sm:grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                          <label className="text-xs font-medium">Name</label>
+                                          <Input
+                                            value={member.name}
+                                            onChange={(e) => {
+                                              const newCategories = [
+                                                ...(aboutData.teamCategories || []),
+                                              ];
+                                              newCategories[catIdx].members[memberIdx].name =
+                                                e.target.value;
+                                              setAboutData({
+                                                ...aboutData,
+                                                teamCategories: newCategories,
+                                              });
+                                            }}
+                                            placeholder="John Doe"
+                                          />
+                                        </div>
+                                        <div className="grid gap-2">
+                                          <label className="text-xs font-medium">
+                                            Role / Subtitle
+                                          </label>
+                                          <Input
+                                            value={member.role || ""}
+                                            onChange={(e) => {
+                                              const newCategories = [
+                                                ...(aboutData.teamCategories || []),
+                                              ];
+                                              newCategories[catIdx].members[memberIdx].role =
+                                                e.target.value;
+                                              setAboutData({
+                                                ...aboutData,
+                                                teamCategories: newCategories,
+                                              });
+                                            }}
+                                            placeholder="Co-founder"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <label className="text-xs font-medium">Bio / Notes</label>
+                                        <Textarea
+                                          value={member.notes}
+                                          onChange={(e) => {
+                                            const newCategories = [
+                                              ...(aboutData.teamCategories || []),
+                                            ];
+                                            newCategories[catIdx].members[memberIdx].notes =
+                                              e.target.value;
+                                            setAboutData({
+                                              ...aboutData,
+                                              teamCategories: newCategories,
+                                            });
+                                          }}
+                                          rows={3}
+                                          placeholder="Short bio about this team member..."
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              <Button
+                                variant="outline"
+                                className="w-full border-dashed"
+                                onClick={() => {
+                                  const newCategories = [...(aboutData.teamCategories || [])];
+                                  newCategories[catIdx].members.push({
+                                    id: Date.now().toString(),
+                                    name: "",
+                                    role: "",
+                                    notes: "",
+                                    image: "",
+                                  });
+                                  setAboutData({ ...aboutData, teamCategories: newCategories });
+                                }}
+                              >
+                                <Plus className="size-4 mr-2" /> Add Team Member
+                              </Button>
+                            </div>
                           </AccordionContent>
                         </AccordionItem>
                       ))}

@@ -10,6 +10,7 @@ export interface CMSHero {
   stat3Label: string;
   stat3Value: string;
   image?: string;
+  images?: string[];
 }
 
 export interface CMSStat {
@@ -99,12 +100,27 @@ export interface AboutTimelineItem {
   desc: string;
 }
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  role?: string;
+  notes: string;
+  image: string;
+}
+
+export interface TeamCategory {
+  id: string;
+  categoryName: string;
+  members: TeamMember[];
+}
+
 export interface AboutPageCMS {
   hero: AboutHero;
   mission: AboutMissionVision;
   vision: AboutMissionVision;
   objectives: AboutObjective[];
   timeline: AboutTimelineItem[];
+  teamCategories?: TeamCategory[];
 }
 
 export const emptyLandingCMS: LandingPageCMS = {
@@ -120,6 +136,7 @@ export const emptyLandingCMS: LandingPageCMS = {
     stat3Label: "",
     stat3Value: "",
     image: "",
+    images: [],
   },
   stats: [],
   timeline: [],
@@ -145,4 +162,5 @@ export const emptyAboutCMS: AboutPageCMS = {
   vision: { title: "", description: "" },
   objectives: [],
   timeline: [],
+  teamCategories: [],
 };

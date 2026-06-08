@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { parseDateString, formatDateString, isDeadlinePassed } from "@/lib/utils";
+import { parseDateString, formatDateString, getDerivedEventStatus } from "@/lib/utils";
 import { collection, query, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UPEvent } from "@/types/events";
@@ -49,16 +49,17 @@ export default function EventsPage() {
     const list = [...eventsList];
 
     list.sort((a, b) => {
-      const aIsClosed = isDeadlinePassed(a.deadline) || a.status === "Closed";
-      const bIsClosed = isDeadlinePassed(b.deadline) || b.status === "Closed";
+      const aStatus = getDerivedEventStatus(a);
+      const bStatus = getDerivedEventStatus(b);
 
-      if (aIsClosed !== bIsClosed) {
-        return aIsClosed ? 1 : -1;
+      const statusOrder = { "Coming Soon": 1, Open: 2, Closed: 3 };
+      if (statusOrder[aStatus] !== statusOrder[bStatus]) {
+        return statusOrder[aStatus] - statusOrder[bStatus];
       }
 
       if (sort === "deadline") {
-        const da = parseDateString(a.deadline)?.getTime() || Infinity;
-        const db = parseDateString(b.deadline)?.getTime() || Infinity;
+        const da = parseDateString(a.endDate || a.deadline)?.getTime() || Infinity;
+        const db = parseDateString(b.endDate || b.deadline)?.getTime() || Infinity;
         return da - db;
       }
       if (sort === "name") {
@@ -135,14 +136,14 @@ export default function EventsPage() {
                     />
                     <Badge
                       className={`absolute top-3 right-3 ${
-                        isDeadlinePassed(e.deadline) || e.status === "Closed"
+                        getDerivedEventStatus(e) === "Closed"
                           ? "bg-muted text-muted-foreground"
-                          : e.status === "Open"
+                          : getDerivedEventStatus(e) === "Open"
                             ? "bg-success text-success-foreground"
-                            : "bg-warning text-warning-foreground"
+                            : "bg-info text-info-foreground"
                       }`}
                     >
-                      {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
+                      {getDerivedEventStatus(e)}
                     </Badge>
                   </div>
                   <CardContent className="p-5">
@@ -158,18 +159,15 @@ export default function EventsPage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-4">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="size-3.5" />{" "}
-                        {formatDateString(e.deadline, {
+                        {formatDateString(e.endDate || e.deadline, {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
                         })}
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="size-3.5" /> {e.districts?.[0] || "All Districts"}
-                        {e.districts && e.districts.length > 1 ? ` +${e.districts.length - 1}` : ""}
-                      </span>
                     </div>
-                    {isDeadlinePassed(e.deadline) || e.status === "Closed" ? (
+                    {getDerivedEventStatus(e) === "Closed" ||
+                    getDerivedEventStatus(e) === "Coming Soon" ? (
                       <Button
                         asChild
                         variant="secondary"

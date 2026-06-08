@@ -31,63 +31,19 @@ const fadeUp = {
 };
 
 export default function AboutPage() {
-  const [stats, setStats] = useState<{ v: string; l: string }[] | null>(null);
   const [cms, setCms] = useState<AboutPageCMS | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsSnap, demographicsSnap, cmsSnap] = await Promise.all([
-          getDoc(doc(db, "counters", "global")),
-          getDoc(doc(db, "counters", "demographics")),
-          getDoc(doc(db, "settings", "aboutPage")),
-        ]);
-
-        const formatNumber = (num: number) => {
-          if (!num) return "0";
-          if (num >= 100000) return (num / 100000).toFixed(1) + "L+";
-          if (num >= 1000) return (num / 1000).toFixed(1) + "K+";
-          return num.toString();
-        };
-
-        let totalDistricts = "75";
-        if (demographicsSnap.exists()) {
-          const demoData = demographicsSnap.data();
-          if (demoData.districts) {
-            const districtCount = Object.keys(demoData.districts).length;
-            if (districtCount > 0) {
-              totalDistricts = districtCount.toString();
-            }
-          }
-        }
-
-        if (statsSnap.exists()) {
-          const data = statsSnap.data();
-          setStats([
-            { v: totalDistricts, l: "Districts Covered" },
-            { v: formatNumber(data.totalUsers || 0), l: "Active Citizens" },
-            { v: formatNumber(data.approvedApplications || 0), l: "Approved Applications" },
-          ]);
-        } else {
-          setStats([
-            { v: "75", l: "Districts Covered" },
-            { v: "2.4L+", l: "Active Citizens" },
-            { v: "1.1L+", l: "Approved Applications" },
-          ]);
-        }
-
+        const cmsSnap = await getDoc(doc(db, "settings", "aboutPage"));
         if (cmsSnap.exists()) {
           setCms({ ...emptyAboutCMS, ...cmsSnap.data() } as AboutPageCMS);
         } else {
           setCms(emptyAboutCMS);
         }
       } catch (error) {
-        console.error("Failed to fetch stats:", error);
-        setStats([
-          { v: "75", l: "Districts Covered" },
-          { v: "2.4L+", l: "Active Citizens" },
-          { v: "1.1L+", l: "Approved Applications" },
-        ]);
+        console.error("Failed to fetch about data:", error);
         setCms(emptyAboutCMS);
       }
     };
@@ -199,32 +155,62 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="container mx-auto px-4 pb-20">
-        <motion.div
-          {...fadeUp}
-          className="rounded-3xl bg-gradient-navy text-primary-foreground p-10 md:p-14 grid md:grid-cols-3 gap-6 text-center shadow-elegant"
-        >
-          {stats ? (
-            stats.map((s, i) => (
-              <div key={i}>
-                <div className="font-display font-extrabold text-4xl md:text-5xl text-accent-glow">
-                  {s.v}
-                </div>
-                <div className="text-sm opacity-80 mt-1">{s.l}</div>
+      {/* TEAM SECTION */}
+      {data.teamCategories && data.teamCategories.length > 0 && (
+        <section className="container mx-auto px-4 pb-20">
+          {data.teamCategories.map((cat, i) => (
+            <div key={cat.id} className={i > 0 ? "mt-20" : ""}>
+              <motion.div {...fadeUp} className="text-center max-w-2xl mx-auto mb-10">
+                <Badge
+                  variant="outline"
+                  className="mb-3 border-accent text-accent-foreground bg-accent/10"
+                >
+                  {cat.categoryName}
+                </Badge>
+                <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
+                  Meet the {cat.categoryName}
+                </h2>
+              </motion.div>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {cat.members.map((member, j) => (
+                  <motion.div
+                    key={member.id}
+                    {...fadeUp}
+                    transition={{ ...fadeUp.transition, delay: j * 0.05 }}
+                  >
+                    <Card className="border-0 shadow-card h-full overflow-hidden hover:shadow-elegant transition-spring group">
+                      <div className="aspect-square w-full relative overflow-hidden bg-muted">
+                        <img
+                          src={
+                            member.image ||
+                            "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80"
+                          }
+                          alt={member.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-spring duration-500"
+                        />
+                      </div>
+                      <CardContent className="p-5">
+                        <h3 className="font-display font-bold text-lg text-primary">
+                          {member.name}
+                        </h3>
+                        {member.role && (
+                          <div className="text-xs font-semibold text-accent mt-1 uppercase tracking-wider">
+                            {member.role}
+                          </div>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-3 line-clamp-3">
+                          {member.notes}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
               </div>
-            ))
-          ) : (
-            <>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex flex-col items-center justify-center">
-                  <Skeleton className="h-12 w-24 bg-white/20 rounded-md mb-2" />
-                  <Skeleton className="h-4 w-32 bg-white/10 rounded-sm" />
-                </div>
-              ))}
-            </>
-          )}
-        </motion.div>
-      </section>
+            </div>
+          ))}
+        </section>
+      )}
     </PublicLayout>
   );
 }

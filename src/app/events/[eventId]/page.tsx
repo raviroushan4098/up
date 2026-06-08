@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UPEvent } from "@/types/events";
-import { isDeadlinePassed, formatDateString } from "@/lib/utils";
+import { parseDateString, formatDateString, getDerivedEventStatus } from "@/lib/utils";
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -81,14 +81,14 @@ export default function EventDetailPage() {
                   <Badge className="bg-accent text-primary">{e.category}</Badge>
                   <Badge
                     className={
-                      isDeadlinePassed(e.deadline) || e.status === "Closed"
+                      getDerivedEventStatus(e) === "Closed"
                         ? "bg-muted text-muted-foreground"
-                        : e.status === "Open"
+                        : getDerivedEventStatus(e) === "Open"
                           ? "bg-success text-success-foreground"
-                          : "bg-muted text-muted-foreground"
+                          : "bg-info text-info-foreground"
                     }
                   >
-                    {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
+                    {getDerivedEventStatus(e)}
                   </Badge>
                 </div>
                 <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-primary">
@@ -103,7 +103,7 @@ export default function EventDetailPage() {
                     <div>
                       <div className="text-xs text-muted-foreground">Deadline</div>
                       <div className="font-semibold text-primary">
-                        {formatDateString(e.deadline, {
+                        {formatDateString(e.endDate || e.deadline, {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
@@ -111,19 +111,7 @@ export default function EventDetailPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-xl bg-secondary p-4 flex items-center gap-3">
-                    <MapPin className="size-5 text-primary" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">Districts</div>
-                      <div className="font-semibold text-primary">
-                        {!e.districts || e.districts.length === 0
-                          ? "All Districts"
-                          : e.districts.length === 1
-                            ? e.districts[0]
-                            : `${e.districts.length} districts`}
-                      </div>
-                    </div>
-                  </div>
+
                   {e.displayConfig?.showVenue !== false && e.venue && (
                     <div className="rounded-xl bg-secondary p-4 flex items-center gap-3">
                       <Building2 className="size-5 text-primary" />
@@ -201,7 +189,7 @@ export default function EventDetailPage() {
         <div className="lg:sticky lg:top-24 h-fit">
           <Card className="border-0 shadow-elegant bg-gradient-navy text-primary-foreground">
             <CardContent className="p-6">
-              {isDeadlinePassed(e.deadline) || e.status === "Closed" ? (
+              {getDerivedEventStatus(e) === "Closed" ? (
                 <>
                   <div className="text-sm opacity-80">Registration Closed</div>
                   <div className="font-display font-extrabold text-2xl mt-1 text-muted-foreground">
@@ -215,6 +203,20 @@ export default function EventDetailPage() {
                     className="w-full mt-5 bg-white/10 text-white/50 font-semibold cursor-not-allowed h-11"
                   >
                     Closed
+                  </Button>
+                </>
+              ) : getDerivedEventStatus(e) === "Coming Soon" ? (
+                <>
+                  <div className="text-sm opacity-80">Applications starting soon</div>
+                  <div className="font-display font-extrabold text-2xl mt-1">Coming Soon</div>
+                  <p className="text-sm opacity-80 mt-2">
+                    Applications will open on {formatDateString(e.startDate)}.
+                  </p>
+                  <Button
+                    disabled
+                    className="w-full mt-5 bg-white/10 text-white/50 font-semibold cursor-not-allowed h-11"
+                  >
+                    Opens {formatDateString(e.startDate)}
                   </Button>
                 </>
               ) : (

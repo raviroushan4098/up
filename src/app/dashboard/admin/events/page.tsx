@@ -17,6 +17,7 @@ import {
   increment,
   deleteDoc,
 } from "firebase/firestore";
+import { getDerivedEventStatus } from "@/lib/utils";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "@/lib/firebase";
 import { UPEvent } from "@/types/events";
@@ -206,8 +207,8 @@ export default function AdminEventsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !deadline) {
-      toast.error("Title, Description, and Deadline are required");
+    if (!title || !description || !startDate || !endDate) {
+      toast.error("Title, Description, Start Date, and End Date are required");
       return;
     }
 
@@ -219,7 +220,7 @@ export default function AdminEventsPage() {
       const eventData: any = {
         title,
         description,
-        deadline,
+        deadline: endDate, // Legacy fallback
         startDate,
         endDate,
         videoGuidelines,
@@ -403,9 +404,15 @@ export default function AdminEventsPage() {
                     <div className="text-right shrink-0 flex flex-col items-end gap-2">
                       <div className="flex items-center gap-3">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${event.status === "Open" ? "bg-success/15 text-success" : "bg-warning/15 text-warning"}`}
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            getDerivedEventStatus(event) === "Open"
+                              ? "bg-success/15 text-success"
+                              : getDerivedEventStatus(event) === "Coming Soon"
+                                ? "bg-info/15 text-info"
+                                : "bg-warning/15 text-warning"
+                          }`}
                         >
-                          {event.status}
+                          {getDerivedEventStatus(event)}
                         </span>
                         <Button
                           variant="outline"
@@ -424,7 +431,9 @@ export default function AdminEventsPage() {
                           <Trash2 className="size-3" />
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Due: {event.deadline}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Due: {event.endDate || event.deadline}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -493,13 +502,23 @@ export default function AdminEventsPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Application Deadline *</Label>
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label>Application Start Date *</Label>
                   <Input
                     type="text"
                     placeholder="DD/MM/YYYY"
-                    value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label>Application End Date *</Label>
+                  <Input
+                    type="text"
+                    placeholder="DD/MM/YYYY"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
                     required
                   />
                 </div>

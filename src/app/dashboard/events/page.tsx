@@ -11,7 +11,7 @@ import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UPEvent } from "@/types/events";
 import { toast } from "sonner";
-import { formatDateString, isDeadlinePassed, parseDateString } from "@/lib/utils";
+import { formatDateString, getDerivedEventStatus, parseDateString } from "@/lib/utils";
 
 export default function UserEvents() {
   const { user } = useAuth();
@@ -38,15 +38,16 @@ export default function UserEvents() {
 
       const visibleEvents = events.filter((e) => e.status !== "Draft");
       visibleEvents.sort((a, b) => {
-        const aIsClosed = isDeadlinePassed(a.deadline) || a.status === "Closed";
-        const bIsClosed = isDeadlinePassed(b.deadline) || b.status === "Closed";
+        const aStatus = getDerivedEventStatus(a);
+        const bStatus = getDerivedEventStatus(b);
 
-        if (aIsClosed !== bIsClosed) {
-          return aIsClosed ? 1 : -1;
+        const statusOrder = { "Coming Soon": 1, Open: 2, Closed: 3 };
+        if (statusOrder[aStatus] !== statusOrder[bStatus]) {
+          return statusOrder[aStatus] - statusOrder[bStatus];
         }
 
-        const da = parseDateString(a.deadline)?.getTime() || Infinity;
-        const db = parseDateString(b.deadline)?.getTime() || Infinity;
+        const da = parseDateString(a.endDate || a.deadline)?.getTime() || Infinity;
+        const db = parseDateString(b.endDate || b.deadline)?.getTime() || Infinity;
         return da - db;
       });
       setList(visibleEvents);
@@ -97,14 +98,14 @@ export default function UserEvents() {
                 )}
                 <Badge
                   className={`absolute top-3 right-3 ${
-                    isDeadlinePassed(e.deadline) || e.status === "Closed"
+                    getDerivedEventStatus(e) === "Closed"
                       ? "bg-muted text-muted-foreground"
-                      : e.status === "Open"
-                        ? "bg-success text-success-foreground"
-                        : "bg-warning text-warning-foreground"
+                      : getDerivedEventStatus(e) === "Open"
+                        ? "bg-success text-success-foreground shadow-sm"
+                        : "bg-info text-info-foreground shadow-sm"
                   }`}
                 >
-                  {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
+                  {getDerivedEventStatus(e)}
                 </Badge>
               </div>
               <CardContent className="p-5 flex-1 flex flex-col">
@@ -117,7 +118,7 @@ export default function UserEvents() {
                 <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 mb-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="size-3.5 text-primary" />{" "}
-                    {formatDateString(e.deadline, {
+                    {formatDateString(e.endDate || e.deadline, {
                       day: "numeric",
                       month: "short",
                       year: "numeric",
@@ -140,12 +141,20 @@ export default function UserEvents() {
                     >
                       <Link href={`/dashboard/applications`}>Already Registered</Link>
                     </Button>
-                  ) : isDeadlinePassed(e.deadline) ? (
+                  ) : getDerivedEventStatus(e) === "Closed" ? (
                     <Button
                       disabled
                       className="w-full bg-muted text-muted-foreground font-semibold cursor-not-allowed border-0"
                     >
-                      Deadline Passed
+                      Applications Closed
+                    </Button>
+                  ) : getDerivedEventStatus(e) === "Coming Soon" ? (
+                    <Button
+                      asChild
+                      variant="secondary"
+                      className="w-full font-semibold text-primary"
+                    >
+                      <Link href={`/dashboard/events/${e.id}`}>View Details</Link>
                     </Button>
                   ) : (
                     <Button
@@ -153,7 +162,7 @@ export default function UserEvents() {
                       className="w-full bg-gradient-saffron text-primary font-semibold hover:opacity-95 shadow-glow"
                     >
                       <Link href={`/dashboard/events/${e.id}`}>
-                        View Details &amp; Apply <ArrowRight className="size-4 ml-1" />
+                        View Details & Apply <ArrowRight className="size-4 ml-1" />
                       </Link>
                     </Button>
                   )}

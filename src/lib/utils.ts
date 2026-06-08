@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { UPEvent, DerivedEventStatus } from "@/types/events";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,35 +33,59 @@ export function formatInstagramHandle(input: string): string {
   return `https://instagram.com/${cleaned}`;
 }
 
-export function parseDateString(dateStr: string | undefined): Date | null {
+export function parseDateString(
+  dateStr: string | undefined,
+  isStartOfDay: boolean = false,
+): Date | null {
   if (!dateStr) return null;
   try {
+    let dateObj: Date;
     // Handle DD/MM/YYYY or DD-MM-YYYY
     if (dateStr.match(/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/)) {
       const parts = dateStr.split(/[/-]/);
-      const dateObj = new Date(
-        Number(parts[2]),
-        Number(parts[1]) - 1,
-        Number(parts[0]),
-        23,
-        59,
-        59,
-      );
-      if (isNaN(dateObj.getTime())) return null;
-      return dateObj;
+      dateObj = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    } else {
+      // Fallback to standard JS Date parsing
+      dateObj = new Date(dateStr);
     }
-    // Fallback to standard JS Date parsing
-    const dateObj = new Date(dateStr);
-    dateObj.setHours(23, 59, 59);
+
     if (isNaN(dateObj.getTime())) return null;
+
+    if (isStartOfDay) {
+      dateObj.setHours(0, 0, 0, 0);
+    } else {
+      dateObj.setHours(23, 59, 59, 999);
+    }
+
     return dateObj;
   } catch {
     return null;
   }
 }
 
+export function getDerivedEventStatus(event: UPEvent): DerivedEventStatus {
+  if (event.status === "Closed") return "Closed";
+
+  const now = Date.now();
+
+  const startObj = parseDateString(event.startDate, true);
+  // Fallback to deadline if endDate is missing
+  const endObj = parseDateString(event.endDate || event.deadline, false);
+
+  if (startObj && now < startObj.getTime()) {
+    return "Coming Soon";
+  }
+
+  if (endObj && now > endObj.getTime()) {
+    return "Closed";
+  }
+
+  // If there are dates and it passed the checks, or if it's "Open" with missing dates
+  return "Open";
+}
+
 export function isDeadlinePassed(deadlineStr: string | undefined): boolean {
-  const dateObj = parseDateString(deadlineStr);
+  const dateObj = parseDateString(deadlineStr, false);
   if (!dateObj) return false;
   return dateObj.getTime() < Date.now();
 }

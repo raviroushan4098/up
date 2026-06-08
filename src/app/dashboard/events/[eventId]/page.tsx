@@ -21,7 +21,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { isDeadlinePassed as checkDeadlinePassed, formatDateString } from "@/lib/utils";
+import { getDerivedEventStatus, formatDateString } from "@/lib/utils";
 
 export default function EventDetailsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const router = useRouter();
@@ -40,9 +40,9 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, user]);
 
-  const isDeadlinePassed = useMemo(() => {
-    if (!event?.deadline) return false;
-    return checkDeadlinePassed(event.deadline);
+  const derivedStatus = useMemo(() => {
+    if (!event) return "Closed";
+    return getDerivedEventStatus(event);
   }, [event]);
 
   const fetchEvent = async () => {
@@ -100,14 +100,14 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-6 sm:p-10">
           <Badge
             className={`w-fit mb-3 backdrop-blur-md ${
-              isDeadlinePassed
+              derivedStatus === "Closed"
                 ? "bg-muted text-muted-foreground border-muted/30"
-                : event.status === "Open"
+                : derivedStatus === "Open"
                   ? "bg-success/20 text-green-300 border-success/30"
-                  : "bg-warning/20 text-yellow-300 border-warning/30"
+                  : "bg-info/20 text-blue-300 border-info/30"
             }`}
           >
-            {isDeadlinePassed ? "Closed" : event.status}
+            {derivedStatus}
           </Badge>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-white leading-tight">
             {event.title}
@@ -190,12 +190,19 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                 >
                   <Link href={`/dashboard/applications`}>Already Registered</Link>
                 </Button>
-              ) : isDeadlinePassed ? (
+              ) : derivedStatus === "Closed" ? (
                 <Button
                   disabled
                   className="w-full h-12 text-base font-bold bg-muted text-muted-foreground cursor-not-allowed border-0"
                 >
-                  Deadline Passed
+                  Applications Closed
+                </Button>
+              ) : derivedStatus === "Coming Soon" ? (
+                <Button
+                  disabled
+                  className="w-full h-12 text-base font-bold bg-muted text-muted-foreground cursor-not-allowed border-0"
+                >
+                  Opens {formatDateString(event.startDate)}
                 </Button>
               ) : (
                 <Button
@@ -212,7 +219,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                   <div>
                     <p className="font-semibold text-primary">Deadline</p>
                     <p className="text-muted-foreground">
-                      {formatDateString(event.deadline, {
+                      {formatDateString(event.endDate || event.deadline, {
                         day: "numeric",
                         month: "long",
                         year: "numeric",

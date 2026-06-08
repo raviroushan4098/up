@@ -1,4 +1,5 @@
 export type EventStatus = "Draft" | "Open" | "Closed";
+export type DerivedEventStatus = "Coming Soon" | "Open" | "Closed";
 
 export interface UPEvent {
   id: string; // The Firestore document ID
