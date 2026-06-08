@@ -13,10 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { defaultLandingCMS } from "@/data/cms-defaults";
 
 export default function ContactPage() {
-  const [contact, setContact] = useState(defaultLandingCMS.contact);
+  const [contact, setContact] = useState({
+    office: "Loading...",
+    helpline: "Loading...",
+    email: "Loading...",
+    whatsapp: "Loading...",
+  });
 
   useEffect(() => {
     const fetchCMS = async () => {
@@ -64,7 +68,7 @@ export default function ContactPage() {
           className="lg:col-span-2 space-y-4"
         >
           {[
-            { i: Phone, t: "Helpline (Toll Free)", d: contact.helpline },
+            { i: Phone, t: "Helpline  ", d: contact.helpline },
             { i: Mail, t: "Email Support", d: contact.email },
             { i: MapPin, t: "Office", d: contact.office },
             { i: MessageCircle, t: "WhatsApp", d: contact.whatsapp },

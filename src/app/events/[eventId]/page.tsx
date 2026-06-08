@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, CheckCircle2, MapPin, Sparkles } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, MapPin, Sparkles, Building2 } from "lucide-react";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,13 +124,15 @@ export default function EventDetailPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-xl bg-secondary p-4 flex items-center gap-3">
-                    <Sparkles className="size-5 text-primary" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">Category</div>
-                      <div className="font-semibold text-primary">{e.category}</div>
+                  {e.displayConfig?.showVenue !== false && e.venue && (
+                    <div className="rounded-xl bg-secondary p-4 flex items-center gap-3">
+                      <Building2 className="size-5 text-primary" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">Venue</div>
+                        <div className="font-semibold text-primary">{e.venue}</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -140,52 +142,60 @@ export default function EventDetailPage() {
 
       <section className="container mx-auto px-4 py-14 grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-0 shadow-card">
-            <CardContent className="p-6 sm:p-8">
-              <h2 className="font-display font-bold text-xl text-primary mb-4">Eligibility</h2>
-              <ul className="space-y-3">
-                {e.eligibility?.map((x, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <CheckCircle2 className="size-5 text-success shrink-0 mt-0.5" />
-                    <span className="text-foreground/90">{x}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+          {e.displayConfig?.showEligibility !== false &&
+            e.eligibility &&
+            e.eligibility.length > 0 && (
+              <Card className="border-0 shadow-card">
+                <CardContent className="p-6 sm:p-8">
+                  <h2 className="font-display font-bold text-xl text-primary mb-4">Eligibility</h2>
+                  <ul className="space-y-3">
+                    {e.eligibility.map((x, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <CheckCircle2 className="size-5 text-success shrink-0 mt-0.5" />
+                        <span className="text-foreground/90">{x}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
 
-          <Card className="border-0 shadow-card">
-            <CardContent className="p-6 sm:p-8">
-              <h2 className="font-display font-bold text-xl text-primary mb-4">
-                Benefits of Participation
-              </h2>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {e.benefits?.map((b, i) => (
-                  <div key={i} className="rounded-xl bg-gradient-soft p-4 flex items-start gap-3">
-                    <div className="size-8 rounded-lg bg-gradient-saffron grid place-items-center shrink-0">
-                      <Sparkles className="size-4 text-primary" />
+          {e.displayConfig?.showBenefits !== false && e.benefits && e.benefits.length > 0 && (
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="font-display font-bold text-xl text-primary mb-4">
+                  Benefits of Participation
+                </h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {e.benefits.map((b, i) => (
+                    <div key={i} className="rounded-xl bg-gradient-soft p-4 flex items-start gap-3">
+                      <div className="size-8 rounded-lg bg-gradient-saffron grid place-items-center shrink-0">
+                        <Sparkles className="size-4 text-primary" />
+                      </div>
+                      <span className="text-sm text-foreground/90">{b}</span>
                     </div>
-                    <span className="text-sm text-foreground/90">{b}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card className="border-0 shadow-card">
-            <CardContent className="p-6 sm:p-8">
-              <h2 className="font-display font-bold text-xl text-primary mb-4">Event Schedule</h2>
-              <div className="relative pl-6 border-l-2 border-dashed border-primary/20">
-                {e.schedule?.map((s, i) => (
-                  <div key={i} className="relative mb-5 last:mb-0">
-                    <div className="absolute -left-[1.85rem] top-1 size-4 rounded-full bg-gradient-saffron" />
-                    <div className="text-xs text-muted-foreground">{s.date}</div>
-                    <div className="font-semibold text-primary">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {e.displayConfig?.showSchedule !== false && e.schedule && e.schedule.length > 0 && (
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="font-display font-bold text-xl text-primary mb-4">Event Schedule</h2>
+                <div className="relative pl-6 border-l-2 border-dashed border-primary/20">
+                  {e.schedule.map((s, i) => (
+                    <div key={i} className="relative mb-5 last:mb-0">
+                      <div className="absolute -left-[1.85rem] top-1 size-4 rounded-full bg-gradient-saffron" />
+                      <div className="text-xs text-muted-foreground">{s.date}</div>
+                      <div className="font-semibold text-primary">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="lg:sticky lg:top-24 h-fit">

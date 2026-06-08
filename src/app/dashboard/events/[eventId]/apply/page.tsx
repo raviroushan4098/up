@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -71,6 +72,8 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
   // Form State
   const [schoolCollegeName, setSchoolCollegeName] = useState("");
   const [classCourse, setClassCourse] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
+  const [experienceDetails, setExperienceDetails] = useState("");
   const [selectedTopic, setSelectedTopic] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [declarationAgreed, setDeclarationAgreed] = useState(false);
@@ -92,6 +95,7 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
     if (user) {
       fetchEvent();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, user]);
 
   // Load draft from local storage on mount
@@ -103,6 +107,8 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
           const parsed = JSON.parse(draft);
           if (parsed.schoolCollegeName) setSchoolCollegeName(parsed.schoolCollegeName);
           if (parsed.classCourse) setClassCourse(parsed.classCourse);
+          if (parsed.experienceLevel) setExperienceLevel(parsed.experienceLevel);
+          if (parsed.experienceDetails) setExperienceDetails(parsed.experienceDetails);
           if (parsed.selectedTopic) setSelectedTopic(parsed.selectedTopic);
           if (typeof parsed.declarationAgreed === "boolean")
             setDeclarationAgreed(parsed.declarationAgreed);
@@ -116,10 +122,25 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
   // Save draft to local storage on change
   useEffect(() => {
     if (typeof window !== "undefined" && eventId) {
-      const draft = { schoolCollegeName, classCourse, selectedTopic, declarationAgreed };
+      const draft = {
+        schoolCollegeName,
+        classCourse,
+        experienceLevel,
+        experienceDetails,
+        selectedTopic,
+        declarationAgreed,
+      };
       localStorage.setItem(`draft_application_${eventId}`, JSON.stringify(draft));
     }
-  }, [schoolCollegeName, classCourse, selectedTopic, declarationAgreed, eventId]);
+  }, [
+    schoolCollegeName,
+    classCourse,
+    experienceLevel,
+    experienceDetails,
+    selectedTopic,
+    declarationAgreed,
+    eventId,
+  ]);
 
   const fetchEvent = async () => {
     try {
@@ -215,11 +236,20 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isEducationValid = !formConfig.requireEducation || (schoolCollegeName && classCourse);
+    const isEducationValid =
+      !formConfig.requireEducation || (schoolCollegeName && classCourse && experienceLevel !== "");
+    const isExperienceDetailsValid =
+      experienceLevel !== "experienced" || experienceDetails.trim().length > 0;
     const isTopicValid = !formConfig.requireTopic || selectedTopic;
     const isVideoValid = !formConfig.requireVideo || videoFile;
 
-    if (!isEducationValid || !isTopicValid || !isVideoValid || !declarationAgreed) {
+    if (
+      !isEducationValid ||
+      !isExperienceDetailsValid ||
+      !isTopicValid ||
+      !isVideoValid ||
+      !declarationAgreed
+    ) {
       toast.error("Please fill all required fields and upload your video.");
       return;
     }
@@ -317,6 +347,8 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
         status: "pending",
         schoolCollegeName,
         classCourse,
+        experienceLevel,
+        experienceDetails,
         selectedTopic,
         videoUrl,
         declarationAgreed,
@@ -463,6 +495,35 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
                   disabled={submitting}
                 />
               </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Who are you? *</Label>
+                <Select
+                  value={experienceLevel}
+                  onValueChange={setExperienceLevel}
+                  disabled={submitting}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select experience level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="experienced">Experienced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {experienceLevel === "experienced" && (
+                <div className="space-y-1.5 sm:col-span-2 mt-2">
+                  <Label>Briefly describe your experience *</Label>
+                  <Textarea
+                    value={experienceDetails}
+                    onChange={(e) => setExperienceDetails(e.target.value)}
+                    required
+                    disabled={submitting}
+                    placeholder="Tell us about your relevant experience..."
+                    className="min-h-[100px]"
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

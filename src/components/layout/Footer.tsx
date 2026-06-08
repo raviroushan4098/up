@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube } from "lucide-react";
+import { Mail, Phone, MapPin, Instagram, Youtube } from "lucide-react";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { defaultLandingCMS } from "@/data/cms-defaults";
 
 export function Footer() {
-  const [contact, setContact] = useState(defaultLandingCMS.contact);
+  const [contact, setContact] = useState({
+    office: "Loading...",
+    helpline: "Loading...",
+    email: "Loading...",
+    whatsapp: "Loading...",
+  });
 
   useEffect(() => {
     const fetchCMS = async () => {
@@ -35,12 +39,12 @@ export function Footer() {
               <img src="/brandlogo2.svg" alt="Logo" className="w-full h-full object-contain p-1" />
             </div>
             <div>
-              <div className="font-display font-bold">Bhavishya UP</div>
+              <div className="font-display font-bold">Bhavishya E Uttar Pradesh</div>
               <div className="text-xs opacity-70"> Uttar Pradesh</div>
             </div>
           </div>
           <p className="text-sm opacity-80 leading-relaxed">
-            नए उत्तर प्रदेश का नया भविष्य. Official registration platform for Uttar Pradesh
+            विकसित भारत की सीढ़ी आज की युवा पीढ़ी Official registration platform for Uttar Pradesh
             initiatives.
           </p>
         </div>
@@ -94,19 +98,22 @@ export function Footer() {
         <div>
           <h4 className="font-semibold mb-4 text-accent-glow">Follow</h4>
           <div className="flex gap-3">
-            {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
+            {[
+              { Icon: Instagram, href: "https://www.instagram.com/bhavishya_e_uttarpradesh" },
+              { Icon: Youtube, href: "https://youtube.com/@bhavishya-e-uttarpradesh" },
+            ].map(({ Icon, href }, i) => (
               <a
                 key={i}
-                href="#"
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="size-10 grid place-items-center rounded-full bg-white/10 hover:bg-accent hover:text-primary transition-base"
               >
                 <Icon className="size-4" />
               </a>
             ))}
           </div>
-          <p className="text-xs opacity-70 mt-6 leading-relaxed">
-            Secure, accessible and -grade. Your data is protected under IT Act 2000.
-          </p>
+          <p className="text-xs opacity-70 mt-6 leading-relaxed"></p>
         </div>
       </div>
 

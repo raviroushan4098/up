@@ -24,7 +24,7 @@ async function sendEmailSafely(options: nodemailer.SendMailOptions) {
 
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM_EMAIL || `"Bhavishya UP" <${process.env.SMTP_USER}>`,
+      from: process.env.SMTP_FROM_EMAIL || `"Bhavishya E Uttar Pradesh" <${process.env.SMTP_USER}>`,
       ...options,
     });
     return { success: true };
@@ -38,7 +38,7 @@ export async function sendVerificationOtpEmail(email: string, otp: string) {
   try {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-        <h2 style="color: #F97316;">Bhavishya UP</h2>
+        <h2 style="color: #F97316;">Bhavishya E Uttar Pradesh</h2>
         <p>Your email verification code is:</p>
         <h1 style="font-size: 32px; letter-spacing: 2px; color: #333;">${otp}</h1>
         <p>This code will expire in 10 minutes. Please do not share this code with anyone.</p>
@@ -49,7 +49,7 @@ export async function sendVerificationOtpEmail(email: string, otp: string) {
 
     return await sendEmailSafely({
       to: email,
-      subject: "Your Verification Code - Bhavishya UP",
+      subject: "Your Verification Code - Bhavishya E Uttar Pradesh",
       html,
     });
   } catch (error) {
@@ -71,7 +71,7 @@ export async function sendApplicationSubmittedEmail(
         <p>Dear ${name},</p>
         <p>Thank you for submitting your application for <strong>${eventTitle}</strong>.</p>
         <p>Your application reference number is: <strong>${applicationNo}</strong></p>
-        <p>We are currently reviewing your application. You can check the status of your application anytime by logging into your Bhavishya UP dashboard.</p>
+        <p>We are currently reviewing your application. You can check the status of your application anytime by logging into your Bhavishya E Uttar Pradesh dashboard.</p>
         <p>We wish you the best of luck!</p>
         <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
         <p style="font-size: 12px; color: #888;">This is an automated message. Please do not reply.</p>
@@ -80,7 +80,7 @@ export async function sendApplicationSubmittedEmail(
 
     return await sendEmailSafely({
       to: email,
-      subject: "Application Submitted - Bhavishya UP",
+      subject: "Application Submitted - Bhavishya E Uttar Pradesh",
       html,
     });
   } catch (error) {
@@ -94,17 +94,17 @@ export async function sendOnboardingCompleteEmail(email: string, name: string) {
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
       <h2 style="color: #F97316;">Profile Submitted Successfully</h2>
       <p>Dear ${name},</p>
-      <p>Your profile has been successfully submitted to <strong>Bhavishya UP</strong>.</p>
+      <p>Your profile has been successfully submitted to <strong>Bhavishya E Uttar Pradesh</strong>.</p>
       <p>Our verification team will review your details shortly. You can check the status of your verification in your dashboard.</p>
       <p>Thank you for joining us!</p>
       <br/>
       <p>Best regards,</p>
-      <p><strong>Bhavishya UP Team</strong></p>
+      <p><strong>Bhavishya E Uttar Pradesh Team</strong></p>
     </div>
   `;
   return await sendEmailSafely({
     to: email,
-    subject: "Welcome to Bhavishya UP - Profile Submitted",
+    subject: "Welcome to Bhavishya E Uttar Pradesh - Profile Submitted",
     html,
   });
 }
@@ -114,16 +114,16 @@ export async function sendProfileApprovedEmail(email: string, name: string) {
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
       <h2 style="color: #10B981;">Profile Verified</h2>
       <p>Dear ${name},</p>
-      <p>Great news! Your profile on <strong>Bhavishya UP</strong> has been verified by our administration team.</p>
+      <p>Great news! Your profile on <strong>Bhavishya E Uttar Pradesh</strong> has been verified by our administration team.</p>
       <p>You now have full access to apply for events and programs.</p>
       <br/>
       <p>Best regards,</p>
-      <p><strong>Bhavishya UP Team</strong></p>
+      <p><strong>Bhavishya E Uttar Pradesh Team</strong></p>
     </div>
   `;
   return await sendEmailSafely({
     to: email,
-    subject: "Profile Verified - Bhavishya UP",
+    subject: "Profile Verified - Bhavishya E Uttar Pradesh",
     html,
   });
 }
@@ -133,7 +133,7 @@ export async function sendProfileRejectedEmail(email: string, name: string, reas
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
       <h2 style="color: #EF4444;">Action Required on Your Profile</h2>
       <p>Dear ${name},</p>
-      <p>Our verification team has reviewed your profile on <strong>Bhavishya UP</strong>, but it could not be verified at this time.</p>
+      <p>Our verification team has reviewed your profile on <strong>Bhavishya E Uttar Pradesh</strong>, but it could not be verified at this time.</p>
       <p><strong>Reason / Required Changes:</strong></p>
       <blockquote style="border-left: 4px solid #EF4444; padding-left: 10px; margin-left: 0; color: #555;">
         ${reason}
@@ -141,12 +141,12 @@ export async function sendProfileRejectedEmail(email: string, name: string, reas
       <p>Please log in to your dashboard to update your details and resubmit your profile for verification.</p>
       <br/>
       <p>Best regards,</p>
-      <p><strong>Bhavishya UP Team</strong></p>
+      <p><strong>Bhavishya E Uttar Pradesh Team</strong></p>
     </div>
   `;
   return await sendEmailSafely({
     to: email,
-    subject: "Action Required: Profile Verification - Bhavishya UP",
+    subject: "Action Required: Profile Verification - Bhavishya E Uttar Pradesh",
     html,
   });
 }
@@ -165,12 +165,12 @@ export async function sendApplicationAcceptedEmail(
         <p>Kindly wait for the final selection results. We appreciate your patience!</p>
         <br/>
         <p>Best regards,</p>
-        <p><strong>Bhavishya UP Team</strong></p>
+        <p><strong>Bhavishya E Uttar Pradesh Team</strong></p>
       </div>
     `;
     return await sendEmailSafely({
       to: email,
-      subject: "Application Under Review - Bhavishya UP",
+      subject: "Application Under Review - Bhavishya E Uttar Pradesh",
       html,
     });
   } catch (error) {
@@ -194,12 +194,12 @@ export async function sendApplicationSelectedEmail(
         <p>Get ready for an amazing experience. We look forward to seeing you!</p>
         <br/>
         <p>Best regards,</p>
-        <p><strong>Bhavishya UP Team</strong></p>
+        <p><strong>Bhavishya E Uttar Pradesh Team</strong></p>
       </div>
     `;
     return await sendEmailSafely({
       to: email,
-      subject: "🎉 Congratulations! Application Selected - Bhavishya UP",
+      subject: "🎉 Congratulations! Application Selected - Bhavishya E Uttar Pradesh",
       html,
     });
   } catch (error) {
@@ -220,15 +220,15 @@ export async function sendApplicationRejectedEmail(
         <p>Dear ${name},</p>
         <p>Thank you for applying to <strong>${eventTitle}</strong>.</p>
         <p>We regret to inform you that your application was not selected at this time. We receive many excellent applications, and the selection process is highly competitive.</p>
-        <p>We encourage you to apply for future events on Bhavishya UP. Keep up the great work!</p>
+        <p>We encourage you to apply for future events on Bhavishya E Uttar Pradesh. Keep up the great work!</p>
         <br/>
         <p>Best regards,</p>
-        <p><strong>Bhavishya UP Team</strong></p>
+        <p><strong>Bhavishya E Uttar Pradesh Team</strong></p>
       </div>
     `;
     return await sendEmailSafely({
       to: email,
-      subject: "Application Update - Bhavishya UP",
+      subject: "Application Update - Bhavishya E Uttar Pradesh",
       html,
     });
   } catch (error) {
@@ -265,7 +265,7 @@ export async function sendDigitalPassEmail(
         <br/>
         <p>We look forward to welcoming you!</p>
         <p style="margin-bottom: 0;">Best regards,</p>
-        <p style="margin-top: 5px;"><strong>Bhavishya UP Team</strong></p>
+        <p style="margin-top: 5px;"><strong>Bhavishya E Uttar Pradesh Team</strong></p>
       </div>
     `;
     const mailOptions: any = {

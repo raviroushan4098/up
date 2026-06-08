@@ -18,7 +18,7 @@ const newHtmlBlock = `
         <br/>
         <p>We look forward to welcoming you!</p>
         <p style="margin-bottom: 0;">Best regards,</p>
-        <p style="margin-top: 5px;"><strong>Bhavishya UP Team</strong></p>
+        <p style="margin-top: 5px;"><strong>Bhavishya E Uttar Pradesh Team</strong></p>
       </div>
     \`;
 `;

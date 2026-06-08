@@ -11,9 +11,9 @@ import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UPEvent } from "@/types/events";
 import { toast } from "sonner";
-import { formatDateString, isDeadlinePassed } from "@/lib/utils";
+import { formatDateString, isDeadlinePassed, parseDateString } from "@/lib/utils";
 
-export default function OpenEvents() {
+export default function UserEvents() {
   const { user } = useAuth();
   const [list, setList] = useState<UPEvent[]>([]);
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
@@ -21,11 +21,12 @@ export default function OpenEvents() {
 
   useEffect(() => {
     if (user) {
-      fetchOpenEvents();
+      fetchEvents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const fetchOpenEvents = async () => {
+  const fetchEvents = async () => {
     try {
       // For now, fetch all and filter client side to avoid needing composite indexes instantly
       const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
@@ -35,8 +36,20 @@ export default function OpenEvents() {
         ...doc.data(),
       })) as UPEvent[];
 
-      const openEvents = events.filter((e) => e.status !== "Closed");
-      setList(openEvents);
+      const visibleEvents = events.filter((e) => e.status !== "Draft");
+      visibleEvents.sort((a, b) => {
+        const aIsClosed = isDeadlinePassed(a.deadline) || a.status === "Closed";
+        const bIsClosed = isDeadlinePassed(b.deadline) || b.status === "Closed";
+
+        if (aIsClosed !== bIsClosed) {
+          return aIsClosed ? 1 : -1;
+        }
+
+        const da = parseDateString(a.deadline)?.getTime() || Infinity;
+        const db = parseDateString(b.deadline)?.getTime() || Infinity;
+        return da - db;
+      });
+      setList(visibleEvents);
 
       if (user) {
         const appQ = query(collection(db, "applications"), where("userId", "==", user.uid));
@@ -55,8 +68,8 @@ export default function OpenEvents() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display font-bold text-2xl text-primary">Open Events</h1>
-        <p className="text-muted-foreground">{list.length} events ready for your application.</p>
+        <h1 className="font-display font-bold text-2xl text-primary">All Events</h1>
+        <p className="text-muted-foreground">{list.length} events available on the platform.</p>
       </div>
 
       {loading ? (
@@ -65,7 +78,7 @@ export default function OpenEvents() {
         </div>
       ) : list.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
-          No open events currently available. Please check back later.
+          No events currently available. Please check back later.
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">

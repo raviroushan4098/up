@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { districts } from "@/data/mock";
+import { districts } from "@/data/districts";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -576,8 +576,8 @@ export default function OnboardingPage() {
             Citizen Profile Verification
           </h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            नए उत्तर प्रदेश का नया भविष्य. Please complete your one-time registration profile to
-            access schemes and scholarships.
+            विकसित भारत की सीढ़ी आज की युवा पीढ़ी Please complete your one-time registration profile
+            to access schemes and scholarships.
           </p>
         </div>
 

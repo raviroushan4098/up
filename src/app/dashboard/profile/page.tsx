@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { districts } from "@/data/mock";
+import { districts } from "@/data/districts";
 
 export default function ProfilePage() {
   const router = useRouter();

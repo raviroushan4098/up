@@ -37,6 +37,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
     if (user) {
       fetchEvent();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, user]);
 
   const isDeadlinePassed = useMemo(() => {
@@ -127,7 +128,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                 </p>
               </div>
 
-              {event.videoGuidelines && (
+              {event.displayConfig?.showVideoGuidelines !== false && event.videoGuidelines && (
                 <div className="pt-4 border-t">
                   <h3 className="font-semibold text-lg text-primary flex items-center gap-2 mb-2">
                     <PlaySquare className="size-5 text-accent" /> Video Submission Guidelines
@@ -138,7 +139,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                 </div>
               )}
 
-              {event.rules && (
+              {event.displayConfig?.showRules !== false && event.rules && (
                 <div className="pt-4 border-t">
                   <h3 className="font-semibold text-lg text-primary flex items-center gap-2 mb-2">
                     <ShieldAlert className="size-5 text-destructive" /> Rules &amp; Regulations
@@ -149,29 +150,31 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                 </div>
               )}
 
-              {event.agendaTopics && event.agendaTopics.length > 0 && (
-                <div className="pt-4 border-t">
-                  <h3 className="font-semibold text-lg text-primary flex items-center gap-2 mb-2">
-                    <Users className="size-5 text-success" /> Agenda Topics
-                  </h3>
-                  <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
-                    {event.agendaTopics.map((topic: any, idx) => {
-                      const title = typeof topic === "string" ? topic : topic.title;
-                      const desc = typeof topic === "string" ? "" : topic.description;
-                      return (
-                        <li key={idx}>
-                          <span className="font-medium text-primary/90">{title}</span>
-                          {desc && (
-                            <span className="block text-xs mt-0.5 leading-relaxed text-muted-foreground">
-                              {desc}
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
+              {event.displayConfig?.showAgendaTopics !== false &&
+                event.agendaTopics &&
+                event.agendaTopics.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <h3 className="font-semibold text-lg text-primary flex items-center gap-2 mb-2">
+                      <Users className="size-5 text-success" /> Agenda Topics
+                    </h3>
+                    <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                      {event.agendaTopics.map((topic: any, idx) => {
+                        const title = typeof topic === "string" ? topic : topic.title;
+                        const desc = typeof topic === "string" ? "" : topic.description;
+                        return (
+                          <li key={idx}>
+                            <span className="font-medium text-primary/90">{title}</span>
+                            {desc && (
+                              <span className="block text-xs mt-0.5 leading-relaxed text-muted-foreground">
+                                {desc}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
             </CardContent>
           </Card>
         </div>
@@ -218,7 +221,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                   </div>
                 </div>
 
-                {event.venue && (
+                {event.displayConfig?.showVenue !== false && event.venue && (
                   <div className="flex items-start gap-3">
                     <MapPin className="size-5 text-primary shrink-0 mt-0.5" />
                     <div>
@@ -228,7 +231,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                   </div>
                 )}
 
-                {event.dressCode && (
+                {event.displayConfig?.showDressCode !== false && event.dressCode && (
                   <div className="flex items-start gap-3">
                     <CheckCircle className="size-5 text-primary shrink-0 mt-0.5" />
                     <div>
@@ -238,7 +241,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                   </div>
                 )}
 
-                {event.contactInfo && (
+                {event.displayConfig?.showContactInfo !== false && event.contactInfo && (
                   <div className="flex items-start gap-3">
                     <Phone className="size-5 text-primary shrink-0 mt-0.5" />
                     <div>

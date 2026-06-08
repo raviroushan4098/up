@@ -1,42 +1,61 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow reading of any file by anyone (needed for images/videos to load on the website)
-    match /{allPaths=**} {
+    
+    // Helper Functions
+    function isAdmin() {
+      return request.auth != null && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isManager() {
+      return request.auth != null && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*')
+             && request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+    
+    function isDocument() {
+      return (request.resource.contentType.matches('application/pdf') || request.resource.contentType.matches('image/.*'))
+             && request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+
+    function isApplicationFile() {
+      return request.resource.size < 50 * 1024 * 1024; // 50MB max for videos/pdfs
+    }
+
+    // Publicly readable folders
+    match /cms/{allPaths=**} {
       allow read: if true;
+      allow write: if isAdmin();
     }
     
-    // Existing rule for profile photos
+    match /events/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /profiles/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if true; // Profile pictures are generally public to the app
+      allow write: if request.auth != null && request.auth.uid == userId && isImage();
     }
-    
-    // Existing rule for aadhar documents
+
+    // Private folders
     match /documents/{userId}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow user themselves, or admins/managers to read
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isManager());
+      allow write: if request.auth != null && request.auth.uid == userId && isDocument();
     }
     
-    // Rule for new unified users folder
     match /users/{userId}/{allPaths=**} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Allow video uploads to applications folder
-    // Users can only upload if the filename starts with their own userId
     match /applications/{eventId}/{fileName} {
-      allow write: if request.auth != null && fileName.matches(request.auth.uid + '.*');
-    }
-    
-    // Allow banner uploads for events
-    // ONLY admins can upload to the events folder
-    match /events/{eventId}/{fileName} {
-      allow write: if request.auth != null && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    // Allow CMS uploads
-    // ONLY admins can upload to the cms folder
-    match /cms/{fileName} {
-      allow write: if request.auth != null && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // fileName must start with userId. Format: userId_timestamp.ext
+      allow read: if request.auth != null && (fileName.matches(request.auth.uid + '.*') || isAdmin() || isManager());
+      allow write: if request.auth != null && fileName.matches(request.auth.uid + '.*') && isApplicationFile();
     }
   }
 }

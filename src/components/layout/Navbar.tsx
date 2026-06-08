@@ -37,7 +37,7 @@ export function Navbar() {
             <span className="hidden sm:inline">Official Registration Portal</span>
             <span className="sm:hidden">Official Registration Portal</span>
           </span>
-          <span className="hidden md:inline opacity-80">Helpline · 1800-180-5555</span>
+          <span className="hidden md:inline opacity-80">Helpline · +91 7991753893</span>
         </div>
       </div>
 
@@ -55,10 +55,10 @@ export function Navbar() {
             </div>
             <div className="leading-tight">
               <div className="font-display font-bold text-base sm:text-lg text-primary">
-                Bhavishya UP
+                Bhavishya E Uttar Pradesh
               </div>
               <div className="text-[10px] sm:text-xs text-muted-foreground -mt-0.5">
-                भविष्य उत्तर प्रदेश
+                भविष्य ए उत्तर प्रदेश
               </div>
             </div>
           </Link>

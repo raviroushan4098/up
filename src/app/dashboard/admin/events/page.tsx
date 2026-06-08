@@ -61,6 +61,18 @@ export default function AdminEventsPage() {
   const [requireTopic, setRequireTopic] = useState(true);
   const [requireVideo, setRequireVideo] = useState(true);
 
+  // Display Config State
+  const [showDates, setShowDates] = useState(true);
+  const [showVenue, setShowVenue] = useState(true);
+  const [showDressCode, setShowDressCode] = useState(true);
+  const [showContactInfo, setShowContactInfo] = useState(true);
+  const [showVideoGuidelines, setShowVideoGuidelines] = useState(true);
+  const [showRules, setShowRules] = useState(true);
+  const [showAgendaTopics, setShowAgendaTopics] = useState(true);
+  const [showEligibility, setShowEligibility] = useState(true);
+  const [showBenefits, setShowBenefits] = useState(true);
+  const [showSchedule, setShowSchedule] = useState(true);
+
   useEffect(() => {
     if (!authLoading && profile?.role !== "admin") {
       router.push("/dashboard");
@@ -126,6 +138,29 @@ export default function AdminEventsPage() {
     setRequireTopic(conf.requireTopic ?? true);
     setRequireVideo(conf.requireVideo ?? true);
 
+    const dConf = ev.displayConfig || {
+      showDates: true,
+      showVenue: true,
+      showDressCode: true,
+      showContactInfo: true,
+      showVideoGuidelines: true,
+      showRules: true,
+      showAgendaTopics: true,
+      showEligibility: true,
+      showBenefits: true,
+      showSchedule: true,
+    };
+    setShowDates(dConf.showDates ?? true);
+    setShowVenue(dConf.showVenue ?? true);
+    setShowDressCode(dConf.showDressCode ?? true);
+    setShowContactInfo(dConf.showContactInfo ?? true);
+    setShowVideoGuidelines(dConf.showVideoGuidelines ?? true);
+    setShowRules(dConf.showRules ?? true);
+    setShowAgendaTopics(dConf.showAgendaTopics ?? true);
+    setShowEligibility(dConf.showEligibility ?? true);
+    setShowBenefits(dConf.showBenefits ?? true);
+    setShowSchedule(dConf.showSchedule ?? true);
+
     setCustomDeclaration(ev.customDeclaration || "");
     setBannerFile(null);
     setIsDragging(false);
@@ -154,6 +189,18 @@ export default function AdminEventsPage() {
     setRequireEducation(true);
     setRequireTopic(true);
     setRequireVideo(true);
+
+    setShowDates(true);
+    setShowVenue(true);
+    setShowDressCode(true);
+    setShowContactInfo(true);
+    setShowVideoGuidelines(true);
+    setShowRules(true);
+    setShowAgendaTopics(true);
+    setShowEligibility(true);
+    setShowBenefits(true);
+    setShowSchedule(true);
+
     setIsDragging(false);
   };
 
@@ -195,6 +242,18 @@ export default function AdminEventsPage() {
           requireEducation,
           requireTopic,
           requireVideo,
+        },
+        displayConfig: {
+          showDates,
+          showVenue,
+          showDressCode,
+          showContactInfo,
+          showVideoGuidelines,
+          showRules,
+          showAgendaTopics,
+          showEligibility,
+          showBenefits,
+          showSchedule,
         },
         status: "Open", // Default to open for now
       };
@@ -446,7 +505,10 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Event Start Date</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Event Start Date</Label>
+                    <Switch checked={showDates} onCheckedChange={setShowDates} />
+                  </div>
                   <Input
                     type="text"
                     placeholder="DD/MM/YYYY"
@@ -466,7 +528,10 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Venue & Reporting Time</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Venue & Reporting Time</Label>
+                    <Switch checked={showVenue} onCheckedChange={setShowVenue} />
+                  </div>
                   <Input
                     value={venue}
                     onChange={(e) => setVenue(e.target.value)}
@@ -475,7 +540,13 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Video Guidelines</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Video Guidelines</Label>
+                    <Switch
+                      checked={showVideoGuidelines}
+                      onCheckedChange={setShowVideoGuidelines}
+                    />
+                  </div>
                   <Textarea
                     value={videoGuidelines}
                     onChange={(e) => setVideoGuidelines(e.target.value)}
@@ -485,12 +556,18 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Rules & Regulations</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Rules & Regulations</Label>
+                    <Switch checked={showRules} onCheckedChange={setShowRules} />
+                  </div>
                   <Textarea value={rules} onChange={(e) => setRules(e.target.value)} rows={3} />
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Eligibility (One item per line)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Eligibility (One item per line)</Label>
+                    <Switch checked={showEligibility} onCheckedChange={setShowEligibility} />
+                  </div>
                   <Textarea
                     value={eligibility}
                     onChange={(e) => setEligibility(e.target.value)}
@@ -500,7 +577,10 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Benefits of Participation (One item per line)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Benefits of Participation (One item per line)</Label>
+                    <Switch checked={showBenefits} onCheckedChange={setShowBenefits} />
+                  </div>
                   <Textarea
                     value={benefits}
                     onChange={(e) => setBenefits(e.target.value)}
@@ -510,7 +590,10 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Dress Code</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Dress Code</Label>
+                    <Switch checked={showDressCode} onCheckedChange={setShowDressCode} />
+                  </div>
                   <Input
                     value={dressCode}
                     onChange={(e) => setDressCode(e.target.value)}
@@ -519,7 +602,10 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Contact Info</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Contact Info</Label>
+                    <Switch checked={showContactInfo} onCheckedChange={setShowContactInfo} />
+                  </div>
                   <Input
                     value={contactInfo}
                     onChange={(e) => setContactInfo(e.target.value)}
@@ -529,7 +615,10 @@ export default function AdminEventsPage() {
 
                 <div className="space-y-4 sm:col-span-2">
                   <div className="flex items-center justify-between">
-                    <Label>Agenda Topics</Label>
+                    <div className="flex items-center gap-3">
+                      <Label>Agenda Topics</Label>
+                      <Switch checked={showAgendaTopics} onCheckedChange={setShowAgendaTopics} />
+                    </div>
                     <Button
                       type="button"
                       variant="outline"
@@ -596,7 +685,10 @@ export default function AdminEventsPage() {
 
                 <div className="space-y-4 sm:col-span-2">
                   <div className="flex items-center justify-between">
-                    <Label>Event Schedule Timeline</Label>
+                    <div className="flex items-center gap-3">
+                      <Label>Event Schedule Timeline</Label>
+                      <Switch checked={showSchedule} onCheckedChange={setShowSchedule} />
+                    </div>
                     <Button
                       type="button"
                       variant="outline"

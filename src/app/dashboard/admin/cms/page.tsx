@@ -5,8 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { db, app } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { LandingPageCMS } from "@/types/cms";
-import { defaultLandingCMS } from "@/data/cms-defaults";
+import { LandingPageCMS, AboutPageCMS } from "@/types/cms";
+import { emptyLandingCMS, emptyAboutCMS } from "@/types/cms";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -25,10 +25,12 @@ import { Label } from "@/components/ui/label";
 
 export default function CMSPage() {
   const { user, profile, loading: authLoading } = useAuth();
-  const [data, setData] = useState<LandingPageCMS>(defaultLandingCMS);
+  const [data, setData] = useState<LandingPageCMS>(emptyLandingCMS);
+  const [aboutData, setAboutData] = useState<AboutPageCMS>(emptyAboutCMS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [activeTopTab, setActiveTopTab] = useState("landing");
 
   useEffect(() => {
     if (!authLoading && profile?.role === "admin") {
@@ -38,18 +40,29 @@ export default function CMSPage() {
 
   const fetchCMS = async () => {
     try {
-      const docRef = doc(db, "settings", "landingPage");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const docData = docSnap.data();
+      const [landingSnap, aboutSnap] = await Promise.all([
+        getDoc(doc(db, "settings", "landingPage")),
+        getDoc(doc(db, "settings", "aboutPage")),
+      ]);
+
+      if (landingSnap.exists()) {
+        const docData = landingSnap.data();
         setData({
-          ...defaultLandingCMS,
+          ...emptyLandingCMS,
           ...docData,
           visibility: {
-            ...defaultLandingCMS.visibility,
+            ...emptyLandingCMS.visibility,
             ...(docData.visibility || {}),
           },
         } as LandingPageCMS);
+      }
+
+      if (aboutSnap.exists()) {
+        const docData = aboutSnap.data();
+        setAboutData({
+          ...emptyAboutCMS,
+          ...docData,
+        } as AboutPageCMS);
       }
     } catch (error) {
       console.error("Error fetching CMS data:", error);
@@ -62,29 +75,35 @@ export default function CMSPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      let heroImageUrl = data.hero.image;
-      if (heroFile) {
-        const storage = getStorage(app);
-        const ext = heroFile.name.split(".").pop();
-        const imageRef = ref(storage, `cms/hero_${Date.now()}.${ext}`);
-        const uploadResult = await uploadBytes(imageRef, heroFile);
-        heroImageUrl = await getDownloadURL(uploadResult.ref);
+      if (activeTopTab === "landing") {
+        let heroImageUrl = data.hero.image;
+        if (heroFile) {
+          const storage = getStorage(app);
+          const ext = heroFile.name.split(".").pop();
+          const imageRef = ref(storage, `cms/hero_${Date.now()}.${ext}`);
+          const uploadResult = await uploadBytes(imageRef, heroFile);
+          heroImageUrl = await getDownloadURL(uploadResult.ref);
+        }
+
+        const payload = {
+          ...data,
+          hero: {
+            ...data.hero,
+            image: heroImageUrl || "",
+          },
+        };
+
+        const docRef = doc(db, "settings", "landingPage");
+        await setDoc(docRef, payload);
+
+        setData(payload as LandingPageCMS);
+        setHeroFile(null);
+        toast.success("Landing page content updated successfully");
+      } else {
+        const docRef = doc(db, "settings", "aboutPage");
+        await setDoc(docRef, aboutData);
+        toast.success("About page content updated successfully");
       }
-
-      const payload = {
-        ...data,
-        hero: {
-          ...data.hero,
-          image: heroImageUrl || "",
-        },
-      };
-
-      const docRef = doc(db, "settings", "landingPage");
-      await setDoc(docRef, payload);
-
-      setData(payload as LandingPageCMS);
-      setHeroFile(null);
-      toast.success("Landing page content updated successfully");
     } catch (error) {
       console.error(error);
       toast.error("Failed to save changes");
@@ -99,7 +118,11 @@ export default function CMSPage() {
         "Are you sure you want to reset all changes back to the default layout? This will discard unsaved changes.",
       )
     ) {
-      setData(defaultLandingCMS);
+      if (activeTopTab === "landing") {
+        setData(emptyLandingCMS);
+      } else {
+        setAboutData(emptyAboutCMS);
+      }
     }
   };
 
@@ -128,7 +151,8 @@ export default function CMSPage() {
           <div>
             <h2 className="text-xl font-display font-semibold">Live Content Editor</h2>
             <p className="text-sm text-muted-foreground">
-              Changes saved here will instantly reflect on the public landing page.
+              Changes saved here will instantly reflect on the public{" "}
+              {activeTopTab === "landing" ? "landing" : "about"} page.
             </p>
           </div>
           <div className="flex gap-3">
@@ -146,594 +170,921 @@ export default function CMSPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="hero" className="w-full">
-          <TabsList className="mb-4 grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
-            <TabsTrigger value="hero">Hero</TabsTrigger>
-            <TabsTrigger value="stats">Stats</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="benefits">Benefits</TabsTrigger>
-            <TabsTrigger value="howItWorks">How It Works</TabsTrigger>
-            <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
-            <TabsTrigger value="faqs">FAQs</TabsTrigger>
-            <TabsTrigger value="contact">Contact</TabsTrigger>
+        <Tabs value={activeTopTab} onValueChange={setActiveTopTab} className="w-full">
+          <TabsList className="mb-6 w-full grid grid-cols-2 max-w-md h-auto">
+            <TabsTrigger value="landing">Landing Page</TabsTrigger>
+            <TabsTrigger value="about">About Page</TabsTrigger>
           </TabsList>
 
-          {/* HERO SECTION */}
-          <TabsContent value="hero">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Hero Section</CardTitle>
-                  <CardDescription>The main banner at the top of the homepage.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="hero-visibility">Visible</Label>
-                  <Switch
-                    id="hero-visibility"
-                    checked={data.visibility?.hero ?? true}
-                    onCheckedChange={(checked) =>
-                      setData({ ...data, visibility: { ...data.visibility, hero: checked } })
-                    }
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Badge Text</label>
-                  <Input
-                    value={data.hero.badgeText}
-                    onChange={(e) =>
-                      setData({ ...data, hero: { ...data.hero, badgeText: e.target.value } })
-                    }
-                  />
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium">Title Line 1</label>
-                    <Input
-                      value={data.hero.titleLine1}
-                      onChange={(e) =>
-                        setData({ ...data, hero: { ...data.hero, titleLine1: e.target.value } })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium">Title Gradient Text</label>
-                    <Input
-                      value={data.hero.titleGradient}
-                      onChange={(e) =>
-                        setData({ ...data, hero: { ...data.hero, titleGradient: e.target.value } })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Subtitle</label>
-                  <Textarea
-                    value={data.hero.subtitle}
-                    onChange={(e) =>
-                      setData({ ...data, hero: { ...data.hero, subtitle: e.target.value } })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Hero Image</label>
-                  <div className="flex items-center gap-4">
-                    {data.hero.image || heroFile ? (
-                      <img
-                        src={heroFile ? URL.createObjectURL(heroFile) : data.hero.image}
-                        alt="Hero"
-                        className="h-20 w-32 object-cover rounded-md border"
-                      />
-                    ) : (
-                      <div className="h-20 w-32 bg-muted rounded-md flex items-center justify-center border border-dashed">
-                        <ImagePlus className="size-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setHeroFile(e.target.files[0]);
+          <TabsContent value="landing">
+            <Tabs defaultValue="hero" className="w-full">
+              <TabsList className="mb-4 grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
+                <TabsTrigger value="hero">Hero</TabsTrigger>
+                <TabsTrigger value="stats">Stats</TabsTrigger>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                <TabsTrigger value="benefits">Benefits</TabsTrigger>
+                <TabsTrigger value="howItWorks">How It Works</TabsTrigger>
+                <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
+                <TabsTrigger value="faqs">FAQs</TabsTrigger>
+                <TabsTrigger value="contact">Contact</TabsTrigger>
+              </TabsList>
+
+              {/* HERO SECTION */}
+              <TabsContent value="hero">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Hero Section</CardTitle>
+                      <CardDescription>The main banner at the top of the homepage.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="hero-visibility">Visible</Label>
+                      <Switch
+                        id="hero-visibility"
+                        checked={data.visibility?.hero ?? true}
+                        onCheckedChange={(checked) =>
+                          setData({ ...data, visibility: { ...data.visibility, hero: checked } })
                         }
-                      }}
-                      className="max-w-xs"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Upload a high-quality image (recommended: 1536x1024px).
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* STATS SECTION */}
-          <TabsContent value="stats">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Statistics</CardTitle>
-                  <CardDescription>The 4 large numbers displayed below the hero.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="stats-visibility">Visible</Label>
-                  <Switch
-                    id="stats-visibility"
-                    checked={data.visibility?.stats ?? true}
-                    onCheckedChange={(checked) =>
-                      setData({ ...data, visibility: { ...data.visibility, stats: checked } })
-                    }
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {data.stats.map((stat, i) => (
-                  <div key={i} className="flex gap-4 items-end border p-4 rounded-lg">
-                    <div className="grid gap-2 flex-1">
-                      <label className="text-xs font-medium">Label</label>
-                      <Input
-                        value={stat.label}
-                        onChange={(e) => {
-                          const newStats = [...data.stats];
-                          newStats[i].label = e.target.value;
-                          setData({ ...data, stats: newStats });
-                        }}
                       />
                     </div>
-                    <div className="grid gap-2 flex-1">
-                      <label className="text-xs font-medium">Value</label>
-                      <Input
-                        value={stat.value}
-                        onChange={(e) => {
-                          const newStats = [...data.stats];
-                          newStats[i].value = e.target.value;
-                          setData({ ...data, stats: newStats });
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* TIMELINE SECTION */}
-          <TabsContent value="timeline">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Timeline Roadmap</CardTitle>
-                  <CardDescription>Important dates for the current season.</CardDescription>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="timeline-visibility">Visible</Label>
-                    <Switch
-                      id="timeline-visibility"
-                      checked={data.visibility?.timeline ?? true}
-                      onCheckedChange={(checked) =>
-                        setData({ ...data, visibility: { ...data.visibility, timeline: checked } })
-                      }
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setData({
-                        ...data,
-                        timeline: [
-                          ...data.timeline,
-                          { date: "New Date", title: "New Milestone", desc: "Description..." },
-                        ],
-                      });
-                    }}
-                  >
-                    <Plus className="size-4 mr-2" /> Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {data.timeline.map((item, i) => (
-                  <div key={i} className="border p-4 rounded-lg relative space-y-4">
-                    <div className="grid sm:grid-cols-3 gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-xs font-medium">Date/Month</label>
-                        <Input
-                          value={item.date}
-                          onChange={(e) => {
-                            const newTimeline = [...data.timeline];
-                            newTimeline[i].date = e.target.value;
-                            setData({ ...data, timeline: newTimeline });
-                          }}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <label className="text-xs font-medium">Title</label>
-                        <Input
-                          value={item.title}
-                          onChange={(e) => {
-                            const newTimeline = [...data.timeline];
-                            newTimeline[i].title = e.target.value;
-                            setData({ ...data, timeline: newTimeline });
-                          }}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <label className="text-xs font-medium">Description</label>
-                        <Input
-                          value={item.desc}
-                          onChange={(e) => {
-                            const newTimeline = [...data.timeline];
-                            newTimeline[i].desc = e.target.value;
-                            setData({ ...data, timeline: newTimeline });
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        const newTimeline = data.timeline.filter((_, idx) => idx !== i);
-                        setData({ ...data, timeline: newTimeline });
-                      }}
-                    >
-                      <Trash2 className="size-4 mr-2" /> Remove
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* BENEFITS SECTION */}
-          <TabsContent value="benefits">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Benefits Grid</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="benefits-visibility">Visible</Label>
-                  <Switch
-                    id="benefits-visibility"
-                    checked={data.visibility?.benefits ?? true}
-                    onCheckedChange={(checked) =>
-                      setData({ ...data, visibility: { ...data.visibility, benefits: checked } })
-                    }
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {data.benefits.map((item, i) => (
-                  <div key={i} className="grid sm:grid-cols-2 gap-4 border p-4 rounded-lg">
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="grid gap-2">
-                      <label className="text-xs font-medium">Title</label>
+                      <label className="text-sm font-medium">Badge Text</label>
                       <Input
-                        value={item.title}
-                        onChange={(e) => {
-                          const newArr = [...data.benefits];
-                          newArr[i].title = e.target.value;
-                          setData({ ...data, benefits: newArr });
-                        }}
+                        value={data.hero.badgeText}
+                        onChange={(e) =>
+                          setData({ ...data, hero: { ...data.hero, badgeText: e.target.value } })
+                        }
+                      />
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Title Line 1</label>
+                        <Input
+                          value={data.hero.titleLine1}
+                          onChange={(e) =>
+                            setData({ ...data, hero: { ...data.hero, titleLine1: e.target.value } })
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Title Gradient Text</label>
+                        <Input
+                          value={data.hero.titleGradient}
+                          onChange={(e) =>
+                            setData({
+                              ...data,
+                              hero: { ...data.hero, titleGradient: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Subtitle</label>
+                      <Textarea
+                        value={data.hero.subtitle}
+                        onChange={(e) =>
+                          setData({ ...data, hero: { ...data.hero, subtitle: e.target.value } })
+                        }
                       />
                     </div>
                     <div className="grid gap-2">
-                      <label className="text-xs font-medium">Description</label>
-                      <Input
-                        value={item.desc}
-                        onChange={(e) => {
-                          const newArr = [...data.benefits];
-                          newArr[i].desc = e.target.value;
-                          setData({ ...data, benefits: newArr });
-                        }}
-                      />
+                      <label className="text-sm font-medium">Hero Image</label>
+                      <div className="flex items-center gap-4">
+                        {data.hero.image || heroFile ? (
+                          <img
+                            src={heroFile ? URL.createObjectURL(heroFile) : data.hero.image}
+                            alt="Hero"
+                            className="h-20 w-32 object-cover rounded-md border"
+                          />
+                        ) : (
+                          <div className="h-20 w-32 bg-muted rounded-md flex items-center justify-center border border-dashed">
+                            <ImagePlus className="size-6 text-muted-foreground" />
+                          </div>
+                        )}
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setHeroFile(e.target.files[0]);
+                            }
+                          }}
+                          className="max-w-xs"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Upload a high-quality image (recommended: 1536x1024px).
+                      </p>
                     </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          {/* HOW IT WORKS SECTION */}
-          <TabsContent value="howItWorks">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>How It Works</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="how-it-works-visibility">Visible</Label>
-                  <Switch
-                    id="how-it-works-visibility"
-                    checked={data.visibility?.howItWorks ?? true}
-                    onCheckedChange={(checked) =>
-                      setData({ ...data, visibility: { ...data.visibility, howItWorks: checked } })
-                    }
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {data.howItWorks.map((item, i) => (
-                  <div key={i} className="grid sm:grid-cols-3 gap-4 border p-4 rounded-lg">
-                    <div className="grid gap-2 col-span-1">
-                      <label className="text-xs font-medium">Step Title</label>
-                      <Input
-                        value={item.t}
-                        onChange={(e) => {
-                          const newArr = [...data.howItWorks];
-                          newArr[i].t = e.target.value;
-                          setData({ ...data, howItWorks: newArr });
-                        }}
+              {/* STATS SECTION */}
+              <TabsContent value="stats">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Statistics</CardTitle>
+                      <CardDescription>
+                        The 4 large numbers displayed below the hero.
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="stats-visibility">Visible</Label>
+                      <Switch
+                        id="stats-visibility"
+                        checked={data.visibility?.stats ?? true}
+                        onCheckedChange={(checked) =>
+                          setData({ ...data, visibility: { ...data.visibility, stats: checked } })
+                        }
                       />
                     </div>
-                    <div className="grid gap-2 col-span-2">
-                      <label className="text-xs font-medium">Description</label>
-                      <Input
-                        value={item.d}
-                        onChange={(e) => {
-                          const newArr = [...data.howItWorks];
-                          newArr[i].d = e.target.value;
-                          setData({ ...data, howItWorks: newArr });
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {data.stats.map((stat, i) => (
+                      <div key={i} className="flex gap-4 items-end border p-4 rounded-lg">
+                        <div className="grid gap-2 flex-1">
+                          <label className="text-xs font-medium">Label</label>
+                          <Input
+                            value={stat.label}
+                            onChange={(e) => {
+                              const newStats = [...data.stats];
+                              newStats[i].label = e.target.value;
+                              setData({ ...data, stats: newStats });
+                            }}
+                          />
+                        </div>
+                        <div className="grid gap-2 flex-1">
+                          <label className="text-xs font-medium">Value</label>
+                          <Input
+                            value={stat.value}
+                            onChange={(e) => {
+                              const newStats = [...data.stats];
+                              newStats[i].value = e.target.value;
+                              setData({ ...data, stats: newStats });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          {/* TESTIMONIALS SECTION */}
-          <TabsContent value="testimonials">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Testimonials</CardTitle>
-                  <CardDescription>Stories and quotes from citizens.</CardDescription>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="testimonials-visibility">Visible</Label>
-                    <Switch
-                      id="testimonials-visibility"
-                      checked={data.visibility?.testimonials ?? true}
-                      onCheckedChange={(checked) =>
-                        setData({
-                          ...data,
-                          visibility: { ...data.visibility, testimonials: checked },
-                        })
-                      }
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setData({
-                        ...data,
-                        testimonials: [
-                          ...data.testimonials,
-                          {
-                            name: "New Person",
-                            role: "Student",
-                            district: "Lucknow",
-                            quote: "...",
-                          },
-                        ],
-                      });
-                    }}
-                  >
-                    <Plus className="size-4 mr-2" /> Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                  {data.testimonials.map((item, i) => (
-                    <AccordionItem key={i} value={`t-${i}`}>
-                      <AccordionTrigger>
-                        {item.name} - {item.district}
-                      </AccordionTrigger>
-                      <AccordionContent className="space-y-4 p-4 border rounded-lg mt-2">
+              {/* TIMELINE SECTION */}
+              <TabsContent value="timeline">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Timeline Roadmap</CardTitle>
+                      <CardDescription>Important dates for the current season.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="timeline-visibility">Visible</Label>
+                        <Switch
+                          id="timeline-visibility"
+                          checked={data.visibility?.timeline ?? true}
+                          onCheckedChange={(checked) =>
+                            setData({
+                              ...data,
+                              visibility: { ...data.visibility, timeline: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setData({
+                            ...data,
+                            timeline: [
+                              ...data.timeline,
+                              { date: "New Date", title: "New Milestone", desc: "Description..." },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="size-4 mr-2" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {data.timeline.map((item, i) => (
+                      <div key={i} className="border p-4 rounded-lg relative space-y-4">
                         <div className="grid sm:grid-cols-3 gap-4">
                           <div className="grid gap-2">
-                            <label className="text-xs font-medium">Name</label>
+                            <label className="text-xs font-medium">Date/Month</label>
                             <Input
-                              value={item.name}
+                              value={item.date}
                               onChange={(e) => {
-                                const newArr = [...data.testimonials];
-                                newArr[i].name = e.target.value;
-                                setData({ ...data, testimonials: newArr });
+                                const newTimeline = [...data.timeline];
+                                newTimeline[i].date = e.target.value;
+                                setData({ ...data, timeline: newTimeline });
                               }}
                             />
                           </div>
                           <div className="grid gap-2">
-                            <label className="text-xs font-medium">Role</label>
+                            <label className="text-xs font-medium">Title</label>
                             <Input
-                              value={item.role}
+                              value={item.title}
                               onChange={(e) => {
-                                const newArr = [...data.testimonials];
-                                newArr[i].role = e.target.value;
-                                setData({ ...data, testimonials: newArr });
+                                const newTimeline = [...data.timeline];
+                                newTimeline[i].title = e.target.value;
+                                setData({ ...data, timeline: newTimeline });
                               }}
                             />
                           </div>
                           <div className="grid gap-2">
-                            <label className="text-xs font-medium">District</label>
+                            <label className="text-xs font-medium">Description</label>
                             <Input
-                              value={item.district}
+                              value={item.desc}
                               onChange={(e) => {
-                                const newArr = [...data.testimonials];
-                                newArr[i].district = e.target.value;
-                                setData({ ...data, testimonials: newArr });
+                                const newTimeline = [...data.timeline];
+                                newTimeline[i].desc = e.target.value;
+                                setData({ ...data, timeline: newTimeline });
                               }}
                             />
                           </div>
-                        </div>
-                        <div className="grid gap-2">
-                          <label className="text-xs font-medium">Quote</label>
-                          <Textarea
-                            value={item.quote}
-                            onChange={(e) => {
-                              const newArr = [...data.testimonials];
-                              newArr[i].quote = e.target.value;
-                              setData({ ...data, testimonials: newArr });
-                            }}
-                          />
                         </div>
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => {
-                            const newArr = data.testimonials.filter((_, idx) => idx !== i);
-                            setData({ ...data, testimonials: newArr });
+                            const newTimeline = data.timeline.filter((_, idx) => idx !== i);
+                            setData({ ...data, timeline: newTimeline });
                           }}
                         >
                           <Trash2 className="size-4 mr-2" /> Remove
                         </Button>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </CardContent>
-            </Card>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* BENEFITS SECTION */}
+              <TabsContent value="benefits">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Benefits Grid</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="benefits-visibility">Visible</Label>
+                      <Switch
+                        id="benefits-visibility"
+                        checked={data.visibility?.benefits ?? true}
+                        onCheckedChange={(checked) =>
+                          setData({
+                            ...data,
+                            visibility: { ...data.visibility, benefits: checked },
+                          })
+                        }
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {data.benefits.map((item, i) => (
+                      <div key={i} className="grid sm:grid-cols-2 gap-4 border p-4 rounded-lg">
+                        <div className="grid gap-2">
+                          <label className="text-xs font-medium">Title</label>
+                          <Input
+                            value={item.title}
+                            onChange={(e) => {
+                              const newArr = [...data.benefits];
+                              newArr[i].title = e.target.value;
+                              setData({ ...data, benefits: newArr });
+                            }}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-xs font-medium">Description</label>
+                          <Input
+                            value={item.desc}
+                            onChange={(e) => {
+                              const newArr = [...data.benefits];
+                              newArr[i].desc = e.target.value;
+                              setData({ ...data, benefits: newArr });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* HOW IT WORKS SECTION */}
+              <TabsContent value="howItWorks">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>How It Works</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="how-it-works-visibility">Visible</Label>
+                      <Switch
+                        id="how-it-works-visibility"
+                        checked={data.visibility?.howItWorks ?? true}
+                        onCheckedChange={(checked) =>
+                          setData({
+                            ...data,
+                            visibility: { ...data.visibility, howItWorks: checked },
+                          })
+                        }
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {data.howItWorks.map((item, i) => (
+                      <div key={i} className="grid sm:grid-cols-3 gap-4 border p-4 rounded-lg">
+                        <div className="grid gap-2 col-span-1">
+                          <label className="text-xs font-medium">Step Title</label>
+                          <Input
+                            value={item.t}
+                            onChange={(e) => {
+                              const newArr = [...data.howItWorks];
+                              newArr[i].t = e.target.value;
+                              setData({ ...data, howItWorks: newArr });
+                            }}
+                          />
+                        </div>
+                        <div className="grid gap-2 col-span-2">
+                          <label className="text-xs font-medium">Description</label>
+                          <Input
+                            value={item.d}
+                            onChange={(e) => {
+                              const newArr = [...data.howItWorks];
+                              newArr[i].d = e.target.value;
+                              setData({ ...data, howItWorks: newArr });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* TESTIMONIALS SECTION */}
+              <TabsContent value="testimonials">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Testimonials</CardTitle>
+                      <CardDescription>Stories and quotes from citizens.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="testimonials-visibility">Visible</Label>
+                        <Switch
+                          id="testimonials-visibility"
+                          checked={data.visibility?.testimonials ?? true}
+                          onCheckedChange={(checked) =>
+                            setData({
+                              ...data,
+                              visibility: { ...data.visibility, testimonials: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setData({
+                            ...data,
+                            testimonials: [
+                              ...data.testimonials,
+                              {
+                                name: "New Person",
+                                role: "Student",
+                                district: "Lucknow",
+                                quote: "...",
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="size-4 mr-2" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                      {data.testimonials.map((item, i) => (
+                        <AccordionItem key={i} value={`t-${i}`}>
+                          <AccordionTrigger>
+                            {item.name} - {item.district}
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-4 p-4 border rounded-lg mt-2">
+                            <div className="grid sm:grid-cols-3 gap-4">
+                              <div className="grid gap-2">
+                                <label className="text-xs font-medium">Name</label>
+                                <Input
+                                  value={item.name}
+                                  onChange={(e) => {
+                                    const newArr = [...data.testimonials];
+                                    newArr[i].name = e.target.value;
+                                    setData({ ...data, testimonials: newArr });
+                                  }}
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <label className="text-xs font-medium">Role</label>
+                                <Input
+                                  value={item.role}
+                                  onChange={(e) => {
+                                    const newArr = [...data.testimonials];
+                                    newArr[i].role = e.target.value;
+                                    setData({ ...data, testimonials: newArr });
+                                  }}
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <label className="text-xs font-medium">District</label>
+                                <Input
+                                  value={item.district}
+                                  onChange={(e) => {
+                                    const newArr = [...data.testimonials];
+                                    newArr[i].district = e.target.value;
+                                    setData({ ...data, testimonials: newArr });
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Quote</label>
+                              <Textarea
+                                value={item.quote}
+                                onChange={(e) => {
+                                  const newArr = [...data.testimonials];
+                                  newArr[i].quote = e.target.value;
+                                  setData({ ...data, testimonials: newArr });
+                                }}
+                              />
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                const newArr = data.testimonials.filter((_, idx) => idx !== i);
+                                setData({ ...data, testimonials: newArr });
+                              }}
+                            >
+                              <Trash2 className="size-4 mr-2" /> Remove
+                            </Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* FAQS SECTION */}
+              <TabsContent value="faqs">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>FAQs</CardTitle>
+                      <CardDescription>
+                        Frequently asked questions on the landing page.
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="faqs-visibility">Visible</Label>
+                        <Switch
+                          id="faqs-visibility"
+                          checked={data.visibility?.faqs ?? true}
+                          onCheckedChange={(checked) =>
+                            setData({ ...data, visibility: { ...data.visibility, faqs: checked } })
+                          }
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setData({
+                            ...data,
+                            faqs: [...data.faqs, { q: "New Question?", a: "New Answer." }],
+                          });
+                        }}
+                      >
+                        <Plus className="size-4 mr-2" /> Add
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                      {data.faqs.map((item, i) => (
+                        <AccordionItem key={i} value={`faq-${i}`}>
+                          <AccordionTrigger className="text-left">{item.q}</AccordionTrigger>
+                          <AccordionContent className="space-y-4 p-4 border rounded-lg mt-2">
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Question</label>
+                              <Input
+                                value={item.q}
+                                onChange={(e) => {
+                                  const newArr = [...data.faqs];
+                                  newArr[i].q = e.target.value;
+                                  setData({ ...data, faqs: newArr });
+                                }}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Answer</label>
+                              <Textarea
+                                value={item.a}
+                                onChange={(e) => {
+                                  const newArr = [...data.faqs];
+                                  newArr[i].a = e.target.value;
+                                  setData({ ...data, faqs: newArr });
+                                }}
+                              />
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                const newArr = data.faqs.filter((_, idx) => idx !== i);
+                                setData({ ...data, faqs: newArr });
+                              }}
+                            >
+                              <Trash2 className="size-4 mr-2" /> Remove
+                            </Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              {/* CONTACT SECTION */}
+              <TabsContent value="contact">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Contact Information</CardTitle>
+                    <CardDescription>
+                      Update the contact details shown in the footer and contact page.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Helpline </label>
+                      <Input
+                        value={data.contact?.helpline || ""}
+                        onChange={(e) =>
+                          setData({
+                            ...data,
+                            contact: { ...data.contact, helpline: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Email Support</label>
+                      <Input
+                        value={data.contact?.email || ""}
+                        onChange={(e) =>
+                          setData({
+                            ...data,
+                            contact: { ...data.contact, email: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Office Address</label>
+                      <Input
+                        value={data.contact?.office || ""}
+                        onChange={(e) =>
+                          setData({
+                            ...data,
+                            contact: { ...data.contact, office: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">WhatsApp</label>
+                      <Input
+                        value={data.contact?.whatsapp || ""}
+                        onChange={(e) =>
+                          setData({
+                            ...data,
+                            contact: { ...data.contact, whatsapp: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
-          {/* FAQS SECTION */}
-          <TabsContent value="faqs">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>FAQs</CardTitle>
-                  <CardDescription>Frequently asked questions on the landing page.</CardDescription>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="faqs-visibility">Visible</Label>
-                    <Switch
-                      id="faqs-visibility"
-                      checked={data.visibility?.faqs ?? true}
-                      onCheckedChange={(checked) =>
-                        setData({ ...data, visibility: { ...data.visibility, faqs: checked } })
+          {/* ABOUT PAGE EDITOR */}
+          <TabsContent value="about">
+            <Tabs defaultValue="aboutHero" className="w-full">
+              <TabsList className="mb-4 grid w-full grid-cols-4 h-auto">
+                <TabsTrigger value="aboutHero">Hero</TabsTrigger>
+                <TabsTrigger value="aboutMission">Mission & Vision</TabsTrigger>
+                <TabsTrigger value="aboutObjectives">Objectives</TabsTrigger>
+                <TabsTrigger value="aboutTimeline">Timeline</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="aboutHero">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hero Section</CardTitle>
+                    <CardDescription>The main banner at the top of the About page.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Badge Text</label>
+                      <Input
+                        value={aboutData.hero.badgeText}
+                        onChange={(e) =>
+                          setAboutData({
+                            ...aboutData,
+                            hero: { ...aboutData.hero, badgeText: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Title Line 1</label>
+                        <Input
+                          value={aboutData.hero.titleLine1}
+                          onChange={(e) =>
+                            setAboutData({
+                              ...aboutData,
+                              hero: { ...aboutData.hero, titleLine1: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">Title Gradient Text</label>
+                        <Input
+                          value={aboutData.hero.titleGradient}
+                          onChange={(e) =>
+                            setAboutData({
+                              ...aboutData,
+                              hero: { ...aboutData.hero, titleGradient: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Subtitle</label>
+                      <Textarea
+                        value={aboutData.hero.subtitle}
+                        onChange={(e) =>
+                          setAboutData({
+                            ...aboutData,
+                            hero: { ...aboutData.hero, subtitle: e.target.value },
+                          })
+                        }
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="aboutMission">
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Mission</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Title</label>
+                      <Input
+                        value={aboutData.mission.title}
+                        onChange={(e) =>
+                          setAboutData({
+                            ...aboutData,
+                            mission: { ...aboutData.mission, title: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Description</label>
+                      <Textarea
+                        value={aboutData.mission.description}
+                        onChange={(e) =>
+                          setAboutData({
+                            ...aboutData,
+                            mission: { ...aboutData.mission, description: e.target.value },
+                          })
+                        }
+                        rows={8}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Vision</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Title</label>
+                      <Input
+                        value={aboutData.vision.title}
+                        onChange={(e) =>
+                          setAboutData({
+                            ...aboutData,
+                            vision: { ...aboutData.vision, title: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Description</label>
+                      <Textarea
+                        value={aboutData.vision.description}
+                        onChange={(e) =>
+                          setAboutData({
+                            ...aboutData,
+                            vision: { ...aboutData.vision, description: e.target.value },
+                          })
+                        }
+                        rows={8}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="aboutObjectives">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Objectives</CardTitle>
+                      <CardDescription>The core goals of the initiative.</CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        setAboutData({
+                          ...aboutData,
+                          objectives: [
+                            ...aboutData.objectives,
+                            { icon: "Users", title: "", description: "" },
+                          ],
+                        })
                       }
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setData({
-                        ...data,
-                        faqs: [...data.faqs, { q: "New Question?", a: "New Answer." }],
-                      });
-                    }}
-                  >
-                    <Plus className="size-4 mr-2" /> Add
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                  {data.faqs.map((item, i) => (
-                    <AccordionItem key={i} value={`faq-${i}`}>
-                      <AccordionTrigger className="text-left">{item.q}</AccordionTrigger>
-                      <AccordionContent className="space-y-4 p-4 border rounded-lg mt-2">
-                        <div className="grid gap-2">
-                          <label className="text-xs font-medium">Question</label>
-                          <Input
-                            value={item.q}
-                            onChange={(e) => {
-                              const newArr = [...data.faqs];
-                              newArr[i].q = e.target.value;
-                              setData({ ...data, faqs: newArr });
-                            }}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <label className="text-xs font-medium">Answer</label>
-                          <Textarea
-                            value={item.a}
-                            onChange={(e) => {
-                              const newArr = [...data.faqs];
-                              newArr[i].a = e.target.value;
-                              setData({ ...data, faqs: newArr });
-                            }}
-                          />
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            const newArr = data.faqs.filter((_, idx) => idx !== i);
-                            setData({ ...data, faqs: newArr });
-                          }}
-                        >
-                          <Trash2 className="size-4 mr-2" /> Remove
-                        </Button>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          {/* CONTACT SECTION */}
-          <TabsContent value="contact">
-            <Card>
-              <CardHeader>
-                <CardTitle>Contact Information</CardTitle>
-                <CardDescription>
-                  Update the contact details shown in the footer and contact page.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Helpline (Toll Free)</label>
-                  <Input
-                    value={data.contact?.helpline || ""}
-                    onChange={(e) =>
-                      setData({
-                        ...data,
-                        contact: { ...data.contact, helpline: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Email Support</label>
-                  <Input
-                    value={data.contact?.email || ""}
-                    onChange={(e) =>
-                      setData({
-                        ...data,
-                        contact: { ...data.contact, email: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Office Address</label>
-                  <Input
-                    value={data.contact?.office || ""}
-                    onChange={(e) =>
-                      setData({
-                        ...data,
-                        contact: { ...data.contact, office: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">WhatsApp</label>
-                  <Input
-                    value={data.contact?.whatsapp || ""}
-                    onChange={(e) =>
-                      setData({
-                        ...data,
-                        contact: { ...data.contact, whatsapp: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                    >
+                      <Plus className="size-4 mr-2" /> Add Objective
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                      {aboutData.objectives.map((obj, i) => (
+                        <AccordionItem key={i} value={`obj-${i}`}>
+                          <AccordionTrigger className="hover:no-underline font-medium">
+                            {obj.title || `Objective ${i + 1}`}
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-4 p-4 border rounded-md mt-2">
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Icon Name</label>
+                              <Input
+                                value={obj.icon}
+                                onChange={(e) => {
+                                  const newArr = [...aboutData.objectives];
+                                  newArr[i].icon = e.target.value;
+                                  setAboutData({ ...aboutData, objectives: newArr });
+                                }}
+                                placeholder="e.g., Users, Target, Rocket"
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Title</label>
+                              <Input
+                                value={obj.title}
+                                onChange={(e) => {
+                                  const newArr = [...aboutData.objectives];
+                                  newArr[i].title = e.target.value;
+                                  setAboutData({ ...aboutData, objectives: newArr });
+                                }}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Description</label>
+                              <Textarea
+                                value={obj.description}
+                                onChange={(e) => {
+                                  const newArr = [...aboutData.objectives];
+                                  newArr[i].description = e.target.value;
+                                  setAboutData({ ...aboutData, objectives: newArr });
+                                }}
+                                rows={3}
+                              />
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                const newArr = aboutData.objectives.filter((_, idx) => idx !== i);
+                                setAboutData({ ...aboutData, objectives: newArr });
+                              }}
+                            >
+                              <Trash2 className="size-4 mr-2" /> Remove
+                            </Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="aboutTimeline">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Journey Timeline</CardTitle>
+                      <CardDescription>Historical milestones of the organization.</CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        setAboutData({
+                          ...aboutData,
+                          timeline: [...aboutData.timeline, { date: "", title: "", desc: "" }],
+                        })
+                      }
+                    >
+                      <Plus className="size-4 mr-2" /> Add Milestone
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                      {aboutData.timeline.map((item, i) => (
+                        <AccordionItem key={i} value={`about-timeline-${i}`}>
+                          <AccordionTrigger className="hover:no-underline font-medium">
+                            {item.title || `Milestone ${i + 1}`}
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-4 p-4 border rounded-md mt-2">
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Date/Year</label>
+                              <Input
+                                value={item.date}
+                                onChange={(e) => {
+                                  const newArr = [...aboutData.timeline];
+                                  newArr[i].date = e.target.value;
+                                  setAboutData({ ...aboutData, timeline: newArr });
+                                }}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Title</label>
+                              <Input
+                                value={item.title}
+                                onChange={(e) => {
+                                  const newArr = [...aboutData.timeline];
+                                  newArr[i].title = e.target.value;
+                                  setAboutData({ ...aboutData, timeline: newArr });
+                                }}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <label className="text-xs font-medium">Description</label>
+                              <Textarea
+                                value={item.desc}
+                                onChange={(e) => {
+                                  const newArr = [...aboutData.timeline];
+                                  newArr[i].desc = e.target.value;
+                                  setAboutData({ ...aboutData, timeline: newArr });
+                                }}
+                              />
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                const newArr = aboutData.timeline.filter((_, idx) => idx !== i);
+                                setAboutData({ ...aboutData, timeline: newArr });
+                              }}
+                            >
+                              <Trash2 className="size-4 mr-2" /> Remove
+                            </Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>

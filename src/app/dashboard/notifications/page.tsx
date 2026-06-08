@@ -2,7 +2,15 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell } from "lucide-react";
-import { notifications } from "@/data/mock";
+const notifications = [
+  {
+    id: "1",
+    title: "Welcome to Uttar Pradesh Connect!",
+    desc: "Your citizen profile has been created successfully. Explore the dashboard to discover opportunities.",
+    time: "Just now",
+    type: "info",
+  },
+];
 
 export default function Notifications() {
   return (

@@ -88,7 +88,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <DashboardShell nav={nav} brandLabel="Bhavishya UP" brandSub={`${role.toUpperCase()} PORTAL`}>
+    <DashboardShell
+      nav={nav}
+      brandLabel="Bhavishya E Uttar Pradesh"
+      brandSub={`${role.toUpperCase()} PORTAL`}
+    >
       {/* Show verification banner for citizens (non-admin) */}
       {profile && role === "user" && <VerificationBanner profile={profile} />}
       {children}

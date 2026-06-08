@@ -459,8 +459,8 @@ export default function DashboardHome() {
             asChild
             className="mt-5 bg-accent text-primary hover:bg-accent-glow font-semibold"
           >
-            <Link href="/dashboard/apply">
-              Start new application <ArrowRight className="size-4 ml-1.5" />
+            <Link href="/dashboard/events">
+              Explore Events <ArrowRight className="size-4 ml-1.5" />
             </Link>
           </Button>
         </div>

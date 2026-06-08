@@ -48,6 +48,7 @@ export default function ApplicationsPage() {
     if (!authLoading && user && profile) {
       fetchApplications();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile, authLoading]);
 
   const fetchApplications = async () => {
@@ -89,7 +90,7 @@ export default function ApplicationsPage() {
       toast.success(`Application marked as ${newStatus}`);
 
       // Try to get event title for the email
-      let eventTitle = "Bhavishya UP Event";
+      let eventTitle = "Bhavishya E Uttar Pradesh Event";
       try {
         const eventDoc = await getDoc(doc(db, "events", appData.eventId));
         if (eventDoc.exists()) {

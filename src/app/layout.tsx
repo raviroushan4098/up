@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Bhavishya Uttar Pradesh — Official Registration Portal",
   description:
-    "नए उत्तर प्रदेश का नया भविष्य. Register for   Uttar Pradesh events, schemes and initiatives for the youth of UP.",
+    " विकसित भारत की सीढ़ी आज की युवा पीढ़ी Register for   Uttar Pradesh events, schemes and initiatives for the youth of UP.",
   authors: [{ name: "  Uttar Pradesh" }],
   icons: {
     icon: "/brandlogo2.svg",

@@ -28,7 +28,7 @@ export function AuthLayout({
               <img src="/brandlogo2.svg" alt="Logo" className="w-full h-full object-contain p-1" />
             </div>
             <div className="leading-tight">
-              <div className="font-display font-bold">Bhavishya UP</div>
+              <div className="font-display font-bold">Bhavishya E Uttar Pradesh</div>
               <div className="text-xs opacity-80"> Uttar Pradesh</div>
             </div>
           </Link>
@@ -42,16 +42,16 @@ export function AuthLayout({
               className="max-w-md mx-auto drop-shadow-2xl"
             />
             <h2 className="mt-8 font-display font-extrabold text-3xl leading-tight">
-              नए उत्तर प्रदेश का
+              विकसित भारत की सीढ़ी
               <br />
-              <span className="text-accent-glow">नया भविष्य</span>
+              <span className="text-accent-glow">आज की युवा पीढ़ी</span>
             </h2>
             <p className="mt-3 opacity-80 max-w-md">
               Join 2.4 lakh+ citizens accessing opportunities through a single, secure portal.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm opacity-80">
-            <ShieldCheck className="size-4" /> Secured under IT Act 2000 · India
+            <ShieldCheck className="size-4" />
           </div>
         </div>
       </div>

@@ -34,6 +34,19 @@ export interface UPEvent {
     requireVideo: boolean;
   };
 
+  displayConfig?: {
+    showDates: boolean;
+    showVenue: boolean;
+    showDressCode: boolean;
+    showContactInfo: boolean;
+    showVideoGuidelines: boolean;
+    showRules: boolean;
+    showAgendaTopics: boolean;
+    showEligibility: boolean;
+    showBenefits: boolean;
+    showSchedule: boolean;
+  };
+
   createdAt: string;
 }
 

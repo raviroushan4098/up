@@ -74,3 +74,75 @@ export interface LandingPageCMS {
     faqs: boolean;
   };
 }
+
+export interface AboutHero {
+  badgeText: string;
+  titleLine1: string;
+  titleGradient: string;
+  subtitle: string;
+}
+
+export interface AboutMissionVision {
+  title: string;
+  description: string;
+}
+
+export interface AboutObjective {
+  icon: string; // e.g., "Users", "Landmark", "Award", "Flag", "HeartHandshake", "Rocket"
+  title: string;
+  description: string;
+}
+
+export interface AboutTimelineItem {
+  date: string;
+  title: string;
+  desc: string;
+}
+
+export interface AboutPageCMS {
+  hero: AboutHero;
+  mission: AboutMissionVision;
+  vision: AboutMissionVision;
+  objectives: AboutObjective[];
+  timeline: AboutTimelineItem[];
+}
+
+export const emptyLandingCMS: LandingPageCMS = {
+  hero: {
+    badgeText: "",
+    titleLine1: "",
+    titleGradient: "",
+    subtitle: "",
+    stat1Label: "",
+    stat1Value: "",
+    stat2Label: "",
+    stat2Value: "",
+    stat3Label: "",
+    stat3Value: "",
+    image: "",
+  },
+  stats: [],
+  timeline: [],
+  benefits: [],
+  howItWorks: [],
+  testimonials: [],
+  faqs: [],
+  contact: { helpline: "", email: "", office: "", whatsapp: "" },
+  visibility: {
+    hero: true,
+    stats: true,
+    timeline: true,
+    benefits: true,
+    howItWorks: true,
+    testimonials: true,
+    faqs: true,
+  },
+};
+
+export const emptyAboutCMS: AboutPageCMS = {
+  hero: { badgeText: "", titleLine1: "", titleGradient: "", subtitle: "" },
+  mission: { title: "", description: "" },
+  vision: { title: "", description: "" },
+  objectives: [],
+  timeline: [],
+};
