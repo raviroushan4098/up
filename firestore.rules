@@ -28,9 +28,12 @@ service cloud.firestore {
         (
           request.auth.uid == userId &&
           // Prevent role escalation
+          // Prevent role escalation
           (!("role" in request.resource.data) || request.resource.data.role == resource.data.role) &&
-          // Prevent self-verifying
-          (!("verificationStatus" in request.resource.data) || request.resource.data.verificationStatus == resource.data.verificationStatus)
+          // Prevent self-verifying (Users can only set to pending or keep it the same)
+          (!("verificationStatus" in request.resource.data) || 
+           request.resource.data.verificationStatus == "pending" || 
+           request.resource.data.verificationStatus == resource.data.get("verificationStatus", ""))
         )
       );
 
