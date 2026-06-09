@@ -521,6 +521,7 @@ export default function OnboardingPage() {
         // Add to Aadhaar Registry to prevent duplicates
         const maskedPhone = phone.length >= 4 ? `******${phone.slice(-4)}` : "****";
         await setDoc(doc(db, "aadhaar_registry", aadhaar), {
+          uid: user.uid,
           maskedPhone: maskedPhone,
         });
 
