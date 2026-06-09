@@ -92,5 +92,16 @@ service cloud.firestore {
       allow read: if true; // Public read
       allow write: if isAdmin();
     }
+
+    // Dynamic QR Links collection
+    match /dynamic_links/{linkId} {
+      allow read: if true; // Anyone can read the redirect
+      allow create, delete: if isAdmin();
+      // Anyone can update the clicks counter, but only the clicks counter
+      allow update: if isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks']) &&
+        request.resource.data.clicks == resource.data.clicks + 1
+      );
+    }
   }
 }
