@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDateString, isDeadlinePassed } from "@/lib/utils";
+import { formatDateString, isDeadlinePassed, getDerivedEventStatus } from "@/lib/utils";
+import { UPEvent } from "@/types/events";
 import {
   Accordion,
   AccordionItem,
@@ -330,77 +331,82 @@ export default function HomePage() {
             </motion.div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {liveEvents.map((e, i) => (
-                <motion.div
-                  key={e.id}
-                  {...fadeUp}
-                  transition={{ ...fadeUp.transition, delay: i * 0.08 }}
-                >
-                  <Card className="overflow-hidden h-full border-0 shadow-card hover:shadow-elegant hover:-translate-y-1 transition-spring flex flex-col">
-                    <div className="relative aspect-[16/10] overflow-hidden">
-                      <img
-                        src={
-                          e.image ||
-                          e.bannerUrl ||
-                          "https://images.unsplash.com/photo-1540575467063-178a50c2df87"
-                        }
-                        alt={e.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-spring"
-                      />
-                      <Badge
-                        className={`absolute top-3 right-3 ${
-                          isDeadlinePassed(e.deadline) || e.status === "Closed"
-                            ? "bg-muted text-muted-foreground"
-                            : e.status === "Open"
-                              ? "bg-success text-success-foreground"
-                              : e.status === "Closing Soon"
-                                ? "bg-warning text-warning-foreground"
-                                : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {isDeadlinePassed(e.deadline) ? "Closed" : e.status}
-                      </Badge>
-                    </div>
-                    <CardContent className="p-5 flex-1 flex flex-col">
-                      <Badge variant="outline" className="mb-2 text-xs w-fit">
-                        {e.category}
-                      </Badge>
-                      <h3 className="font-display font-bold text-lg leading-snug text-primary">
-                        {e.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2 flex-1">
-                        {e.description}
-                      </p>
-                      <div className="flex items-center justify-between mt-5 pt-4 border-t text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="size-3.5" /> Deadline{" "}
-                          {formatDateString(e.deadline, {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {isDeadlinePassed(e.deadline) || e.status === "Closed" ? (
-                          <Link
-                            href={`/events/${e.id}`}
-                            className="font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
-                          >
-                            View Details <ArrowRight className="size-3.5" />
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/events/${e.id}`}
-                            className="font-semibold text-primary hover:text-accent-glow inline-flex items-center gap-1"
-                          >
-                            Apply <ArrowRight className="size-3.5" />
-                          </Link>
-                        )}
+              {liveEvents.map((e, i) => {
+                const derivedStatus = getDerivedEventStatus(e as UPEvent);
+                return (
+                  <motion.div
+                    key={e.id}
+                    {...fadeUp}
+                    transition={{ ...fadeUp.transition, delay: i * 0.08 }}
+                  >
+                    <Card className="overflow-hidden h-full border-0 shadow-card hover:shadow-elegant hover:-translate-y-1 transition-spring flex flex-col">
+                      <div className="relative aspect-[16/10] overflow-hidden">
+                        <img
+                          src={
+                            e.image ||
+                            e.bannerUrl ||
+                            "https://images.unsplash.com/photo-1540575467063-178a50c2df87"
+                          }
+                          alt={e.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-spring"
+                        />
+                        <Badge
+                          className={`absolute top-3 right-3 ${
+                            derivedStatus === "Closed"
+                              ? "bg-muted text-muted-foreground"
+                              : derivedStatus === "Open"
+                                ? "bg-success text-success-foreground"
+                                : derivedStatus === "Coming Soon"
+                                  ? "bg-accent text-accent-foreground"
+                                  : derivedStatus === "Closing Soon"
+                                    ? "bg-warning text-warning-foreground"
+                                    : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {derivedStatus}
+                        </Badge>
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                      <CardContent className="p-5 flex-1 flex flex-col">
+                        <Badge variant="outline" className="mb-2 text-xs w-fit">
+                          {e.category}
+                        </Badge>
+                        <h3 className="font-display font-bold text-lg leading-snug text-primary">
+                          {e.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2 flex-1">
+                          {e.description}
+                        </p>
+                        <div className="flex items-center justify-between mt-5 pt-4 border-t text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="size-3.5" /> Deadline{" "}
+                            {formatDateString(e.deadline, {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                          {derivedStatus === "Closed" || derivedStatus === "Coming Soon" ? (
+                            <Link
+                              href={`/events/${e.id}`}
+                              className="font-semibold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+                            >
+                              View Details <ArrowRight className="size-3.5" />
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/events/${e.id}`}
+                              className="font-semibold text-primary hover:text-accent-glow inline-flex items-center gap-1"
+                            >
+                              Apply <ArrowRight className="size-3.5" />
+                            </Link>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           </section>
 

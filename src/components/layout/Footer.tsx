@@ -40,7 +40,7 @@ export function Footer() {
             </div>
             <div>
               <div className="font-display font-bold">Bhavishya E Uttar Pradesh</div>
-              <div className="text-xs opacity-70"> उत्तर प्रदेश</div>
+              <div className="text-xs opacity-70"> भविष्य ए उत्तर प्रदेश</div>
             </div>
           </div>
           <p className="text-sm opacity-80 leading-relaxed">
