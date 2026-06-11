@@ -39,6 +39,7 @@ export default function OnboardingPage() {
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [age, setAge] = useState<number | "">("");
+  const [profession, setProfession] = useState("");
   const [pincode, setPincode] = useState("");
   const [stateName, setStateName] = useState("");
   const [district, setDistrict] = useState("");
@@ -46,7 +47,6 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
-  const [aadhaar, setAadhaar] = useState("");
   const [address, setAddress] = useState("");
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
@@ -54,9 +54,6 @@ export default function OnboardingPage() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [profilePhotoName, setProfilePhotoName] = useState("");
   const [profilePhotoError, setProfilePhotoError] = useState("");
-  const [aadhaarFile, setAadhaarFile] = useState<string | null>(null);
-  const [aadhaarFileName, setAadhaarFileName] = useState("");
-  const [aadhaarFileError, setAadhaarFileError] = useState("");
 
   // Email Verification States
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -67,7 +64,6 @@ export default function OnboardingPage() {
 
   // Raw file objects for Storage
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
-  const [aadhaarFileObj, setAadhaarFileObj] = useState<File | null>(null);
 
   // Helper to format bytes to human readable string
   const formatFileSize = (bytes: number) => {
@@ -89,6 +85,7 @@ export default function OnboardingPage() {
         if (data.motherName) setMotherName(data.motherName);
         if (data.gender) setGender(data.gender);
         if (data.dob) setDob(data.dob);
+        if (data.profession) setProfession(data.profession);
         if (data.pincode) setPincode(data.pincode);
         if (data.stateName) setStateName(data.stateName);
         if (data.district) setDistrict(data.district);
@@ -96,7 +93,6 @@ export default function OnboardingPage() {
         if (data.phone) setPhone(data.phone);
         if (data.email) setEmail(data.email);
         if (data.instagramHandle) setInstagramHandle(data.instagramHandle);
-        if (data.aadhaar) setAadhaar(data.aadhaar);
         if (data.address) setAddress(data.address);
       } catch (e) {
         console.error("Failed to load onboarding session data", e);
@@ -111,6 +107,7 @@ export default function OnboardingPage() {
       motherName,
       gender,
       dob,
+      profession,
       pincode,
       stateName,
       district,
@@ -118,7 +115,6 @@ export default function OnboardingPage() {
       phone,
       email,
       instagramHandle,
-      aadhaar,
       address,
     };
     sessionStorage.setItem("onboarding_form", JSON.stringify(data));
@@ -128,6 +124,7 @@ export default function OnboardingPage() {
     motherName,
     gender,
     dob,
+    profession,
     pincode,
     stateName,
     district,
@@ -135,7 +132,6 @@ export default function OnboardingPage() {
     phone,
     email,
     instagramHandle,
-    aadhaar,
     address,
   ]);
 
@@ -169,13 +165,29 @@ export default function OnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, user]);
 
+  // Handle DOB formatting as DD/MM/YYYY
+  const handleDobChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 8) val = val.slice(0, 8);
+
+    let formatted = val;
+    if (val.length > 2) {
+      formatted = val.slice(0, 2) + "/" + val.slice(2);
+    }
+    if (val.length > 4) {
+      formatted = formatted.slice(0, 5) + "/" + val.slice(4);
+    }
+    setDob(formatted);
+  };
+
   // Calculate age automatically when Date of Birth changes
   useEffect(() => {
-    if (!dob) {
+    if (!dob || dob.length !== 10) {
       setAge("");
       return;
     }
-    const birthDate = new Date(dob);
+    const [day, month, year] = dob.split("/");
+    const birthDate = new Date(Number(year), Number(month) - 1, Number(day));
     if (isNaN(birthDate.getTime())) {
       setAge("");
       return;
@@ -237,73 +249,7 @@ export default function OnboardingPage() {
     reader.readAsDataURL(file);
   };
 
-  // Handle Aadhaar upload (Max 10MB, PDF/JPG/PNG)
-  const handleAadhaarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setAadhaarFileError("");
-
-    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Please upload only PDF, JPG, or PNG formats");
-      setAadhaarFileError("Only PDF, JPG, or PNG formats are supported.");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      const sizeStr = formatFileSize(file.size);
-      toast.error(`Aadhaar document is too large (${sizeStr}). Maximum size is 10.0 MB.`);
-      setAadhaarFileError(
-        `File size (${sizeStr}) exceeds the 10.0 MB limit. Please compress or choose a smaller file.`,
-      );
-      return;
-    }
-
-    setAadhaarFileName(file.name);
-    setAadhaarFileObj(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAadhaarFile(reader.result as string);
-      toast.success("Aadhaar document uploaded successfully");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleAadhaarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, "");
-    if (val.length > 12) return;
-
-    // Group by 4 digits
-    let formatted = "";
-    for (let i = 0; i < val.length; i++) {
-      if (i > 0 && i % 4 === 0) {
-        formatted += "-";
-      }
-      formatted += val[i];
-    }
-    setAadhaar(formatted);
-
-    // Instant duplicate check
-    if (val.length === 12) {
-      try {
-        const docRef = doc(db, "aadhaar_registry", formatted);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          toast.error(
-            `This Aadhaar is already registered with mobile no ${data.maskedPhone || "unknown"}`,
-          );
-          setAadhaar(""); // clear to prevent submission
-        } else {
-          // It's not a duplicate, let them know the check ran!
-          toast.success("Aadhaar available for registration");
-        }
-      } catch (error) {
-        console.error("Error checking Aadhaar duplicate:", error);
-      }
-    }
-  };
+  // Handle profile photo upload (Max 2MB, JPG/PNG)
 
   const handleSendEmailOtp = async () => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -386,12 +332,20 @@ export default function OnboardingPage() {
       toast.error("Father's Name is required");
       return;
     }
+    if (!motherName.trim()) {
+      toast.error("Mother's Name is required");
+      return;
+    }
     if (!gender) {
       toast.error("Gender selection is required");
       return;
     }
     if (!dob) {
       toast.error("Date of Birth is required");
+      return;
+    }
+    if (!profession.trim()) {
+      toast.error("Field of Study / Profession is required");
       return;
     }
     if (!stateName) {
@@ -422,32 +376,10 @@ export default function OnboardingPage() {
       toast.error("Instagram handle is required");
       return;
     }
-    if (aadhaar.replace(/-/g, "").length !== 12) {
-      toast.error("Aadhaar number must be exactly 12 digits");
-      return;
-    }
-    if (!aadhaarFile) {
-      toast.error("Aadhaar card copy is required");
-      setAadhaarFileError("Aadhaar card copy is required");
-      return;
-    }
 
     setSubmitting(true);
     try {
-      // Final duplicate check to prevent race conditions or pasted values
-      const aadhaarRef = doc(db, "aadhaar_registry", aadhaar);
-      const aadhaarSnap = await getDoc(aadhaarRef);
-      if (aadhaarSnap.exists()) {
-        const data = aadhaarSnap.data();
-        toast.error(
-          `This Aadhaar is already registered with mobile no ${data.maskedPhone || "unknown"}`,
-        );
-        setSubmitting(false);
-        return;
-      }
-
       let finalProfilePhotoUrl = profile?.profilePhotoUrl || "";
-      let finalAadhaarUploadUrl = profile?.aadhaarUploadUrl || "";
 
       if (user) {
         const storage = getStorage(app);
@@ -460,14 +392,6 @@ export default function OnboardingPage() {
           finalProfilePhotoUrl = await getDownloadURL(photoUploadResult.ref);
         }
 
-        // 2. Upload Aadhaar copy if changed
-        if (aadhaarFileObj) {
-          const aadhaarExtension = aadhaarFileObj.name.split(".").pop();
-          const aadhaarRef = ref(storage, `users/${user.uid}/aadhaar.${aadhaarExtension}`);
-          const aadhaarUploadResult = await uploadBytes(aadhaarRef, aadhaarFileObj);
-          finalAadhaarUploadUrl = await getDownloadURL(aadhaarUploadResult.ref);
-        }
-
         const updatedProfile = {
           ...profile,
           fullName,
@@ -476,6 +400,7 @@ export default function OnboardingPage() {
           gender,
           dob,
           age: Number(age),
+          profession: profession.trim(),
           pincode,
           state: stateName,
           district,
@@ -483,10 +408,8 @@ export default function OnboardingPage() {
           phoneNumber: phone,
           email: email.trim() || undefined,
           instagramHandle: formatInstagramHandle(instagramHandle),
-          aadhaarNumber: aadhaar,
           address: address.trim() || undefined,
           profilePhotoUrl: finalProfilePhotoUrl,
-          aadhaarUploadUrl: finalAadhaarUploadUrl,
           onboarded: true,
           verificationStatus: "pending" as const,
           rejectionReason: deleteField(),
@@ -517,13 +440,6 @@ export default function OnboardingPage() {
         } catch (e) {
           console.error("Failed to update global counters", e);
         }
-
-        // Add to Aadhaar Registry to prevent duplicates
-        const maskedPhone = phone.length >= 4 ? `******${phone.slice(-4)}` : "****";
-        await setDoc(doc(db, "aadhaar_registry", aadhaar), {
-          uid: user.uid,
-          maskedPhone: maskedPhone,
-        });
 
         await refreshProfile();
         sessionStorage.removeItem("onboarding_form");
@@ -668,10 +584,10 @@ export default function OnboardingPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="motherName">Mother’s Name</Label>
+                    <Label htmlFor="motherName">Mother’s Name *</Label>
                     <Input
                       id="motherName"
-                      placeholder="Optional field"
+                      required
                       value={motherName}
                       onChange={(e) => setMotherName(e.target.value)}
                       disabled={submitting}
@@ -694,12 +610,16 @@ export default function OnboardingPage() {
                     <Label htmlFor="dob">Date of Birth *</Label>
                     <Input
                       id="dob"
-                      type="date"
+                      type="text"
+                      placeholder="DD/MM/YYYY"
                       required
                       value={dob}
-                      onChange={(e) => setDob(e.target.value)}
+                      onChange={handleDobChange}
                       disabled={submitting}
                     />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Select your date of birth (DD/MM/YYYY)
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="age">Age (Auto Calculated)</Label>
@@ -710,6 +630,17 @@ export default function OnboardingPage() {
                       placeholder="Fill Date of Birth"
                       className="bg-secondary"
                       disabled
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="profession">Field of Study / Profession *</Label>
+                    <Input
+                      id="profession"
+                      required
+                      placeholder="e.g. B.Tech Computer Science, Software Engineer, Student"
+                      value={profession}
+                      onChange={(e) => setProfession(e.target.value)}
+                      disabled={submitting}
                     />
                   </div>
                 </div>
@@ -833,6 +764,11 @@ export default function OnboardingPage() {
                         </Button>
                       )}
                     </div>
+                    {otpSent && !isEmailVerified && (
+                      <p className="text-[11px] text-amber-500 font-medium mt-1">
+                        Kindly check Spam folder Also
+                      </p>
+                    )}
                     {isEmailVerified && (
                       <p className="text-xs text-success font-medium flex items-center mt-1">
                         <CheckCircle2 className="size-3 mr-1" /> Email Verified
@@ -873,65 +809,6 @@ export default function OnboardingPage() {
                       onBlur={() => setInstagramHandle(formatInstagramHandle(instagramHandle))}
                       disabled={submitting}
                     />
-                  </div>
-                </div>
-              </div>
-
-              {/* Identification Documents */}
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="font-display font-bold text-lg text-primary border-l-4 border-accent pl-2.5">
-                  Verification
-                </h3>
-                <div className="grid sm:grid-cols-2 gap-4 items-start">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="aadhaar">Aadhaar Number *</Label>
-                    <Input
-                      id="aadhaar"
-                      required
-                      placeholder="XXXX-XXXX-XXXX"
-                      value={aadhaar}
-                      onChange={handleAadhaarChange}
-                      disabled={submitting}
-                      className="font-mono text-base tracking-wider"
-                    />
-                  </div>
-                  <div className="space-y-1.5 w-full">
-                    <label
-                      className={`relative border-2 border-dashed rounded-xl p-5 text-center hover:bg-accent/5 transition-base cursor-pointer flex flex-col items-center justify-center min-h-[96px] w-full ${aadhaarFileError ? "border-destructive bg-destructive/5 hover:border-destructive" : "border-border hover:border-accent"}`}
-                    >
-                      <input
-                        type="file"
-                        className="sr-only"
-                        accept="application/pdf,image/jpeg,image/png"
-                        onChange={handleAadhaarFileChange}
-                        disabled={submitting}
-                      />
-                      {aadhaarFile ? (
-                        <div className="flex items-center gap-2 text-sm text-success font-semibold">
-                          <CheckCircle2 className="size-5 shrink-0" />
-                          <span className="truncate max-w-[180px]">{aadhaarFileName}</span>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload
-                            className={`size-5 mb-1 ${aadhaarFileError ? "text-destructive" : "text-muted-foreground"}`}
-                          />
-                          <span
-                            className={`text-xs font-semibold ${aadhaarFileError ? "text-destructive" : "text-primary"}`}
-                          >
-                            Upload Aadhaar Copy *
-                          </span>
-                          <span className="text-[10px] text-muted-foreground mt-0.5">
-                            PDF or Image, Max 10MB
-                          </span>
-                        </>
-                      )}
-                    </label>
-                    {aadhaarFileError && (
-                      <p className="text-xs text-destructive font-medium mt-1">
-                        {aadhaarFileError}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>

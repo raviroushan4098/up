@@ -15,6 +15,7 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/firebase";
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +44,8 @@ export default function VerificationPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   // Rejection dialog state
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -176,8 +180,17 @@ export default function VerificationPage() {
   };
 
   const filteredCitizens = citizens.filter((c) => {
-    if (activeTab === "all") return true;
-    return (c.verificationStatus ?? "pending") === activeTab;
+    if (activeTab !== "all" && (c.verificationStatus ?? "pending") !== activeTab) {
+      return false;
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const nameMatch = c.fullName?.toLowerCase().includes(q);
+      const emailMatch = c.email?.toLowerCase().includes(q);
+      const phoneMatch = c.phoneNumber?.toLowerCase().includes(q);
+      return nameMatch || emailMatch || phoneMatch;
+    }
+    return true;
   });
 
   const countBy = (status: string) =>
@@ -257,24 +270,35 @@ export default function VerificationPage() {
         ))}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-base ${
-              activeTab === t.key
-                ? "bg-gradient-saffron text-primary shadow-soft"
-                : "bg-secondary text-foreground/60 hover:text-primary"
-            }`}
-          >
-            {t.label}
-            {t.key !== "all" && (
-              <span className="ml-1.5 text-xs opacity-70">({countBy(t.key)})</span>
-            )}
-          </button>
-        ))}
+      {/* Filter Tabs & Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex gap-2 flex-wrap">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-base ${
+                activeTab === t.key
+                  ? "bg-gradient-saffron text-primary shadow-soft"
+                  : "bg-secondary text-foreground/60 hover:text-primary"
+              }`}
+            >
+              {t.label}
+              {t.key !== "all" && (
+                <span className="ml-1.5 text-xs opacity-70">({countBy(t.key)})</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search name, phone, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-10 rounded-full bg-secondary border-transparent focus-visible:border-primary"
+          />
+        </div>
       </div>
 
       {/* Citizens List */}
@@ -323,7 +347,8 @@ export default function VerificationPage() {
                           <img
                             src={citizen.profilePhotoUrl}
                             alt={citizen.fullName}
-                            className="size-14 rounded-xl object-cover border shadow-soft"
+                            className="size-14 rounded-xl object-cover border shadow-soft cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setEnlargedImage(citizen.profilePhotoUrl!)}
                           />
                         ) : (
                           <div className="size-14 rounded-xl bg-gradient-saffron grid place-items-center font-display font-extrabold text-primary text-lg">
@@ -348,9 +373,7 @@ export default function VerificationPage() {
                         <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
                           <span>{citizen.email}</span>
                           {citizen.district && <span>📍 {citizen.district}</span>}
-                          {citizen.aadhaarNumber && (
-                            <span>🪪 {maskAadhaar(citizen.aadhaarNumber)}</span>
-                          )}
+                          {citizen.profession && <span>💼 {citizen.profession}</span>}
                         </div>
                         {status === "rejected" && citizen.rejectionReason && (
                           <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
@@ -443,6 +466,7 @@ export default function VerificationPage() {
                               <DetailRow label="Gender" value={citizen.gender} />
                               <DetailRow label="Date of Birth" value={citizen.dob} />
                               <DetailRow label="Age" value={citizen.age?.toString()} />
+                              <DetailRow label="Profession" value={citizen.profession} />
                             </div>
 
                             {/* Contact & Location */}
@@ -455,55 +479,6 @@ export default function VerificationPage() {
                               <DetailRow label="District" value={citizen.district} />
                               <DetailRow label="Village / City" value={citizen.villageCity} />
                               <DetailRow label="Address" value={citizen.address} />
-                            </div>
-
-                            {/* Documents */}
-                            <div className="space-y-2">
-                              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                                Documents
-                              </h4>
-                              <DetailRow
-                                label="Aadhaar Number"
-                                value={
-                                  citizen.aadhaarNumber
-                                    ? maskAadhaar(citizen.aadhaarNumber)
-                                    : undefined
-                                }
-                              />
-                              {/* Aadhaar Document Preview */}
-                              {citizen.aadhaarUploadUrl && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">
-                                    Aadhaar Document
-                                  </p>
-                                  {citizen.aadhaarUploadUrl.startsWith("https://firebasestorage") ||
-                                  citizen.aadhaarUploadUrl.includes("firebasestorage") ? (
-                                    citizen.aadhaarUploadUrl.toLowerCase().includes(".pdf") ? (
-                                      <a
-                                        href={citizen.aadhaarUploadUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline"
-                                      >
-                                        <FileText className="size-3.5" />
-                                        View PDF Document
-                                      </a>
-                                    ) : (
-                                      <a
-                                        href={citizen.aadhaarUploadUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        <img
-                                          src={citizen.aadhaarUploadUrl}
-                                          alt="Aadhaar"
-                                          className="h-28 rounded-lg border object-cover hover:opacity-90 transition-base"
-                                        />
-                                      </a>
-                                    )
-                                  ) : null}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </motion.div>
@@ -566,6 +541,22 @@ export default function VerificationPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Image Enlarge Dialog */}
+      <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+        <DialogContent className="sm:max-w-xl p-0 overflow-hidden bg-transparent border-0 shadow-none">
+          <DialogTitle className="sr-only">Enlarged Profile Image</DialogTitle>
+          {enlargedImage && (
+            <div className="relative flex justify-center items-center">
+              <img
+                src={enlargedImage}
+                alt="Enlarged profile"
+                className="max-w-full max-h-[85vh] rounded-xl object-contain bg-black/50 backdrop-blur-md"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -600,9 +591,4 @@ function DetailRow({ label, value }: { label: string; value?: string }) {
       <p className="text-xs font-semibold text-primary mt-0.5 break-words">{value}</p>
     </div>
   );
-}
-
-function maskAadhaar(aadhaar: string) {
-  const digits = aadhaar.replace(/-/g, "");
-  return `XXXX-XXXX-${digits.slice(-4)}`;
 }

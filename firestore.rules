@@ -41,14 +41,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Aadhaar Registry (For duplicate checking)
-    match /aadhaar_registry/{aadhaarNumber} {
-      allow get: if request.auth != null; // Allow fetching specific aadhaar during onboarding
-      allow list: if false; // Prevent querying/scraping all aadhaars
-      // Only allow creation, prevent overwrites, and uid must match
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false; 
-    }
 
     // Events collection
     match /events/{eventId} {

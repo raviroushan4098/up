@@ -173,6 +173,10 @@ export default function LoginPage() {
                 onChange={(e) => setOtp(e.target.value)}
                 disabled={submitting}
               />
+              <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">
+                Dear user, if you have installed Truecaller on your device, kindly check the spam
+                folder for the OTP.
+              </p>
             </div>
             <div className="flex gap-2">
               <Button

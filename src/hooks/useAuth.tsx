@@ -22,10 +22,9 @@ export interface UserProfile {
   gender?: string;
   dob?: string;
   age?: number;
+  profession?: string;
   villageCity?: string;
   phoneNumber?: string;
-  aadhaarNumber?: string;
-  aadhaarUploadUrl?: string;
   address?: string;
   profilePhotoUrl?: string;
   // Verification workflow fields

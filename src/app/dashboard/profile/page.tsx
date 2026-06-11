@@ -45,6 +45,7 @@ export default function ProfilePage() {
   const [motherName, setMotherName] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
+  const [profession, setProfession] = useState("");
   const [pincode, setPincode] = useState("");
   const [stateName, setStateName] = useState("");
   const [district, setDistrict] = useState("");
@@ -54,13 +55,9 @@ export default function ProfilePage() {
   const [instagramHandle, setInstagramHandle] = useState("");
   const [address, setAddress] = useState("");
 
-  // File upload
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [profilePhotoName, setProfilePhotoName] = useState("");
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
-  const [aadhaarFile, setAadhaarFile] = useState<string | null>(null);
-  const [aadhaarFileName, setAadhaarFileName] = useState("");
-  const [aadhaarFileObj, setAadhaarFileObj] = useState<File | null>(null);
 
   // Pre-fill from existing profile
   useEffect(() => {
@@ -70,6 +67,7 @@ export default function ProfilePage() {
       setMotherName(profile.motherName || "");
       setGender(profile.gender || "");
       setDob(profile.dob || "");
+      setProfession(profile.profession || "");
       setPincode(profile.pincode || "");
       setStateName(profile.state || "");
       setDistrict(profile.district || "");
@@ -129,28 +127,6 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  const handleAadhaarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const allowed = ["application/pdf", "image/jpeg", "image/png"];
-    if (!allowed.includes(file.type)) {
-      toast.error("Please upload only PDF, JPG, or PNG formats");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error(`File too large (${formatFileSize(file.size)}). Maximum 10MB.`);
-      return;
-    }
-    setAadhaarFileName(file.name);
-    setAadhaarFileObj(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAadhaarFile(reader.result as string);
-      toast.success("Aadhaar document updated");
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) {
@@ -161,12 +137,20 @@ export default function ProfilePage() {
       toast.error("Father's Name is required");
       return;
     }
+    if (!motherName.trim()) {
+      toast.error("Mother's Name is required");
+      return;
+    }
     if (!gender) {
       toast.error("Gender is required");
       return;
     }
     if (!dob) {
       toast.error("Date of Birth is required");
+      return;
+    }
+    if (!profession.trim()) {
+      toast.error("Field of Study / Profession is required");
       return;
     }
     if (!stateName) {
@@ -193,7 +177,6 @@ export default function ProfilePage() {
     setSubmitting(true);
     try {
       let finalProfilePhotoUrl = profile?.profilePhotoUrl || "";
-      let finalAadhaarUploadUrl = profile?.aadhaarUploadUrl || "";
 
       if (user) {
         const storage = getStorage(app);
@@ -205,13 +188,6 @@ export default function ProfilePage() {
           finalProfilePhotoUrl = await getDownloadURL(result.ref);
         }
 
-        if (aadhaarFileObj) {
-          const ext = aadhaarFileObj.name.split(".").pop();
-          const aadhaarRef = ref(storage, `users/${user.uid}/aadhaar.${ext}`);
-          const result = await uploadBytes(aadhaarRef, aadhaarFileObj);
-          finalAadhaarUploadUrl = await getDownloadURL(result.ref);
-        }
-
         const updatedProfile = {
           ...profile,
           fullName,
@@ -219,6 +195,7 @@ export default function ProfilePage() {
           motherName: motherName.trim() || undefined,
           gender,
           dob,
+          profession: profession.trim(),
           pincode,
           state: stateName,
           district,
@@ -227,7 +204,6 @@ export default function ProfilePage() {
           instagramHandle: formatInstagramHandle(instagramHandle),
           address: address.trim() || undefined,
           profilePhotoUrl: finalProfilePhotoUrl,
-          aadhaarUploadUrl: finalAadhaarUploadUrl,
           // Reset to pending on any profile update so admin re-reviews
           verificationStatus: "pending" as const,
           rejectionReason: deleteField(),
@@ -381,9 +357,10 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="motherName">Mother's Name</Label>
+                  <Label htmlFor="motherName">Mother's Name *</Label>
                   <Input
                     id="motherName"
+                    required
                     value={motherName}
                     onChange={(e) => setMotherName(e.target.value)}
                     disabled={submitting || isLocked}
@@ -410,9 +387,37 @@ export default function ProfilePage() {
                   <Label htmlFor="dob">Date of Birth *</Label>
                   <Input
                     id="dob"
-                    type="date"
+                    type="text"
+                    placeholder="DD/MM/YYYY"
+                    required
                     value={dob}
-                    onChange={(e) => setDob(e.target.value)}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, "");
+                      if (val.length > 8) val = val.slice(0, 8);
+
+                      let formatted = val;
+                      if (val.length > 2) {
+                        formatted = val.slice(0, 2) + "/" + val.slice(2);
+                      }
+                      if (val.length > 4) {
+                        formatted = formatted.slice(0, 5) + "/" + val.slice(4);
+                      }
+                      setDob(formatted);
+                    }}
+                    disabled={submitting || isLocked}
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Select your date of birth (DD/MM/YYYY)
+                  </p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="profession">Field of Study / Profession *</Label>
+                  <Input
+                    id="profession"
+                    required
+                    placeholder="e.g. B.Tech Computer Science, Software Engineer, Student"
+                    value={profession}
+                    onChange={(e) => setProfession(e.target.value)}
                     disabled={submitting || isLocked}
                   />
                 </div>
@@ -524,66 +529,6 @@ export default function ProfilePage() {
                     onBlur={() => setInstagramHandle(formatInstagramHandle(instagramHandle))}
                     disabled={submitting || isLocked}
                   />
-                </div>
-              </div>
-            </div>
-
-            {/* Aadhaar Re-upload */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-display font-bold text-lg text-primary border-l-4 border-accent pl-2.5">
-                Aadhaar Document
-              </h3>
-              <div className="grid sm:grid-cols-2 gap-4 items-start">
-                <div className="space-y-1.5">
-                  <Label>Current Aadhaar Number</Label>
-                  <Input
-                    value={profile?.aadhaarNumber || "Not provided"}
-                    readOnly
-                    className="bg-secondary font-mono tracking-wider"
-                  />
-                </div>
-                <div>
-                  <Label className="mb-1.5 block">
-                    {isLocked ? "Aadhaar Document" : "Replace Aadhaar Document"}
-                  </Label>
-                  {isLocked ? (
-                    <div className="border border-border rounded-xl p-4 bg-secondary text-sm flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-success shrink-0" />
-                      <p className="text-muted-foreground font-semibold">
-                        Document securely uploaded and verified.
-                      </p>
-                    </div>
-                  ) : (
-                    <label className="relative border-2 border-dashed border-border rounded-xl p-4 text-center hover:bg-accent/5 transition-base cursor-pointer flex flex-col items-center justify-center min-h-[80px]">
-                      <input
-                        type="file"
-                        className="sr-only"
-                        accept="application/pdf,image/jpeg,image/png"
-                        onChange={handleAadhaarFileChange}
-                        disabled={submitting || isLocked}
-                      />
-                      {aadhaarFile ? (
-                        <div className="flex items-center gap-2 text-sm text-success font-semibold">
-                          <CheckCircle2 className="size-4 shrink-0" />
-                          <span className="truncate max-w-[160px]">{aadhaarFileName}</span>
-                        </div>
-                      ) : profile?.aadhaarUploadUrl ? (
-                        <p className="text-xs text-muted-foreground">
-                          Document on file. Upload to replace.
-                        </p>
-                      ) : (
-                        <>
-                          <Upload className="size-5 mb-1 text-muted-foreground" />
-                          <span className="text-xs font-semibold text-primary">
-                            Upload Aadhaar Copy
-                          </span>
-                          <span className="text-[10px] text-muted-foreground mt-0.5">
-                            PDF or Image, Max 10MB
-                          </span>
-                        </>
-                      )}
-                    </label>
-                  )}
                 </div>
               </div>
             </div>
