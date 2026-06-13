@@ -46,9 +46,26 @@ export interface UPEvent {
     showEligibility: boolean;
     showBenefits: boolean;
     showSchedule: boolean;
+    showDynamicSections?: boolean;
   };
 
+  dynamicSections?: DynamicSection[];
+
   createdAt: string;
+}
+
+export interface DynamicSectionMember {
+  id: string;
+  name: string;
+  role: string;
+  imageUrl: string | null;
+  file?: File; // Temporary for form state, not saved to DB
+}
+
+export interface DynamicSection {
+  id: string;
+  title: string;
+  members: DynamicSectionMember[];
 }
 
 export interface EventApplication {
@@ -60,6 +77,8 @@ export interface EventApplication {
 
   passGenerated?: boolean;
   passId?: string;
+  isTeamPass?: boolean;
+  designation?: string;
 
   // Application specific fields (collected on the form)
   schoolCollegeName: string;

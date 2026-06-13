@@ -9,7 +9,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   fullName: string;
-  role: "admin" | "manager" | "user";
+  role: "admin" | "manager" | "team" | "user";
   district?: string;
   state?: string;
   pincode?: string;

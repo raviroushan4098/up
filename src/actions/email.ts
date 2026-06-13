@@ -257,7 +257,7 @@ export async function sendDigitalPassEmail(
         <p>Please find attached your official VIP Entry Pass for <strong>${eventTitle}</strong>.</p>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 20px 0;">
           <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>Pass ID:</strong> ${passId}</p>
-          <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>Category:</strong> ${role === "STUDENT" ? "Student" : "Participant"}</p>
+          <p style="margin: 0 0 8px 0; color: #1f2937;"><strong>Category:</strong> ${role === "STUDENT" ? "Student" : role === "PARTICIPANT" ? "Participant" : role}</p>
           <p style="margin: 0; color: #1f2937;"><strong>Status:</strong> <span style="color: #15803D;">✔ Verified</span></p>
         </div>
         <p>Please <strong>download and print the attached PDF</strong> or present it on your mobile device at the venue.</p>

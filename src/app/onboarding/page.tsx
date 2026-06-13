@@ -490,11 +490,11 @@ export default function OnboardingPage() {
             <Landmark className="size-7 text-primary" />
           </div>
           <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-primary">
-            Citizen Profile Verification
+            Profile Verification
           </h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            विकसित भारत की सीढ़ी आज की युवा पीढ़ी Please complete your one-time registration profile
-            to access schemes and scholarships.
+            विकसित भारत की सीढ़ी आज की युवा पीढ़ी Please complete your one-time registration
+            profile.
           </p>
         </div>
 
@@ -540,7 +540,11 @@ export default function OnboardingPage() {
                     Profile Photo *
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    JPG or PNG formats, Maximum size 2MB
+                    JPG or PNG formats, Maximum size 2MB.
+                    <br />
+                    <span className="font-medium text-foreground">
+                      Note: Image must be clear and professional.
+                    </span>
                   </p>
                   {profilePhotoError && (
                     <p className="text-xs text-destructive font-medium mt-1.5 max-w-xs mx-auto">
@@ -811,15 +815,6 @@ export default function OnboardingPage() {
                     />
                   </div>
                 </div>
-              </div>
-
-              {/* Security Badge */}
-              <div className="pt-6 border-t flex items-center justify-center gap-2 text-xs text-muted-foreground text-center">
-                <ShieldCheck className="size-4 text-success" />
-                <span>
-                  Encrypted under Indian IT Act 2000. Your information will only be used for scheme
-                  approvals.
-                </span>
               </div>
 
               {/* Action Buttons */}

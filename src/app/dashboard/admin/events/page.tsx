@@ -20,7 +20,7 @@ import {
 import { getDerivedEventStatus } from "@/lib/utils";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "@/lib/firebase";
-import { UPEvent } from "@/types/events";
+import { UPEvent, DynamicSection } from "@/types/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,9 @@ export default function AdminEventsPage() {
   const [requireTopic, setRequireTopic] = useState(true);
   const [requireVideo, setRequireVideo] = useState(true);
 
+  // Dynamic Sections
+  const [dynamicSections, setDynamicSections] = useState<DynamicSection[]>([]);
+
   // Display Config State
   const [showDates, setShowDates] = useState(true);
   const [showVenue, setShowVenue] = useState(true);
@@ -73,6 +76,7 @@ export default function AdminEventsPage() {
   const [showEligibility, setShowEligibility] = useState(true);
   const [showBenefits, setShowBenefits] = useState(true);
   const [showSchedule, setShowSchedule] = useState(true);
+  const [showDynamicSections, setShowDynamicSections] = useState(true);
 
   useEffect(() => {
     if (!authLoading && profile?.role !== "admin") {
@@ -130,6 +134,8 @@ export default function AdminEventsPage() {
       setAgendaTopics([]);
     }
 
+    setDynamicSections(ev.dynamicSections || []);
+
     const conf = ev.formConfig || {
       requireEducation: true,
       requireTopic: true,
@@ -161,6 +167,7 @@ export default function AdminEventsPage() {
     setShowEligibility(dConf.showEligibility ?? true);
     setShowBenefits(dConf.showBenefits ?? true);
     setShowSchedule(dConf.showSchedule ?? true);
+    setShowDynamicSections(dConf.showDynamicSections ?? true);
 
     setCustomDeclaration(ev.customDeclaration || "");
     setBannerFile(null);
@@ -190,6 +197,7 @@ export default function AdminEventsPage() {
     setRequireEducation(true);
     setRequireTopic(true);
     setRequireVideo(true);
+    setDynamicSections([]);
 
     setShowDates(true);
     setShowVenue(true);
@@ -201,6 +209,7 @@ export default function AdminEventsPage() {
     setShowEligibility(true);
     setShowBenefits(true);
     setShowSchedule(true);
+    setShowDynamicSections(true);
 
     setIsDragging(false);
   };
@@ -217,6 +226,47 @@ export default function AdminEventsPage() {
       // Validate topics
       const validTopics = agendaTopics.filter((t) => t.title.trim().length > 0);
 
+      // Generate or use existing Document ID early for storage paths
+      const targetDocId = editEventId || doc(collection(db, "events")).id;
+      const storage = getStorage(app);
+
+      // 1. Upload Banner Image if changed
+      let finalBannerUrl = "";
+      if (bannerFile) {
+        const ext = bannerFile.name.split(".").pop();
+        const bannerRef = ref(storage, `events/${targetDocId}/banner.${ext}`);
+        const uploadResult = await uploadBytes(bannerRef, bannerFile);
+        finalBannerUrl = await getDownloadURL(uploadResult.ref);
+      }
+
+      // 2. Upload Dynamic Section Images if changed
+      const updatedSections = await Promise.all(
+        dynamicSections.map(async (section) => {
+          const updatedMembers = await Promise.all(
+            section.members.map(async (member) => {
+              const { file, ...memberWithoutFile } = member;
+              if (file) {
+                const ext = file.name.split(".").pop();
+                const memberRef = ref(
+                  storage,
+                  `events/${targetDocId}/sections/${section.id}/${member.id}.${ext}`,
+                );
+                const uploadResult = await uploadBytes(memberRef, file);
+                const imageUrl = await getDownloadURL(uploadResult.ref);
+                return { ...memberWithoutFile, imageUrl };
+              }
+              // If it's a blob URL (corrupted state from before) and no file, clear it so it doesn't break UI
+              if (memberWithoutFile.imageUrl && memberWithoutFile.imageUrl.startsWith("blob:")) {
+                return { ...memberWithoutFile, imageUrl: null };
+              }
+              return { ...memberWithoutFile };
+            }),
+          );
+          return { ...section, members: updatedMembers };
+        }),
+      );
+
+      // 3. Prepare Final Event Data
       const eventData: any = {
         title,
         description,
@@ -238,6 +288,7 @@ export default function AdminEventsPage() {
           .filter(Boolean),
         schedule: schedule.filter((s) => s.date.trim() || s.label.trim()),
         agendaTopics: validTopics,
+        dynamicSections: updatedSections,
         customDeclaration,
         formConfig: {
           requireEducation,
@@ -255,20 +306,23 @@ export default function AdminEventsPage() {
           showEligibility,
           showBenefits,
           showSchedule,
+          showDynamicSections,
         },
         status: "Open", // Default to open for now
       };
 
-      let targetDocId = editEventId;
+      if (finalBannerUrl) {
+        eventData.image = finalBannerUrl;
+      }
 
+      // 4. Save to Firestore
       if (editEventId) {
-        await updateDoc(doc(db, "events", editEventId), eventData);
+        await updateDoc(doc(db, "events", targetDocId), eventData);
         toast.success("Event updated successfully!");
       } else {
         eventData.createdAt = new Date().toISOString();
-        eventData.image = ""; // placeholder
-        const docRef = await addDoc(collection(db, "events"), eventData);
-        targetDocId = docRef.id;
+        if (!eventData.image) eventData.image = ""; // Ensure placeholder if no banner
+        await setDoc(doc(db, "events", targetDocId), eventData);
 
         // Increment global event counter
         try {
@@ -284,19 +338,6 @@ export default function AdminEventsPage() {
         }
 
         toast.success("Event created successfully!");
-      }
-
-      // If banner uploaded
-      if (bannerFile && targetDocId) {
-        const storage = getStorage(app);
-        const ext = bannerFile.name.split(".").pop();
-        const bannerRef = ref(storage, `events/${targetDocId}/banner.${ext}`);
-        const uploadResult = await uploadBytes(bannerRef, bannerFile);
-        const bannerUrl = await getDownloadURL(uploadResult.ref);
-
-        await updateDoc(doc(db, "events", targetDocId), {
-          image: bannerUrl,
-        });
       }
 
       resetForm();
@@ -453,6 +494,9 @@ export default function AdminEventsPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>Event Banner Image</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Recommended: 1920x1080px (16:9 ratio), under 5MB.
+                  </p>
                   <label
                     className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-base ${isDragging ? "border-primary bg-primary/10" : "border-border hover:bg-accent/5"}`}
                     onDragOver={handleDragOver}
@@ -766,6 +810,167 @@ export default function AdminEventsPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     This displays a vertical timeline of the event on the public details page.
                   </p>
+                </div>
+
+                <div className="space-y-4 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <Label>Dynamic Sections (VIP Guests, Speakers, etc.)</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Recommended photo size: 400x500px (4:5 ratio).
+                        </p>
+                      </div>
+                      <Switch
+                        checked={showDynamicSections}
+                        onCheckedChange={setShowDynamicSections}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setDynamicSections([
+                          ...dynamicSections,
+                          {
+                            id: Math.random().toString(36).substr(2, 9),
+                            title: "New Section",
+                            members: [],
+                          },
+                        ])
+                      }
+                    >
+                      <Plus className="size-4 mr-2" /> Add Section
+                    </Button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {dynamicSections.map((section, sIdx) => (
+                      <div
+                        key={section.id}
+                        className="border rounded-xl p-4 bg-secondary/10 space-y-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Input
+                            className="font-bold text-lg"
+                            value={section.title}
+                            onChange={(e) => {
+                              const newArr = [...dynamicSections];
+                              newArr[sIdx].title = e.target.value;
+                              setDynamicSections(newArr);
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => {
+                              const newArr = [...dynamicSections];
+                              newArr.splice(sIdx, 1);
+                              setDynamicSections(newArr);
+                            }}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+
+                        <div className="space-y-3 pl-4 border-l-2 border-primary/20">
+                          {section.members.map((member, mIdx) => (
+                            <div
+                              key={member.id}
+                              className="flex flex-col sm:flex-row gap-3 items-start border p-3 rounded-lg bg-background"
+                            >
+                              <label className="shrink-0 size-16 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden bg-secondary relative group">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="sr-only"
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                      const newArr = [...dynamicSections];
+                                      newArr[sIdx].members[mIdx].file = e.target.files[0];
+                                      newArr[sIdx].members[mIdx].imageUrl = URL.createObjectURL(
+                                        e.target.files[0],
+                                      );
+                                      setDynamicSections(newArr);
+                                    }
+                                  }}
+                                />
+                                {member.imageUrl ? (
+                                  <img
+                                    src={member.imageUrl}
+                                    alt="preview"
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <ImageIcon className="size-5 text-muted-foreground group-hover:text-primary" />
+                                )}
+                              </label>
+
+                              <div className="flex-1 space-y-2 w-full">
+                                <Input
+                                  placeholder="Name"
+                                  value={member.name}
+                                  onChange={(e) => {
+                                    const newArr = [...dynamicSections];
+                                    newArr[sIdx].members[mIdx].name = e.target.value;
+                                    setDynamicSections(newArr);
+                                  }}
+                                  required
+                                />
+                                <Input
+                                  placeholder="Role / Subtitle"
+                                  value={member.role}
+                                  onChange={(e) => {
+                                    const newArr = [...dynamicSections];
+                                    newArr[sIdx].members[mIdx].role = e.target.value;
+                                    setDynamicSections(newArr);
+                                  }}
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive shrink-0"
+                                onClick={() => {
+                                  const newArr = [...dynamicSections];
+                                  newArr[sIdx].members.splice(mIdx, 1);
+                                  setDynamicSections(newArr);
+                                }}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => {
+                              const newArr = [...dynamicSections];
+                              newArr[sIdx].members.push({
+                                id: Math.random().toString(36).substr(2, 9),
+                                name: "",
+                                role: "",
+                                imageUrl: null,
+                              });
+                              setDynamicSections(newArr);
+                            }}
+                          >
+                            <Plus className="size-4 mr-2" /> Add Member
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {dynamicSections.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">
+                        No dynamic sections added.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">

@@ -83,10 +83,24 @@ export default function DashboardHome() {
           const userAppsSnap = await getDocs(userAppsQ);
           setAppsList(userAppsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
-          // Fetch some open events
-          const eventsQ = query(collection(db, "events"), where("status", "==", "Open"), limit(3));
+          // Fetch open events
+          const eventsQ = query(collection(db, "events"), where("status", "==", "Open"));
           const eventsSnap = await getDocs(eventsQ);
-          setOpenEvents(eventsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as UPEvent));
+          let fetchedEvents = eventsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as UPEvent);
+
+          // Filter out events the user has already applied to
+          const appliedEventIds = userAppsSnap.docs.map((d) => d.data().eventId);
+          fetchedEvents = fetchedEvents.filter((e) => !appliedEventIds.includes(e.id));
+
+          // Filter out events where the deadline has passed
+          const now = new Date();
+          fetchedEvents = fetchedEvents.filter((e) => {
+            if (!e.deadline) return true;
+            return new Date(e.deadline) >= now;
+          });
+
+          // Limit to 3
+          setOpenEvents(fetchedEvents.slice(0, 3));
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);

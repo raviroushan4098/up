@@ -8,6 +8,14 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { UPEvent } from "@/types/events";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import AutoScroll from "embla-carousel-auto-scroll";
 import { Button } from "@/components/ui/button";
 import {
   Calendar,
@@ -175,6 +183,67 @@ export default function EventDetailsPage({ params }: { params: Promise<{ eventId
                     </ul>
                   </div>
                 )}
+
+              {event.displayConfig?.showDynamicSections !== false &&
+                event.dynamicSections &&
+                event.dynamicSections.map((section) => (
+                  <div key={section.id} className="pt-8 border-t mt-8">
+                    <h3 className="font-semibold text-lg text-primary mb-4">{section.title}</h3>
+
+                    {section.members.length > 0 ? (
+                      <Carousel
+                        opts={{ align: "start", loop: true }}
+                        plugins={[
+                          AutoScroll({ playOnInit: true, stopOnInteraction: false, speed: 1 }),
+                        ]}
+                        className="w-full max-w-full"
+                      >
+                        <CarouselContent className="-ml-2 md:-ml-4">
+                          {section.members.map((member) => (
+                            <CarouselItem
+                              key={member.id}
+                              className="pl-2 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/3"
+                            >
+                              <div className="h-full rounded-2xl p-1 bg-gradient-to-br from-accent via-primary to-accent shadow-soft hover:shadow-glow transition-spring group/card">
+                                <Card className="border-0 overflow-hidden h-full rounded-[14px] bg-card">
+                                  <div className="aspect-[4/5] bg-secondary w-full relative overflow-hidden">
+                                    {member.imageUrl ? (
+                                      <img
+                                        src={member.imageUrl}
+                                        alt={member.name}
+                                        className="w-full h-full object-cover group-hover/card:scale-105 transition-spring duration-500"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-accent/10">
+                                        No Image
+                                      </div>
+                                    )}
+                                  </div>
+                                  <CardContent className="p-4 text-center">
+                                    <h3 className="font-bold text-primary text-sm sm:text-base line-clamp-2">
+                                      {member.name}
+                                    </h3>
+                                    {member.role && (
+                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-3 leading-snug">
+                                        {member.role}
+                                      </p>
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            </CarouselItem>
+                          ))}
+                        </CarouselContent>
+                        <div className="hidden sm:block">
+                          <CarouselPrevious className="-left-4 bg-background border shadow-sm" />
+                          <CarouselNext className="-right-4 bg-background border shadow-sm" />
+                        </div>
+                      </Carousel>
+                    ) : (
+                      <p className="text-muted-foreground text-sm italic">No members added.</p>
+                    )}
+                  </div>
+                ))}
             </CardContent>
           </Card>
         </div>

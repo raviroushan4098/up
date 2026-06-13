@@ -10,7 +10,6 @@ import {
   getDocs,
   updateDoc,
   serverTimestamp,
-  increment,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useParams } from "next/navigation";
@@ -27,6 +26,7 @@ import {
   Phone,
   User,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -147,6 +147,7 @@ export default function VerifyPassPage() {
   }
 
   const isCheckedIn = application.checkedIn;
+  const isTeamPass = application.isTeamPass;
 
   return (
     <div className="max-w-xl mx-auto space-y-6 pt-6">
@@ -156,12 +157,20 @@ export default function VerifyPassPage() {
       </div>
 
       <Card
-        className={`overflow-hidden border-2 ${isCheckedIn ? "border-amber-500" : "border-success"}`}
+        className={`overflow-hidden border-2 ${isTeamPass ? "border-blue-500 shadow-blue-500/20 shadow-xl" : isCheckedIn ? "border-amber-500" : "border-success"}`}
       >
         <div
-          className={`p-4 text-center text-white ${isCheckedIn ? "bg-amber-500" : "bg-success"}`}
+          className={`p-4 text-center text-white ${isTeamPass ? "bg-gradient-to-r from-blue-600 to-indigo-600" : isCheckedIn ? "bg-amber-500" : "bg-success"}`}
         >
-          {isCheckedIn ? (
+          {isTeamPass ? (
+            <div className="flex flex-col items-center gap-2">
+              <ShieldCheck className="size-10" />
+              <h2 className="text-xl font-bold tracking-wider">STAFF VERIFIED</h2>
+              <p className="text-sm opacity-90 font-medium">
+                Designation: {application.designation}
+              </p>
+            </div>
+          ) : isCheckedIn ? (
             <div className="flex flex-col items-center gap-2">
               <AlertTriangle className="size-10" />
               <h2 className="text-xl font-bold tracking-wider">ALREADY CHECKED IN</h2>
@@ -187,8 +196,15 @@ export default function VerifyPassPage() {
             <div>
               <h3 className="text-2xl font-bold text-primary">{application.applicantName}</h3>
               <p className="text-sm font-medium text-muted-foreground font-mono mt-1">{passId}</p>
-              <Badge variant="secondary" className="mt-2 bg-primary/10 text-primary">
-                {application.schoolCollegeName ? "Student" : "Delegate"}
+              <Badge
+                variant="secondary"
+                className={`mt-2 ${isTeamPass ? "bg-blue-100 text-blue-700" : "bg-primary/10 text-primary"}`}
+              >
+                {isTeamPass
+                  ? application.designation
+                  : application.schoolCollegeName
+                    ? "Student"
+                    : "Delegate"}
               </Badge>
             </div>
           </div>
@@ -199,7 +215,11 @@ export default function VerifyPassPage() {
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Category</p>
                 <p className="font-medium text-sm">
-                  {application.schoolCollegeName ? "Youth Leader (Student)" : "General Delegate"}
+                  {isTeamPass
+                    ? "Internal Organization Team"
+                    : application.schoolCollegeName
+                      ? "Youth Leader (Student)"
+                      : "General Delegate"}
                 </p>
               </div>
             </div>
@@ -223,7 +243,12 @@ export default function VerifyPassPage() {
             </div>
           </div>
 
-          {!isCheckedIn ? (
+          {isTeamPass ? (
+            <div className="flex items-center justify-center gap-2 text-blue-600 bg-blue-500/10 p-4 rounded-xl font-medium border border-blue-500/20">
+              <ShieldCheck className="size-5" />
+              Staff Pass - Verification Only
+            </div>
+          ) : !isCheckedIn ? (
             <Button
               size="lg"
               className="w-full text-lg h-14 bg-gradient-saffron text-primary font-bold shadow-lg shadow-saffron/20 hover:opacity-90"

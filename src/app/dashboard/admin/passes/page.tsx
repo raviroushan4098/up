@@ -1,14 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  updateDoc,
+  getDoc,
+  setDoc,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import type { UserProfile } from "@/hooks/useAuth";
 import { EventApplication, UPEvent } from "@/types/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { sendDigitalPassEmail } from "@/actions/email";
 import {
   Loader2,
@@ -20,6 +31,9 @@ import {
   Phone,
   ExternalLink,
   QrCode,
+  ShieldCheck,
+  Users,
+  Download,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,6 +44,11 @@ import { toast } from "sonner";
 export default function PassesPage() {
   const { user, profile, loading: authLoading } = useAuth();
   const [applications, setApplications] = useState<EventApplication[]>([]);
+  const [teamUsers, setTeamUsers] = useState<UserProfile[]>([]);
+  const [teamDesignations, setTeamDesignations] = useState<Record<string, string>>({});
+  const [teamFilterStatus, setTeamFilterStatus] = useState<"all" | "generated" | "pending">("all");
+  const [teamFilterRole, setTeamFilterRole] = useState<"all" | "admin" | "manager" | "team">("all");
+
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [eventsMap, setEventsMap] = useState<Record<string, string>>({});
@@ -41,16 +60,55 @@ export default function PassesPage() {
 
   // For silent PDF capture
   const [capturingApp, setCapturingApp] = useState<
-    (EventApplication & { passId: string; eventTitle: string }) | null
+    (EventApplication & { passId: string; eventTitle: string; profilePhotoUrl?: string }) | null
   >(null);
+
+  const [downloadingPassId, setDownloadingPassId] = useState<string | null>(null);
+
+  const downloadPass = async (
+    app: EventApplication & { passId: string; eventTitle: string; profilePhotoUrl?: string },
+  ) => {
+    setDownloadingPassId(app.id);
+    try {
+      const node = document.getElementById("pass-popup-capture-node");
+      if (node) {
+        const { toJpeg } = await import("html-to-image");
+        const { jsPDF } = await import("jspdf");
+
+        const dataUrl = await toJpeg(node, {
+          quality: 0.95,
+          pixelRatio: 2,
+          skipFonts: true,
+          fontEmbedCSS: "",
+        });
+
+        const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: "b3" });
+        pdf.addImage(
+          dataUrl,
+          "JPEG",
+          0,
+          0,
+          pdf.internal.pageSize.getWidth(),
+          pdf.internal.pageSize.getHeight(),
+        );
+        pdf.save(`${app.passId}_VIP_Pass.pdf`);
+        toast.success("Pass downloaded successfully!");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to download pass");
+    } finally {
+      setDownloadingPassId(null);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && user && (profile?.role === "admin" || profile?.role === "manager")) {
-      fetchSelectedApplications();
+      fetchData();
     }
   }, [user, profile, authLoading]);
 
-  const fetchSelectedApplications = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
       // Fetch events map first
@@ -65,6 +123,7 @@ export default function PassesPage() {
         console.error("Failed to fetch events map", e);
       }
 
+      // Fetch Applications
       const q = query(collection(db, "applications"), where("status", "==", "selected"));
       const snapshot = await getDocs(q);
       const fetched = await Promise.all(
@@ -89,9 +148,30 @@ export default function PassesPage() {
         }),
       );
       setApplications(fetched);
+
+      // Fetch Team Users
+      const qTeam = query(
+        collection(db, "users"),
+        where("role", "in", ["admin", "manager", "team"]),
+      );
+      const teamSnap = await getDocs(qTeam);
+      const fetchedTeam = teamSnap.docs.map((d) => d.data() as UserProfile);
+      setTeamUsers(fetchedTeam);
+
+      // Pre-fill designations if they have an existing pass
+      const tDesignations: Record<string, string> = {};
+      for (const tUser of fetchedTeam) {
+        const tApp = fetched.find((a) => a.userId === tUser.uid && a.isTeamPass);
+        if (tApp && tApp.designation) {
+          tDesignations[tUser.uid] = tApp.designation;
+        } else {
+          tDesignations[tUser.uid] = tUser.role.toUpperCase();
+        }
+      }
+      setTeamDesignations(tDesignations);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to fetch selected applications");
+      toast.error("Failed to fetch data");
     } finally {
       setLoading(false);
     }
@@ -194,6 +274,98 @@ export default function PassesPage() {
     }
   };
 
+  const generateTeamPass = async (userProf: UserProfile) => {
+    setProcessingId(userProf.uid);
+    try {
+      const eventTitle = "Uttar Pradesh Connect Event";
+      const eventLocation = "Check Official Portal";
+      const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const newPassId = `UP-STAFF-${randomStr}`;
+      const designation = teamDesignations[userProf.uid] || userProf.role.toUpperCase();
+
+      // Create a mock application doc for the team member
+      const mockApp: any = {
+        id: `team_${userProf.uid}`,
+        eventId: "general", // Can be generic for team
+        userId: userProf.uid,
+        applicantName: userProf.fullName,
+        applicantEmail: userProf.email,
+        applicantPhone: userProf.phoneNumber || "Verified",
+        applicantDistrict: userProf.district || "Uttar Pradesh",
+        schoolCollegeName: "",
+        passGenerated: true,
+        passId: newPassId,
+        isTeamPass: true,
+        designation,
+        status: "selected",
+        appliedAt: new Date().toISOString(),
+      };
+
+      setCapturingApp({ ...mockApp, eventTitle, profilePhotoUrl: userProf.profilePhotoUrl });
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      let pdfBase64 = undefined;
+      const node = document.getElementById("pdf-capture-node");
+      if (node) {
+        try {
+          const { toJpeg } = await import("html-to-image");
+          const { jsPDF } = await import("jspdf");
+
+          const dataUrl = await toJpeg(node, {
+            quality: 0.95,
+            pixelRatio: 2,
+            skipFonts: true,
+            fontEmbedCSS: "",
+          });
+
+          const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: "b3" });
+          pdf.addImage(
+            dataUrl,
+            "JPEG",
+            0,
+            0,
+            pdf.internal.pageSize.getWidth(),
+            pdf.internal.pageSize.getHeight(),
+          );
+          pdfBase64 = pdf.output("datauristring");
+        } catch (captureErr) {
+          console.error("PDF Capture Error", captureErr);
+        }
+      }
+      setCapturingApp(null);
+
+      // Save to applications collection
+      const newDocRef = doc(db, "applications", mockApp.id);
+      await setDoc(newDocRef, mockApp);
+
+      const emailRes = await sendDigitalPassEmail(
+        mockApp.applicantEmail,
+        mockApp.applicantName,
+        eventTitle,
+        newPassId,
+        eventLocation,
+        "TBA",
+        designation,
+        mockApp.applicantDistrict,
+        mockApp.applicantPhone,
+        pdfBase64,
+      );
+
+      if (emailRes.success) {
+        toast.success(`Staff Pass Generated & Emailed to ${userProf.fullName}`);
+        fetchData(); // Refresh UI to show the new pass ID
+      } else {
+        toast.error("Failed to send email. Check logs.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error generating team pass");
+    } finally {
+      setProcessingId(null);
+      setCapturingApp(null);
+    }
+  };
+
   if (authLoading) return null;
 
   if (profile?.role !== "admin" && profile?.role !== "manager") {
@@ -207,9 +379,17 @@ export default function PassesPage() {
     );
   }
 
-  const pendingApps = applications.filter((app) => !app.passId);
-  const issuedApps = applications.filter((app) => !!app.passId);
+  const pendingApps = applications.filter((app) => !app.passId && !app.isTeamPass);
+  const issuedApps = applications.filter((app) => !!app.passId && !app.isTeamPass);
   const checkedInApps = applications.filter((app) => app.checkedIn);
+
+  const filteredTeamUsers = teamUsers.filter((tUser) => {
+    if (teamFilterRole !== "all" && tUser.role !== teamFilterRole) return false;
+    const hasPass = applications.some((a) => a.userId === tUser.uid && a.isTeamPass);
+    if (teamFilterStatus === "generated" && !hasPass) return false;
+    if (teamFilterStatus === "pending" && hasPass) return false;
+    return true;
+  });
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-12">
@@ -217,7 +397,7 @@ export default function PassesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">VIP Pass Generation</h1>
           <p className="text-muted-foreground mt-1">
-            Generate digital access passes for selected delegates.
+            Generate digital access passes for selected delegates and team members.
           </p>
         </div>
         <div className="flex gap-4">
@@ -243,54 +423,72 @@ export default function PassesPage() {
           <Loader2 className="size-8 animate-spin text-primary" />
         </div>
       ) : (
-        <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="w-full sm:w-auto grid grid-cols-2 bg-secondary/50 p-1 mb-6">
-            <TabsTrigger value="pending" className="px-6">
-              Pending Generation{" "}
-              <Badge variant="secondary" className="ml-2">
-                {pendingApps.length}
-              </Badge>
+        <Tabs defaultValue="delegates" className="w-full">
+          <TabsList className="w-full sm:w-auto grid grid-cols-2 mb-6">
+            <TabsTrigger value="delegates" className="flex gap-2">
+              <Users className="size-4" /> Delegate Passes
             </TabsTrigger>
-            <TabsTrigger value="issued" className="px-6">
-              Issued Passes{" "}
-              <Badge variant="secondary" className="ml-2">
-                {issuedApps.length}
-              </Badge>
+            <TabsTrigger value="team" className="flex gap-2">
+              <ShieldCheck className="size-4" /> Team Passes
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="pending" className="space-y-4">
-            {pendingApps.length === 0 ? (
-              <div className="text-center py-20 text-muted-foreground bg-secondary/30 rounded-xl border border-dashed">
-                No passes pending generation.
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {pendingApps.map((app) => (
-                  <Card key={app.id} className="border-0 shadow-soft">
+          <TabsContent value="team" className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <select
+                value={teamFilterStatus}
+                onChange={(e) => setTeamFilterStatus(e.target.value as any)}
+                className="flex h-10 w-full sm:w-[200px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="all">All Status</option>
+                <option value="generated">Generated</option>
+                <option value="pending">Not Generated</option>
+              </select>
+              <select
+                value={teamFilterRole}
+                onChange={(e) => setTeamFilterRole(e.target.value as any)}
+                className="flex h-10 w-full sm:w-[200px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="all">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="team">Team</option>
+              </select>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {filteredTeamUsers.map((tUser) => {
+                const existingTeamApp = applications.find(
+                  (a) => a.userId === tUser.uid && a.isTeamPass,
+                );
+                return (
+                  <Card key={tUser.uid} className="border-0 shadow-soft">
                     <CardHeader className="pb-3 border-b bg-secondary/20">
                       <div className="flex justify-between items-start">
                         <div className="flex gap-3">
                           <Avatar className="size-12 border border-primary/20">
-                            <AvatarImage src={(app as any).profilePhotoUrl} />
+                            <AvatarImage src={tUser.profilePhotoUrl} />
                             <AvatarFallback className="bg-primary/10 text-primary">
-                              {app.applicantName?.charAt(0)}
+                              {tUser.fullName?.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <CardTitle className="text-lg flex items-center gap-2">
-                              {app.applicantName}
+                              {tUser.fullName}
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Application ID {app.applicationNo || app.id.substring(0, 8)}
+                            <p className="text-xs text-muted-foreground mt-1 capitalize font-bold">
+                              {tUser.role} Account
                             </p>
                           </div>
                         </div>
                         <Badge
                           variant="outline"
-                          className="bg-amber-500/10 text-amber-500 border-amber-500/20"
+                          className={
+                            existingTeamApp
+                              ? "bg-success/10 text-success border-success/20"
+                              : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                          }
                         >
-                          Ready to Issue
+                          {existingTeamApp ? "Pass Issued" : "Ready to Issue"}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -298,137 +496,243 @@ export default function PassesPage() {
                       <div className="text-sm space-y-3">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Mail className="size-4 shrink-0" />
-                          <span className="text-primary truncate">{app.applicantEmail}</span>
+                          <span className="text-primary truncate">{tUser.email}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Phone className="size-4 shrink-0" />
-                          <span className="text-primary truncate">
-                            {app.applicantPhone || "N/A"}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-muted-foreground uppercase text-[10px] tracking-wider mb-1">
-                            Topic
-                          </p>
-                          <p className="text-primary text-sm font-medium leading-tight">
-                            {app.selectedTopic}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => generatePass(app)}
-                        disabled={processingId === app.id}
-                        className="w-full gap-2 bg-gradient-saffron text-primary hover:opacity-90 transition-all font-semibold"
-                      >
-                        {processingId === app.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Ticket className="size-4" />
-                        )}
-                        Generate & Email VIP Pass
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="issued" className="space-y-4">
-            {issuedApps.length === 0 ? (
-              <div className="text-center py-20 text-muted-foreground bg-secondary/30 rounded-xl border border-dashed">
-                No passes issued yet.
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {issuedApps.map((app) => (
-                  <Card
-                    key={app.id}
-                    className="border-0 shadow-soft bg-success/5 border-success/20"
-                  >
-                    <CardHeader className="pb-3 border-b border-success/10 bg-success/10">
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-3">
-                          <Avatar className="size-12 border border-success/20">
-                            <AvatarImage src={(app as any).profilePhotoUrl} />
-                            <AvatarFallback className="bg-success/10 text-success">
-                              {app.applicantName?.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <CheckCircle2 className="size-4 text-success shrink-0" />
-                              <span className="truncate">{app.applicantName}</span>
-                            </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Application ID {app.applicationNo || app.id.substring(0, 8)}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className="bg-success/20 text-success border-success/30 font-mono"
-                        >
-                          {app.passId}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="text-sm space-y-3">
-                        <div className="flex items-center gap-2 text-success/70">
-                          <Mail className="size-4 shrink-0" />
-                          <span className="text-primary font-medium truncate">
-                            {app.applicantEmail}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-success/70">
-                          <Phone className="size-4 shrink-0" />
-                          <span className="text-primary font-medium truncate">
-                            {app.applicantPhone || "N/A"}
-                          </span>
-                        </div>
-                        <div className="pt-2 mt-2 border-t border-success/10">
-                          <p className="font-medium text-success/70 uppercase text-[10px] tracking-wider mb-1">
-                            Generated On
-                          </p>
-                          <p className="text-primary text-xs font-medium">
-                            Auto-generated via System
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-success/10 flex gap-2">
-                        <button
-                          onClick={() => setSelectedPass(app)}
-                          className="flex-1 inline-flex justify-center items-center gap-2 bg-success/10 text-success hover:bg-success/20 py-2 rounded-md transition-colors text-sm font-semibold"
-                        >
-                          <ExternalLink className="size-4" /> View Pass
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                "Are you sure you want to regenerate this pass? The old QR code will become invalid.",
-                              )
-                            ) {
-                              generatePass(app);
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Pass Designation
+                          </label>
+                          <Input
+                            placeholder="e.g. VIP, Organizer, Staff"
+                            value={teamDesignations[tUser.uid] || ""}
+                            onChange={(e) =>
+                              setTeamDesignations((prev) => ({
+                                ...prev,
+                                [tUser.uid]: e.target.value,
+                              }))
                             }
-                          }}
-                          disabled={processingId === app.id}
-                          className="flex-1 inline-flex justify-center items-center gap-2 bg-destructive/10 text-destructive hover:bg-destructive/20 py-2 rounded-md transition-colors text-sm font-semibold disabled:opacity-50"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {existingTeamApp && (
+                          <button
+                            onClick={() => setSelectedPass(existingTeamApp)}
+                            className="flex-1 inline-flex justify-center items-center gap-2 bg-success/10 text-success hover:bg-success/20 py-2 rounded-md transition-colors text-sm font-semibold"
+                          >
+                            <ExternalLink className="size-4" /> View
+                          </button>
+                        )}
+                        <Button
+                          onClick={() => generateTeamPass(tUser)}
+                          disabled={processingId === tUser.uid}
+                          className={`flex-[2] gap-2 font-semibold ${existingTeamApp ? "bg-destructive/10 text-destructive hover:bg-destructive/20 shadow-none" : "bg-gradient-saffron text-primary hover:opacity-90 transition-all"}`}
+                          variant={existingTeamApp ? "outline" : "default"}
                         >
-                          {processingId === app.id ? (
+                          {processingId === tUser.uid ? (
                             <Loader2 className="size-4 animate-spin" />
                           ) : (
                             <Ticket className="size-4" />
                           )}
-                          Regenerate
-                        </button>
+                          {existingTeamApp ? "Regenerate" : "Generate Staff Pass"}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="delegates">
+            <Tabs defaultValue="pending" className="w-full">
+              <TabsList className="w-full sm:w-auto grid grid-cols-2 bg-secondary/50 p-1 mb-6">
+                <TabsTrigger value="pending" className="px-6">
+                  Pending Generation{" "}
+                  <Badge variant="secondary" className="ml-2">
+                    {pendingApps.length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="issued" className="px-6">
+                  Issued Passes{" "}
+                  <Badge variant="secondary" className="ml-2">
+                    {issuedApps.length}
+                  </Badge>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="pending" className="space-y-4">
+                {pendingApps.length === 0 ? (
+                  <div className="text-center py-20 text-muted-foreground bg-secondary/30 rounded-xl border border-dashed">
+                    No passes pending generation.
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {pendingApps.map((app) => (
+                      <Card key={app.id} className="border-0 shadow-soft">
+                        <CardHeader className="pb-3 border-b bg-secondary/20">
+                          <div className="flex justify-between items-start">
+                            <div className="flex gap-3">
+                              <Avatar className="size-12 border border-primary/20">
+                                <AvatarImage src={(app as any).profilePhotoUrl} />
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {app.applicantName?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                  {app.applicantName}
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Application ID {app.applicationNo || app.id.substring(0, 8)}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-500/10 text-amber-500 border-amber-500/20"
+                            >
+                              Ready to Issue
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-4">
+                          <div className="text-sm space-y-3">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="size-4 shrink-0" />
+                              <span className="text-primary truncate">{app.applicantEmail}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Phone className="size-4 shrink-0" />
+                              <span className="text-primary truncate">
+                                {app.applicantPhone || "N/A"}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-muted-foreground uppercase text-[10px] tracking-wider mb-1">
+                                Topic
+                              </p>
+                              <p className="text-primary text-sm font-medium leading-tight">
+                                {app.selectedTopic}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => generatePass(app)}
+                            disabled={processingId === app.id}
+                            className="w-full gap-2 bg-gradient-saffron text-primary hover:opacity-90 transition-all font-semibold"
+                          >
+                            {processingId === app.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Ticket className="size-4" />
+                            )}
+                            Generate & Email VIP Pass
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="issued" className="space-y-4">
+                {issuedApps.length === 0 ? (
+                  <div className="text-center py-20 text-muted-foreground bg-secondary/30 rounded-xl border border-dashed">
+                    No passes issued yet.
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {issuedApps.map((app) => (
+                      <Card
+                        key={app.id}
+                        className="border-0 shadow-soft bg-success/5 border-success/20"
+                      >
+                        <CardHeader className="pb-3 border-b border-success/10 bg-success/10">
+                          <div className="flex justify-between items-start">
+                            <div className="flex gap-3">
+                              <Avatar className="size-12 border border-success/20">
+                                <AvatarImage src={(app as any).profilePhotoUrl} />
+                                <AvatarFallback className="bg-success/10 text-success">
+                                  {app.applicantName?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                  <CheckCircle2 className="size-4 text-success shrink-0" />
+                                  <span className="truncate">{app.applicantName}</span>
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Application ID {app.applicationNo || app.id.substring(0, 8)}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="bg-success/20 text-success border-success/30 font-mono"
+                            >
+                              {app.passId}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                          <div className="text-sm space-y-3">
+                            <div className="flex items-center gap-2 text-success/70">
+                              <Mail className="size-4 shrink-0" />
+                              <span className="text-primary font-medium truncate">
+                                {app.applicantEmail}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-success/70">
+                              <Phone className="size-4 shrink-0" />
+                              <span className="text-primary font-medium truncate">
+                                {app.applicantPhone || "N/A"}
+                              </span>
+                            </div>
+                            <div className="pt-2 mt-2 border-t border-success/10">
+                              <p className="font-medium text-success/70 uppercase text-[10px] tracking-wider mb-1">
+                                Generated On
+                              </p>
+                              <p className="text-primary text-xs font-medium">
+                                Auto-generated via System
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-success/10 flex gap-2">
+                            <button
+                              onClick={() => setSelectedPass(app)}
+                              className="flex-1 inline-flex justify-center items-center gap-2 bg-success/10 text-success hover:bg-success/20 py-2 rounded-md transition-colors text-sm font-semibold"
+                            >
+                              <ExternalLink className="size-4" /> View Pass
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    "Are you sure you want to regenerate this pass? The old QR code will become invalid.",
+                                  )
+                                ) {
+                                  generatePass(app);
+                                }
+                              }}
+                              disabled={processingId === app.id}
+                              className="flex-1 inline-flex justify-center items-center gap-2 bg-destructive/10 text-destructive hover:bg-destructive/20 py-2 rounded-md transition-colors text-sm font-semibold disabled:opacity-50"
+                            >
+                              {processingId === app.id ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : (
+                                <Ticket className="size-4" />
+                              )}
+                              Regenerate
+                            </button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       )}
@@ -439,7 +743,7 @@ export default function PassesPage() {
             <DigitalPassCard
               application={capturingApp}
               passId={capturingApp.passId}
-              profilePhotoUrl={(capturingApp as any).profilePhotoUrl}
+              profilePhotoUrl={capturingApp.profilePhotoUrl}
               verifyUrl={`${typeof window !== "undefined" ? window.location.origin : "https://bhavishyaeuttarpradesh.in"}/dashboard/admin/verify/${capturingApp.passId}`}
               eventTitle={capturingApp.eventTitle}
             />
@@ -453,14 +757,37 @@ export default function PassesPage() {
           <DialogTitle className="sr-only">Digital Pass Preview</DialogTitle>
 
           {selectedPass && selectedPass.passId && (
-            <div className="flex justify-center w-full">
-              <DigitalPassCard
-                application={selectedPass}
-                passId={selectedPass.passId}
-                profilePhotoUrl={selectedPass.profilePhotoUrl}
-                verifyUrl={`${typeof window !== "undefined" ? window.location.origin : "https://bhavishyaeuttarpradesh.in"}/dashboard/admin/verify/${selectedPass.passId}`}
-                eventTitle={eventsMap[selectedPass.eventId]}
-              />
+            <div className="flex flex-col justify-center items-center w-full gap-4">
+              <div
+                id="pass-popup-capture-node"
+                className="flex justify-center w-full bg-white rounded-xl overflow-hidden"
+              >
+                <DigitalPassCard
+                  application={selectedPass}
+                  passId={selectedPass.passId}
+                  profilePhotoUrl={selectedPass.profilePhotoUrl}
+                  verifyUrl={`${typeof window !== "undefined" ? window.location.origin : "https://bhavishyaeuttarpradesh.in"}/dashboard/admin/verify/${selectedPass.passId}`}
+                  eventTitle={eventsMap[selectedPass.eventId] || "Uttar Pradesh Connect Event"}
+                />
+              </div>
+              <Button
+                onClick={() =>
+                  downloadPass({
+                    ...selectedPass,
+                    passId: selectedPass.passId!,
+                    eventTitle: eventsMap[selectedPass.eventId] || "Uttar Pradesh Connect Event",
+                  })
+                }
+                disabled={downloadingPassId === selectedPass.id}
+                className="w-full max-w-[340px] bg-primary text-primary-foreground font-bold flex gap-2 h-12"
+              >
+                {downloadingPassId === selectedPass.id ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <Download className="size-5" />
+                )}
+                Download Pass
+              </Button>
             </div>
           )}
         </DialogContent>

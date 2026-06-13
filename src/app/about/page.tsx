@@ -179,31 +179,33 @@ export default function AboutPage() {
                     {...fadeUp}
                     transition={{ ...fadeUp.transition, delay: j * 0.05 }}
                   >
-                    <Card className="border-0 shadow-card h-full overflow-hidden hover:shadow-elegant transition-spring group">
-                      <div className="aspect-square w-full relative overflow-hidden bg-muted">
-                        <img
-                          src={
-                            member.image ||
-                            "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80"
-                          }
-                          alt={member.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-spring duration-500"
-                        />
-                      </div>
-                      <CardContent className="p-5">
-                        <h3 className="font-display font-bold text-lg text-primary">
-                          {member.name}
-                        </h3>
-                        {member.role && (
-                          <div className="text-xs font-semibold text-accent mt-1 uppercase tracking-wider">
-                            {member.role}
-                          </div>
-                        )}
-                        <p className="text-sm text-muted-foreground mt-3 line-clamp-3">
-                          {member.notes}
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <div className="h-full rounded-2xl p-1 bg-gradient-to-br from-accent via-primary to-accent shadow-card hover:shadow-elegant transition-spring group/card">
+                      <Card className="border-0 overflow-hidden h-full rounded-[14px] bg-card">
+                        <div className="aspect-square w-full relative overflow-hidden bg-muted">
+                          <img
+                            src={
+                              member.image ||
+                              "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80"
+                            }
+                            alt={member.name}
+                            className="w-full h-full object-cover group-hover/card:scale-105 transition-spring duration-500"
+                          />
+                        </div>
+                        <CardContent className="p-5">
+                          <h3 className="font-display font-bold text-lg text-primary">
+                            {member.name}
+                          </h3>
+                          {member.role && (
+                            <div className="text-xs font-semibold text-accent mt-1 uppercase tracking-wider">
+                              {member.role}
+                            </div>
+                          )}
+                          <p className="text-sm text-muted-foreground mt-3 line-clamp-3">
+                            {member.notes}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </motion.div>
                 ))}
               </div>

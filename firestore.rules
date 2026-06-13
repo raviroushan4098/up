@@ -53,8 +53,8 @@ service cloud.firestore {
       // Admins and managers can read all applications. Users can read only their own.
       allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin() || isManager());
       
-      // Users can create an application for themselves
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Users can create an application for themselves, Admins can create them for team passes
+      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());
       
       // Admins and managers can update applications (e.g. status)
       allow update: if isAdmin() || isManager();

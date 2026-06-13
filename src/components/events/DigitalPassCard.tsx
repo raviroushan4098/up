@@ -492,7 +492,11 @@ export function DigitalPassCard({
                 <img src={imgSrc} alt="Participant" onError={() => setImgSrc(fallbackUrl)} />
               </div>
               <div className="role-pill">
-                {application.schoolCollegeName ? "STUDENT" : "PARTICIPANT"}
+                {application.designation
+                  ? application.designation.toUpperCase()
+                  : application.schoolCollegeName
+                    ? "STUDENT"
+                    : "PARTICIPANT"}
               </div>
             </div>
 
@@ -520,7 +524,11 @@ export function DigitalPassCard({
                     className="val"
                     style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                   >
-                    {application.schoolCollegeName ? "Student" : "Participant"}
+                    {application.designation
+                      ? application.designation
+                      : application.schoolCollegeName
+                        ? "Student"
+                        : "Participant"}
                   </div>
                 </div>
               </div>
