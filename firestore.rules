@@ -12,10 +12,15 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "manager";
     }
+
+    function isTeam() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "team";
+    }
     
     // Users collection
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isManager());
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isManager() || isTeam());
       
       // Allow users to create their own document with default roles, but not as admin
       allow create: if request.auth != null && request.auth.uid == userId
@@ -50,14 +55,14 @@ service cloud.firestore {
 
     // Applications collection
     match /applications/{applicationId} {
-      // Admins and managers can read all applications. Users can read only their own.
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin() || isManager());
+      // Admins, managers, and team can read all applications. Users can read only their own.
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin() || isManager() || isTeam());
       
       // Users can create an application for themselves, Admins can create them for team passes
       allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());
       
-      // Admins and managers can update applications (e.g. status)
-      allow update: if isAdmin() || isManager();
+      // Admins, managers, and team can update applications (e.g. status)
+      allow update: if isAdmin() || isManager() || isTeam();
       
       // Only admins can delete applications
       allow delete: if isAdmin();

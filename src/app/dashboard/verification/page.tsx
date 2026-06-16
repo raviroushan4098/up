@@ -40,7 +40,7 @@ type FilterTab = "all" | "pending" | "verified" | "rejected";
 
 export default function VerificationPage() {
   const { profile: adminProfile } = useAuth();
-  const [citizens, setCitizens] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -53,9 +53,9 @@ export default function VerificationPage() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Fetch all onboarded citizens
+  // Fetch all onboarded users
   useEffect(() => {
-    const fetchCitizens = async () => {
+    const fetchUsers = async () => {
       setLoading(true);
       try {
         const q = query(collection(db, "users"), where("onboarded", "==", true));
@@ -76,37 +76,37 @@ export default function VerificationPage() {
           const bOrder = order[b.verificationStatus ?? "pending"] ?? 0;
           return aOrder - bOrder;
         });
-        setCitizens(list);
+        setUsers(list);
       } catch (err) {
-        console.error("Error fetching citizens:", err);
-        toast.error("Failed to load citizen profiles.");
+        console.error("Error fetching users:", err);
+        toast.error("Failed to load user profiles.");
       } finally {
         setLoading(false);
       }
     };
-    fetchCitizens();
+    fetchUsers();
   }, []);
 
-  const handleApprove = async (citizen: UserProfile) => {
-    setActionLoading(citizen.uid);
+  const handleApprove = async (user: UserProfile) => {
+    setActionLoading(user.uid);
     try {
-      await updateDoc(doc(db, "users", citizen.uid), {
+      await updateDoc(doc(db, "users", user.uid), {
         verificationStatus: "verified",
         rejectionReason: null,
         verificationUpdatedAt: new Date().toISOString(),
         verifiedBy: adminProfile?.uid || "admin",
       });
-      setCitizens((prev) =>
+      setUsers((prev) =>
         prev.map((c) =>
-          c.uid === citizen.uid
+          c.uid === user.uid
             ? { ...c, verificationStatus: "verified", rejectionReason: undefined }
             : c,
         ),
       );
-      toast.success(`${citizen.fullName}'s profile has been verified ✅`);
+      toast.success(`${user.fullName}'s profile has been verified ✅`);
 
       // Fire and forget email notification
-      sendProfileApprovedEmail(citizen.email, citizen.fullName).catch(console.error);
+      sendProfileApprovedEmail(user.email, user.fullName).catch(console.error);
     } catch (err) {
       console.error("Approve error:", err);
       toast.error("Failed to approve profile.");
@@ -115,8 +115,8 @@ export default function VerificationPage() {
     }
   };
 
-  const openRejectDialog = (citizen: UserProfile) => {
-    setRejectTarget(citizen);
+  const openRejectDialog = (user: UserProfile) => {
+    setRejectTarget(user);
     setRejectionReason("");
     setRejectDialogOpen(true);
   };
@@ -149,7 +149,7 @@ export default function VerificationPage() {
       );
       await Promise.all(deletePromises);
 
-      setCitizens((prev) =>
+      setUsers((prev) =>
         prev.map((c) =>
           c.uid === rejectTarget.uid
             ? {
@@ -179,7 +179,7 @@ export default function VerificationPage() {
     }
   };
 
-  const filteredCitizens = citizens.filter((c) => {
+  const filteredUsers = users.filter((c) => {
     if (activeTab !== "all" && (c.verificationStatus ?? "pending") !== activeTab) {
       return false;
     }
@@ -194,12 +194,12 @@ export default function VerificationPage() {
   });
 
   const countBy = (status: string) =>
-    citizens.filter((c) => (c.verificationStatus ?? "pending") === status).length;
+    users.filter((c) => (c.verificationStatus ?? "pending") === status).length;
 
   const stats = [
     {
       label: "Total Profiles",
-      value: citizens.length,
+      value: users.length,
       icon: Users,
       color: "text-primary",
       bg: "bg-primary/10",
@@ -242,7 +242,7 @@ export default function VerificationPage() {
           Profile Verification Panel
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Review citizen profiles, verify identity documents and approve or reject registrations.
+          Review user profiles, verify identity documents and approve or reject registrations.
         </p>
       </div>
 
@@ -301,29 +301,29 @@ export default function VerificationPage() {
         </div>
       </div>
 
-      {/* Citizens List */}
+      {/* Users List */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary" />
         </div>
-      ) : filteredCitizens.length === 0 ? (
+      ) : filteredUsers.length === 0 ? (
         <Card className="border-0 shadow-card">
           <CardContent className="py-16 text-center text-muted-foreground">
             <Users className="size-10 mx-auto mb-3 opacity-30" />
             <p className="font-semibold">No profiles found</p>
-            <p className="text-sm mt-1">No citizens match the selected filter.</p>
+            <p className="text-sm mt-1">No users match the selected filter.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredCitizens.map((citizen, i) => {
-            const status = citizen.verificationStatus ?? "pending";
-            const isExpanded = expandedId === citizen.uid;
-            const isActing = actionLoading === citizen.uid;
+          {filteredUsers.map((user, i) => {
+            const status = user.verificationStatus ?? "pending";
+            const isExpanded = expandedId === user.uid;
+            const isActing = actionLoading === user.uid;
 
             return (
               <motion.div
-                key={citizen.uid}
+                key={user.uid}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
@@ -343,16 +343,16 @@ export default function VerificationPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       {/* Profile Photo */}
                       <div className="shrink-0">
-                        {citizen.profilePhotoUrl ? (
+                        {user.profilePhotoUrl ? (
                           <img
-                            src={citizen.profilePhotoUrl}
-                            alt={citizen.fullName}
+                            src={user.profilePhotoUrl}
+                            alt={user.fullName}
                             className="size-14 rounded-xl object-cover border shadow-soft cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setEnlargedImage(citizen.profilePhotoUrl!)}
+                            onClick={() => setEnlargedImage(user.profilePhotoUrl!)}
                           />
                         ) : (
                           <div className="size-14 rounded-xl bg-gradient-saffron grid place-items-center font-display font-extrabold text-primary text-lg">
-                            {citizen.fullName
+                            {user.fullName
                               .split(" ")
                               .map((s) => s[0])
                               .join("")
@@ -366,20 +366,20 @@ export default function VerificationPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-display font-bold text-primary">
-                            {citizen.fullName}
+                            {user.fullName}
                           </span>
                           <StatusBadge status={status} />
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
-                          <span>{citizen.email}</span>
-                          {citizen.district && <span>📍 {citizen.district}</span>}
-                          {citizen.profession && <span>💼 {citizen.profession}</span>}
+                          <span>{user.email}</span>
+                          {user.district && <span>📍 {user.district}</span>}
+                          {user.profession && <span>💼 {user.profession}</span>}
                         </div>
-                        {status === "rejected" && citizen.rejectionReason && (
+                        {status === "rejected" && user.rejectionReason && (
                           <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
                             <AlertTriangle className="size-3" />
-                            {citizen.rejectionReason.slice(0, 80)}
-                            {citizen.rejectionReason.length > 80 ? "..." : ""}
+                            {user.rejectionReason.slice(0, 80)}
+                            {user.rejectionReason.length > 80 ? "..." : ""}
                           </p>
                         )}
                       </div>
@@ -389,7 +389,7 @@ export default function VerificationPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setExpandedId(isExpanded ? null : citizen.uid)}
+                          onClick={() => setExpandedId(isExpanded ? null : user.uid)}
                           className="h-8 text-xs gap-1"
                         >
                           {isExpanded ? (
@@ -411,7 +411,7 @@ export default function VerificationPage() {
                           <Button
                             size="sm"
                             disabled={isActing}
-                            onClick={() => handleApprove(citizen)}
+                            onClick={() => handleApprove(user)}
                             className="h-8 text-xs bg-success text-success-foreground hover:opacity-90 gap-1"
                           >
                             <CheckCircle2 className="size-3.5" />
@@ -423,7 +423,7 @@ export default function VerificationPage() {
                             size="sm"
                             variant="outline"
                             disabled={isActing}
-                            onClick={() => openRejectDialog(citizen)}
+                            onClick={() => openRejectDialog(user)}
                             className="h-8 text-xs text-destructive hover:bg-destructive/10 border-destructive/25 gap-1"
                           >
                             <XCircle className="size-3.5" />
@@ -435,7 +435,7 @@ export default function VerificationPage() {
                             size="sm"
                             variant="outline"
                             disabled={isActing}
-                            onClick={() => openRejectDialog(citizen)}
+                            onClick={() => openRejectDialog(user)}
                             className="h-8 text-xs gap-1 border-warning/25 text-warning-foreground"
                           >
                             <AlertTriangle className="size-3.5" />
@@ -460,13 +460,13 @@ export default function VerificationPage() {
                               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                 Personal
                               </h4>
-                              <DetailRow label="Full Name" value={citizen.fullName} />
-                              <DetailRow label="Father's Name" value={citizen.fatherName} />
-                              <DetailRow label="Mother's Name" value={citizen.motherName} />
-                              <DetailRow label="Gender" value={citizen.gender} />
-                              <DetailRow label="Date of Birth" value={citizen.dob} />
-                              <DetailRow label="Age" value={citizen.age?.toString()} />
-                              <DetailRow label="Profession" value={citizen.profession} />
+                              <DetailRow label="Full Name" value={user.fullName} />
+                              <DetailRow label="Father's Name" value={user.fatherName} />
+                              <DetailRow label="Mother's Name" value={user.motherName} />
+                              <DetailRow label="Gender" value={user.gender} />
+                              <DetailRow label="Date of Birth" value={user.dob} />
+                              <DetailRow label="Age" value={user.age?.toString()} />
+                              <DetailRow label="Profession" value={user.profession} />
                             </div>
 
                             {/* Contact & Location */}
@@ -474,11 +474,11 @@ export default function VerificationPage() {
                               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                 Contact & Location
                               </h4>
-                              <DetailRow label="Email" value={citizen.email} />
-                              <DetailRow label="Phone" value={citizen.phoneNumber} />
-                              <DetailRow label="District" value={citizen.district} />
-                              <DetailRow label="Village / City" value={citizen.villageCity} />
-                              <DetailRow label="Address" value={citizen.address} />
+                              <DetailRow label="Email" value={user.email} />
+                              <DetailRow label="Phone" value={user.phoneNumber} />
+                              <DetailRow label="District" value={user.district} />
+                              <DetailRow label="Village / City" value={user.villageCity} />
+                              <DetailRow label="Address" value={user.address} />
                             </div>
                           </div>
                         </motion.div>
@@ -504,7 +504,7 @@ export default function VerificationPage() {
             </DialogTitle>
             <DialogDescription>
               Provide a clear reason for rejecting <strong>{rejectTarget?.fullName}</strong>&apos;s
-              profile. This reason will be shown to the citizen so they can make corrections.
+              profile. This reason will be shown to the user so they can make corrections.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-2">

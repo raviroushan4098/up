@@ -27,6 +27,7 @@ export default function TeamManagementPage() {
   const [teamLoading, setTeamLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [teamSearchQuery, setTeamSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -64,9 +65,20 @@ export default function TeamManagementPage() {
     try {
       const isEmail = searchQuery.includes("@");
 
+      let formattedQuery = searchQuery.trim();
+      if (!isEmail) {
+        // Strip out spaces, dashes, or parentheses if the user typed them
+        const stripped = formattedQuery.replace(/[\s\-()]/g, "");
+        if (/^\d{10}$/.test(stripped)) {
+          formattedQuery = `+91${stripped}`;
+        } else if (/^\+91\d{10}$/.test(stripped)) {
+          formattedQuery = stripped;
+        }
+      }
+
       const qField = isEmail ? "email" : "phoneNumber";
       // To handle possible different formats, we query exactly what they typed
-      const q = query(collection(db, "users"), where(qField, "==", searchQuery.trim()));
+      const q = query(collection(db, "users"), where(qField, "==", formattedQuery));
       const snap = await getDocs(q);
 
       const results = snap.docs.map((d) => d.data() as UserProfile);
@@ -133,6 +145,16 @@ export default function TeamManagementPage() {
         <TabsContent value="team" className="mt-6">
           <Card className="border-0 shadow-card">
             <CardContent className="p-6">
+              <div className="mb-6 max-w-md relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Filter team by name, email or phone..."
+                  value={teamSearchQuery}
+                  onChange={(e) => setTeamSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
               {teamLoading ? (
                 <div className="py-8 text-center text-muted-foreground">
                   Loading team members...
@@ -141,68 +163,76 @@ export default function TeamManagementPage() {
                 <div className="py-8 text-center text-muted-foreground">No team members found.</div>
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {currentTeam.map((member) => (
-                    <Card key={member.uid} className="border shadow-sm flex flex-col">
-                      <div className="p-4 flex gap-4 items-start">
-                        <div className="size-12 shrink-0 rounded-full bg-secondary overflow-hidden">
-                          {member.profilePhotoUrl ? (
-                            <img
-                              src={member.profilePhotoUrl}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Users className="w-full h-full p-3 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-primary truncate">{member.fullName}</h3>
-                          <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {member.phoneNumber}
-                          </p>
-                          <div className="mt-2 inline-block px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary capitalize">
-                            {member.role}
+                  {currentTeam
+                    .filter(
+                      (member) =>
+                        !teamSearchQuery ||
+                        member.fullName?.toLowerCase().includes(teamSearchQuery.toLowerCase()) ||
+                        member.email?.toLowerCase().includes(teamSearchQuery.toLowerCase()) ||
+                        member.phoneNumber?.toLowerCase().includes(teamSearchQuery.toLowerCase()),
+                    )
+                    .map((member) => (
+                      <Card key={member.uid} className="border shadow-sm flex flex-col">
+                        <div className="p-4 flex gap-4 items-start">
+                          <div className="size-12 shrink-0 rounded-full bg-secondary overflow-hidden">
+                            {member.profilePhotoUrl ? (
+                              <img
+                                src={member.profilePhotoUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Users className="w-full h-full p-3 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-primary truncate">{member.fullName}</h3>
+                            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {member.phoneNumber}
+                            </p>
+                            <div className="mt-2 inline-block px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary capitalize">
+                              {member.role}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="mt-auto p-4 border-t bg-secondary/20 flex gap-2">
-                        <Select
-                          disabled={actionLoading === member.uid || member.uid === profile.uid}
-                          value={member.role}
-                          onValueChange={(val: any) => handleUpdateRole(member.uid, val)}
-                        >
-                          <SelectTrigger className="flex-1 h-8 text-xs">
-                            <SelectValue placeholder="Change Role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="manager">Manager</SelectItem>
-                            <SelectItem value="team">Team</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {member.uid !== profile.uid && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-8 px-3 text-xs shrink-0"
-                            disabled={actionLoading === member.uid}
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Are you sure you want to remove ${member.fullName} from the team?`,
-                                )
-                              ) {
-                                handleUpdateRole(member.uid, "user");
-                              }
-                            }}
+                        <div className="mt-auto p-4 border-t bg-secondary/20 flex gap-2">
+                          <Select
+                            disabled={actionLoading === member.uid || member.uid === profile.uid}
+                            value={member.role}
+                            onValueChange={(val: any) => handleUpdateRole(member.uid, val)}
                           >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
+                            <SelectTrigger className="flex-1 h-8 text-xs">
+                              <SelectValue placeholder="Change Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="manager">Manager</SelectItem>
+                              <SelectItem value="team">Team</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {member.uid !== profile.uid && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-8 px-3 text-xs shrink-0"
+                              disabled={actionLoading === member.uid}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Are you sure you want to remove ${member.fullName} from the team?`,
+                                  )
+                                ) {
+                                  handleUpdateRole(member.uid, "user");
+                                }
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
                 </div>
               )}
             </CardContent>

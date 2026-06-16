@@ -18,6 +18,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { EventApplication } from "@/types/events";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -38,6 +40,7 @@ import { UPEvent } from "@/types/events";
 
 export default function DashboardHome() {
   const { profile, user } = useAuth();
+  const router = useRouter();
   const role = profile?.role || "user";
   const fullName = profile?.fullName || "";
 
@@ -75,16 +78,29 @@ export default function DashboardHome() {
               where("applicantDistrict", "==", profile.district),
             );
             const snap = await getDocs(appsQ);
-            setAppsList(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            setAppsList(
+              snap.docs
+                .map((d) => ({ id: d.id, ...d.data() }) as EventApplication)
+                .filter((a) => !a.isTeamPass),
+            );
           }
+        } else if (role === "team") {
+          router.push("/dashboard/manager");
         } else {
           // Fetch user's own apps
           const userAppsQ = query(collection(db, "applications"), where("userId", "==", user.uid));
           const userAppsSnap = await getDocs(userAppsQ);
-          setAppsList(userAppsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+          setAppsList(
+            userAppsSnap.docs
+              .map((d) => ({ id: d.id, ...d.data() }) as EventApplication)
+              .filter((a) => !a.isTeamPass),
+          );
 
-          // Fetch open events
-          const eventsQ = query(collection(db, "events"), where("status", "==", "Open"));
+          // Fetch open and coming soon events
+          const eventsQ = query(
+            collection(db, "events"),
+            where("status", "in", ["Open", "Coming Soon"]),
+          );
           const eventsSnap = await getDocs(eventsQ);
           let fetchedEvents = eventsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as UPEvent);
 
@@ -110,7 +126,7 @@ export default function DashboardHome() {
     };
 
     fetchData();
-  }, [role, profile, user]);
+  }, [role, profile, user, router]);
 
   const handleUpdateStatus = async (appId: string, newStatus: string) => {
     try {
@@ -131,6 +147,15 @@ export default function DashboardHome() {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (role === "team") {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Redirecting to Scanner Console...</span>
       </div>
     );
   }
@@ -184,8 +209,8 @@ export default function DashboardHome() {
               {fullName} (Admin) 👑
             </h1>
             <p className="mt-2 opacity-80 max-w-md">
-              You have complete access to the state-level citizen portal management systems,
-              analytics dashboards, and event builders.
+              You have complete access to the state-level user portal management systems, analytics
+              dashboards, and event builders.
             </p>
             <div className="mt-5 flex gap-2">
               <Button asChild className="bg-accent text-primary hover:bg-accent-glow font-semibold">

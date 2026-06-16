@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { EventApplication } from "@/types/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,6 +32,7 @@ import {
   Calendar,
   Video,
   X,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,6 +40,7 @@ export default function ApplicationsPage() {
   const { user, profile, loading: authLoading } = useAuth();
   const [applications, setApplications] = useState<EventApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
@@ -65,7 +68,7 @@ export default function ApplicationsPage() {
         id: doc.id,
         ...doc.data(),
       })) as EventApplication[];
-      setApplications(fetched);
+      setApplications(fetched.filter((app) => !app.isTeamPass));
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch applications");
@@ -290,22 +293,51 @@ export default function ApplicationsPage() {
     );
   };
 
+  const filteredApplications = applications.filter((app) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      app.applicantName?.toLowerCase().includes(q) ||
+      app.applicantEmail?.toLowerCase().includes(q) ||
+      app.applicantPhone?.toLowerCase().includes(q) ||
+      app.applicationNo?.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display font-bold text-2xl text-primary">
-          {isPrivileged ? "All Applications" : "My Applications"}
-        </h1>
-        <p className="text-muted-foreground">
-          {isPrivileged
-            ? "Review and manage event registrations."
-            : "Track the status of your event submissions."}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display font-bold text-2xl text-primary">
+            {isPrivileged ? "All Applications" : "My Applications"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isPrivileged
+              ? "Review and manage event registrations."
+              : "Track the status of your event submissions."}
+          </p>
+        </div>
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search name, email, or phone..."
+            value={searchQuery}
+            onChange={(e: any) => setSearchQuery(e.target.value)}
+            className="pl-9 h-10"
+          />
+        </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="size-8 animate-spin text-primary" />
+        </div>
+      ) : searchQuery.trim().length > 0 ? (
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-4 text-primary">
+            Search Results ({filteredApplications.length})
+          </h2>
+          {renderApplicationsList(filteredApplications, isPrivileged)}
         </div>
       ) : isPrivileged ? (
         <Tabs defaultValue="pending" className="space-y-6">
@@ -313,56 +345,56 @@ export default function ApplicationsPage() {
             <TabsTrigger value="pending" className="flex-1 min-w-fit px-4 gap-2">
               📥 Pending{" "}
               <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs">
-                {applications.filter((a) => a.status === "pending").length}
+                {filteredApplications.filter((a) => a.status === "pending").length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="accepted" className="flex-1 min-w-fit px-4 gap-2">
               ⏳ Under Review{" "}
               <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs">
-                {applications.filter((a) => a.status === "accepted").length}
+                {filteredApplications.filter((a) => a.status === "accepted").length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="selected" className="flex-1 min-w-fit px-4 gap-2">
               🏆 Selected{" "}
               <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs">
-                {applications.filter((a) => a.status === "selected").length}
+                {filteredApplications.filter((a) => a.status === "selected").length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="rejected" className="flex-1 min-w-fit px-4 gap-2">
               ❌ Rejected{" "}
               <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs">
-                {applications.filter((a) => a.status === "rejected").length}
+                {filteredApplications.filter((a) => a.status === "rejected").length}
               </Badge>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending" className="mt-0">
             {renderApplicationsList(
-              applications.filter((a) => a.status === "pending"),
+              filteredApplications.filter((a) => a.status === "pending"),
               isPrivileged,
             )}
           </TabsContent>
           <TabsContent value="accepted" className="mt-0">
             {renderApplicationsList(
-              applications.filter((a) => a.status === "accepted"),
+              filteredApplications.filter((a) => a.status === "accepted"),
               isPrivileged,
             )}
           </TabsContent>
           <TabsContent value="selected" className="mt-0">
             {renderApplicationsList(
-              applications.filter((a) => a.status === "selected"),
+              filteredApplications.filter((a) => a.status === "selected"),
               isPrivileged,
             )}
           </TabsContent>
           <TabsContent value="rejected" className="mt-0">
             {renderApplicationsList(
-              applications.filter((a) => a.status === "rejected"),
+              filteredApplications.filter((a) => a.status === "rejected"),
               isPrivileged,
             )}
           </TabsContent>
         </Tabs>
       ) : (
-        renderApplicationsList(applications, isPrivileged)
+        renderApplicationsList(filteredApplications, isPrivileged)
       )}
 
       {/* Video Player Modal */}

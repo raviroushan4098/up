@@ -258,7 +258,7 @@ export default function HomePage() {
                     icon: cms.stats[0]?.icon || "Users",
                   },
                   {
-                    label: cms.stats[1]?.label || "Active Citizens",
+                    label: cms.stats[1]?.label || "Active Users",
                     value: globalStats?.totalUsers || 0,
                     icon: cms.stats[1]?.icon || "Users",
                   },
@@ -477,7 +477,7 @@ export default function HomePage() {
                   Why Apply
                 </Badge>
                 <h2 className="font-display font-bold text-3xl sm:text-4xl text-primary">
-                  Benefits for Every Citizen
+                  Benefits for Every User
                 </h2>
               </motion.div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -634,7 +634,7 @@ export default function HomePage() {
                   Your future starts today.
                 </h2>
                 <p className="mt-4 opacity-90 max-w-xl mx-auto">
-                  Join 2.4 lakh+ citizens building the new Uttar Pradesh. Free to register, easy to
+                  Join 2.4 lakh+ users building the new Uttar Pradesh. Free to register, easy to
                   apply, life-changing to participate.
                 </p>
                 <Button

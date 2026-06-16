@@ -597,7 +597,7 @@ export default function CMSPage() {
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                       <CardTitle>Testimonials</CardTitle>
-                      <CardDescription>Stories and quotes from citizens.</CardDescription>
+                      <CardDescription>Stories and quotes from users.</CardDescription>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">

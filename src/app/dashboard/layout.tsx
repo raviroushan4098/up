@@ -79,6 +79,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard/notifications", label: "Notifications", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
+  } else if (role === "team") {
+    nav = [
+      { to: "/dashboard/manager", label: "Scanner Console", icon: LayoutDashboard },
+      { to: "/dashboard/profile", label: "Profile", icon: User },
+    ];
   } else {
     // Default user
     nav = [
@@ -97,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       brandLabel="Bhavishya E Uttar Pradesh"
       brandSub={`${role.toUpperCase()} PORTAL`}
     >
-      {/* Show verification banner for citizens (non-admin) */}
+      {/* Show verification banner for users (non-admin) */}
       {profile && role === "user" && <VerificationBanner profile={profile} />}
       {children}
     </DashboardShell>

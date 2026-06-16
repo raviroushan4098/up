@@ -6,7 +6,7 @@ const notifications = [
   {
     id: "1",
     title: "Welcome to Uttar Pradesh Connect!",
-    desc: "Your citizen profile has been created successfully. Explore the dashboard to discover opportunities.",
+    desc: "Your user profile has been created successfully. Explore the dashboard to discover opportunities.",
     time: "Just now",
     type: "info",
   },

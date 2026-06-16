@@ -47,7 +47,7 @@ export function AuthLayout({
               <span className="text-accent-glow">आज की युवा पीढ़ी</span>
             </h2>
             <p className="mt-3 opacity-80 max-w-md">
-              Join 2.4 lakh+ citizens accessing opportunities through a single, secure portal.
+              Join 2.4 lakh+ users accessing opportunities through a single, secure portal.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm opacity-80">

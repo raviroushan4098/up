@@ -207,8 +207,8 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
         </div>
         <h1 className="font-display font-bold text-2xl text-primary">Application Blocked</h1>
         <p className="text-muted-foreground">
-          Your citizen profile has been rejected by the administrator. You cannot apply for any
-          events until you update your profile and it is successfully verified.
+          Your user profile has been rejected by the administrator. You cannot apply for any events
+          until you update your profile and it is successfully verified.
         </p>
         <Button asChild className="mt-4">
           <Link href="/dashboard/profile">Go to Profile</Link>
