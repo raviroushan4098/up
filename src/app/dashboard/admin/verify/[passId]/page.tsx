@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { logAuditAction } from "@/lib/audit";
 
 export default function VerifyPassPage() {
   const params = useParams();
@@ -44,7 +45,7 @@ export default function VerifyPassPage() {
 
   const [checkingIn, setCheckingIn] = useState(false);
 
-  const { profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
 
   useEffect(() => {
     async function loadData() {
@@ -93,6 +94,20 @@ export default function VerifyPassPage() {
         checkedIn: true,
         checkedInAt: serverTimestamp(),
       });
+
+      if (user && application) {
+        await logAuditAction({
+          actionType: "PARTICIPANT_CHECKED_IN",
+          entityId: docId,
+          entityName: application.applicantName || "Unknown Applicant",
+          applicationNo: application.applicationNo || "N/A",
+          previousValue: "Pending",
+          newValue: "Checked In",
+          performedByUid: user.uid,
+          performedByName: user.displayName || user.email || "Unknown Manager",
+          performedByRole: profile?.role || "manager",
+        });
+      }
 
       // Update local state to reflect it instantly
       setApplication((prev) =>

@@ -23,6 +23,8 @@ import { EventApplication } from "@/types/events";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { isDeadlinePassed, formatDateString } from "@/lib/utils";
+import { logAuditAction } from "@/lib/audit";
 import { useAuth } from "@/hooks/useAuth";
 import { VerificationStatusBadge } from "@/components/layout/VerificationBanner";
 import {
@@ -109,11 +111,7 @@ export default function DashboardHome() {
           fetchedEvents = fetchedEvents.filter((e) => !appliedEventIds.includes(e.id));
 
           // Filter out events where the deadline has passed
-          const now = new Date();
-          fetchedEvents = fetchedEvents.filter((e) => {
-            if (!e.deadline) return true;
-            return new Date(e.deadline) >= now;
-          });
+          fetchedEvents = fetchedEvents.filter((e) => !isDeadlinePassed(e.deadline));
 
           // Limit to 3
           setOpenEvents(fetchedEvents.slice(0, 3));
@@ -138,6 +136,21 @@ export default function DashboardHome() {
         prev.map((app) => (app.id === appId ? { ...app, status: newStatus.toLowerCase() } : app)),
       );
       toast.success(`Application marked as ${newStatus}`);
+
+      const appData = appsList.find((a) => a.id === appId);
+      if (profile && user && appData) {
+        logAuditAction({
+          actionType: "APP_STATUS_CHANGED",
+          entityId: appId,
+          entityName: appData.applicantName || appData.applicationNo || "Unknown Applicant",
+          applicationNo: appData.applicationNo,
+          previousValue: appData.status,
+          newValue: newStatus.toLowerCase(),
+          performedByUid: user.uid,
+          performedByName: profile.fullName || "Unknown Name",
+          performedByRole: profile.role || "unknown",
+        });
+      }
     } catch (e) {
       toast.error("Failed to update status");
     }
@@ -617,13 +630,7 @@ export default function DashboardHome() {
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-primary truncate">{e.title}</div>
                       <div className="text-xs text-muted-foreground">
-                        Deadline{" "}
-                        {e.deadline
-                          ? new Date(e.deadline).toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                            })
-                          : "TBA"}
+                        Deadline {formatDateString(e.deadline)}
                       </div>
                     </div>
                     <Button asChild size="sm" variant="outline">

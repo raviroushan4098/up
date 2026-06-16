@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import { logAuditAction } from "@/lib/audit";
 import { EventApplication } from "@/types/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,8 +34,10 @@ import {
   Video,
   X,
   Search,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export default function ApplicationsPage() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -87,6 +90,21 @@ export default function ApplicationsPage() {
         prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a)),
       );
       toast.success(`Application marked as ${newStatus}`);
+
+      // Log the audit action
+      if (profile && user) {
+        logAuditAction({
+          actionType: "APP_STATUS_CHANGED",
+          entityId: appId,
+          entityName: appData.applicantName || appData.applicationNo || "Unknown Applicant",
+          applicationNo: appData.applicationNo,
+          previousValue: appData.status,
+          newValue: newStatus,
+          performedByUid: user.uid,
+          performedByName: profile.fullName || "Unknown Name",
+          performedByRole: profile.role || "unknown",
+        });
+      }
 
       // Try to get event title for the email
       let eventTitle = "Bhavishya E Uttar Pradesh Event";
@@ -304,6 +322,27 @@ export default function ApplicationsPage() {
     );
   });
 
+  const handleExportExcel = () => {
+    if (applications.length === 0) {
+      toast.error("No applications to export.");
+      return;
+    }
+
+    const data = applications.map((app) => ({
+      "Application No": app.applicationNo || "N/A",
+      "Applicant Name": app.applicantName || "N/A",
+      Email: app.applicantEmail || "N/A",
+      Phone: app.applicantPhone ? String(app.applicantPhone) : "N/A",
+      Status: app.status.toUpperCase(),
+      "Date Applied": app.appliedAt ? new Date(app.appliedAt).toLocaleString() : "N/A",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Applications");
+    XLSX.writeFile(workbook, `applications_${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -317,14 +356,26 @@ export default function ApplicationsPage() {
               : "Track the status of your event submissions."}
           </p>
         </div>
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, email, or phone..."
-            value={searchQuery}
-            onChange={(e: any) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto shrink-0">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Search name, email, or phone..."
+              value={searchQuery}
+              onChange={(e: any) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 w-full"
+            />
+          </div>
+          {isPrivileged && (
+            <Button
+              onClick={handleExportExcel}
+              variant="outline"
+              className="w-full sm:w-auto shrink-0 gap-2"
+            >
+              <Download className="size-4" />
+              Export
+            </Button>
+          )}
         </div>
       </div>
 

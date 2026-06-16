@@ -1,24 +1,51 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  orderBy,
+  getDocs,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Ticket, Users, ScanLine, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Ticket, Users, ScanLine, Search, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { EventApplication } from "@/types/events";
+import * as XLSX from "xlsx";
+
+interface AuditLog {
+  id: string;
+  actionType: string;
+  entityId: string;
+  entityName: string;
+  applicationNo?: string;
+  previousValue: string;
+  newValue: string;
+  performedByUid: string;
+  performedByName: string;
+  performedByRole: string;
+  timestamp: string;
+}
 
 export default function ManagerDashboard() {
   const { user, profile, loading: authLoading } = useAuth();
   const [totalIssued, setTotalIssued] = useState(0);
   const [totalEntry, setTotalEntry] = useState(0);
   const [issuedApps, setIssuedApps] = useState<EventApplication[]>([]);
+
+  const [scanLogs, setScanLogs] = useState<AuditLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
 
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,7 +89,49 @@ export default function ManagerDashboard() {
         setTotalEntry(checkedIn);
       });
 
+      // Fetch audit logs for this user
+      const fetchLogs = async () => {
+        try {
+          const logsQuery = query(
+            collection(db, "audit_logs"),
+            where("actionType", "==", "PARTICIPANT_CHECKED_IN"),
+            where("performedByUid", "==", user.uid),
+            orderBy("timestamp", "desc"),
+          );
+          const logsSnap = await getDocs(logsQuery);
+          const fetchedLogs: AuditLog[] = [];
+          logsSnap.forEach((docSnap) => {
+            const data = docSnap.data();
+            fetchedLogs.push({
+              id: docSnap.id,
+              actionType: data.actionType,
+              entityId: data.entityId,
+              entityName: data.entityName,
+              applicationNo: data.applicationNo,
+              previousValue: data.previousValue,
+              newValue: data.newValue,
+              performedByUid: data.performedByUid,
+              performedByName: data.performedByName,
+              performedByRole: data.performedByRole,
+              timestamp:
+                data.timestamp instanceof Timestamp
+                  ? data.timestamp.toDate().toISOString()
+                  : new Date().toISOString(),
+            });
+          });
+          setScanLogs(fetchedLogs);
+        } catch (error) {
+          console.error("Failed to fetch scan logs", error);
+        } finally {
+          setLogsLoading(false);
+        }
+      };
+
+      fetchLogs();
+
       return () => unsubscribe();
+    } else if (!authLoading) {
+      setLogsLoading(false);
     }
   }, [user, profile, authLoading]);
 
@@ -77,24 +146,44 @@ export default function ManagerDashboard() {
     );
   }
 
-  const handleScan = (detectedCodes: any[]) => {
-    if (isScanning) return; // Prevent double scans rapidly
-
-    if (detectedCodes && detectedCodes.length > 0) {
-      const value = detectedCodes[0].rawValue;
-      if (value.includes("/dashboard/admin/verify/")) {
+  const handleScan = (result: any) => {
+    if (result && result.length > 0 && result[0].rawValue) {
+      if (!isScanning) {
         setIsScanning(true);
         try {
-          const url = new URL(value);
-          router.push(url.pathname);
-          toast.success("Pass detected! Redirecting to verification...");
-        } catch (e) {
-          router.push(value);
+          const passData = JSON.parse(result[0].rawValue);
+          if (passData.passId) {
+            router.push(`/dashboard/admin/verify/${passData.passId}`);
+          } else {
+            toast.error("Invalid QR Code format.");
+            setTimeout(() => setIsScanning(false), 2000);
+          }
+        } catch (error) {
+          toast.error("Unrecognized QR Code.");
+          setTimeout(() => setIsScanning(false), 2000);
         }
-      } else {
-        toast.error("Invalid QR Code scanned.");
       }
     }
+  };
+
+  const handleExportExcel = () => {
+    if (scanLogs.length === 0) {
+      toast.error("No scan logs to export.");
+      return;
+    }
+
+    const data = scanLogs.map((log) => ({
+      "Date & Time": new Date(log.timestamp).toLocaleString(),
+      "Application No.": log.applicationNo || "N/A",
+      "Applicant Name": log.entityName,
+      "Change Made": "Checked In",
+      "Scanned By": log.performedByName,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Scan Logs");
+    XLSX.writeFile(workbook, `my_scan_logs_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
   return (
@@ -232,6 +321,74 @@ export default function ManagerDashboard() {
             style={{ maxWidth: "600px" }}
           >
             <Scanner onScan={handleScan} formats={["qr_code"]} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="overflow-hidden border-primary/20 shadow-lg">
+        <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle>Recent Scans (Your Logs)</CardTitle>
+            <CardDescription>
+              A history of the passes you have successfully verified.
+            </CardDescription>
+          </div>
+          <Button onClick={handleExportExcel} variant="outline" className="gap-2 shrink-0">
+            <Download className="size-4" />
+            Export My Logs
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-secondary/50">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">Date & Time</th>
+                  <th className="px-6 py-4 font-semibold">Pass Details</th>
+                  <th className="px-6 py-4 font-semibold">Scanned By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {logsLoading ? (
+                  <tr>
+                    <td colSpan={3} className="text-center py-8">
+                      Loading your scan logs...
+                    </td>
+                  </tr>
+                ) : scanLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="text-center py-8 text-muted-foreground">
+                      You have not scanned any passes yet.
+                    </td>
+                  </tr>
+                ) : (
+                  scanLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">
+                        {new Date(log.timestamp).toLocaleString(undefined, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-primary">{log.entityName}</div>
+                        <div className="text-xs text-muted-foreground mt-1 font-mono">
+                          {log.applicationNo || "N/A"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-700 border-green-200"
+                        >
+                          {log.performedByName}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>

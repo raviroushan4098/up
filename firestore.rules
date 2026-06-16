@@ -17,7 +17,7 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "team";
     }
-    
+
     // Users collection
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isManager() || isTeam());
@@ -102,6 +102,14 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks']) &&
         request.resource.data.clicks == resource.data.clicks + 1
       );
+    }
+
+    // Audit Logs collection
+    match /audit_logs/{logId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.performedByUid == request.auth.uid);
+      // Admins, managers, and team can create logs, but they cannot modify or delete them
+      allow create: if request.auth != null && (isAdmin() || isManager() || isTeam());
+      allow update, delete: if false;
     }
   }
 }

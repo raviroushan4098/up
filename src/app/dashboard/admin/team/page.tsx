@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Users, UserCog, ShieldCheck } from "lucide-react";
+import { Search, Users, UserCog, ShieldCheck, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function TeamManagementPage() {
   const { profile, loading } = useAuth();
@@ -63,30 +64,30 @@ export default function TeamManagementPage() {
     setSearchLoading(true);
     setSearchResults([]);
     try {
-      const isEmail = searchQuery.includes("@");
+      // Fetch all users to allow for flexible partial text matching
+      const snap = await getDocs(collection(db, "users"));
+      const allUsers = snap.docs.map((d) => d.data() as UserProfile);
 
-      let formattedQuery = searchQuery.trim();
-      if (!isEmail) {
-        // Strip out spaces, dashes, or parentheses if the user typed them
-        const stripped = formattedQuery.replace(/[\s\-()]/g, "");
-        if (/^\d{10}$/.test(stripped)) {
-          formattedQuery = `+91${stripped}`;
-        } else if (/^\+91\d{10}$/.test(stripped)) {
-          formattedQuery = stripped;
-        }
-      }
+      const queryLower = searchQuery.toLowerCase().trim();
+      const strippedPhoneQuery = queryLower.replace(/[\s\-()]/g, "");
 
-      const qField = isEmail ? "email" : "phoneNumber";
-      // To handle possible different formats, we query exactly what they typed
-      const q = query(collection(db, "users"), where(qField, "==", formattedQuery));
-      const snap = await getDocs(q);
+      const results = allUsers.filter((u) => {
+        const matchName = u.fullName?.toLowerCase().includes(queryLower);
+        const matchEmail = u.email?.toLowerCase().includes(queryLower);
+        // Compare stripped numbers so that "+9198765" matches "98765"
+        const matchPhone = u.phoneNumber
+          ?.toLowerCase()
+          .replace(/[\s\-()]/g, "")
+          .includes(strippedPhoneQuery);
 
-      const results = snap.docs.map((d) => d.data() as UserProfile);
+        return matchName || matchEmail || matchPhone;
+      });
 
       if (results.length === 0) {
-        toast.info("No user found with that exact information.");
+        toast.info("No user found matching your search.");
       } else {
-        setSearchResults(results);
+        // Limit to 50 results to prevent UI lag if query is too generic
+        setSearchResults(results.slice(0, 50));
       }
     } catch (err) {
       console.error(err);
@@ -109,10 +110,30 @@ export default function TeamManagementPage() {
       setSearchResults((prev) => prev.map((u) => (u.uid === uid ? { ...u, role: newRole } : u)));
     } catch (err) {
       console.error(err);
-      toast.error("Failed to update role");
+      toast.error("Failed to update user role");
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleExportTeamExcel = () => {
+    if (currentTeam.length === 0) {
+      toast.error("No team members to export.");
+      return;
+    }
+
+    const data = currentTeam.map((member) => ({
+      Name: member.fullName || "N/A",
+      Email: member.email || "N/A",
+      Phone: member.phoneNumber ? String(member.phoneNumber) : "N/A",
+      Role: member.role.toUpperCase(),
+      "Registered At": member.createdAt ? new Date(member.createdAt).toLocaleString() : "N/A",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Team Members");
+    XLSX.writeFile(workbook, `team_members_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
   if (loading) {
@@ -145,14 +166,24 @@ export default function TeamManagementPage() {
         <TabsContent value="team" className="mt-6">
           <Card className="border-0 shadow-card">
             <CardContent className="p-6">
-              <div className="mb-6 max-w-md relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  placeholder="Filter team by name, email or phone..."
-                  value={teamSearchQuery}
-                  onChange={(e) => setTeamSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="w-full sm:max-w-md relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter team by name, email or phone..."
+                    value={teamSearchQuery}
+                    onChange={(e) => setTeamSearchQuery(e.target.value)}
+                    className="pl-9 w-full"
+                  />
+                </div>
+                <Button
+                  onClick={handleExportTeamExcel}
+                  variant="outline"
+                  className="w-full sm:w-auto gap-2 shrink-0"
+                >
+                  <Download className="size-4" />
+                  Export Team
+                </Button>
               </div>
 
               {teamLoading ? (

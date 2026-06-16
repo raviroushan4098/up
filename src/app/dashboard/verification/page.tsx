@@ -16,11 +16,13 @@ import {
   ChevronDown,
   ChevronUp,
   Search,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserProfile } from "@/hooks/useAuth";
+import * as XLSX from "xlsx";
 import { sendProfileApprovedEmail, sendProfileRejectedEmail } from "@/actions/email";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -179,6 +181,28 @@ export default function VerificationPage() {
     }
   };
 
+  const handleExportProfilesExcel = () => {
+    if (filteredUsers.length === 0) {
+      toast.error("No profiles to export.");
+      return;
+    }
+
+    const data = filteredUsers.map((u) => ({
+      Name: u.fullName || "N/A",
+      Email: u.email || "N/A",
+      Phone: u.phoneNumber ? String(u.phoneNumber) : "N/A",
+      Profession: u.profession || "N/A",
+      "Village/City": u.villageCity || "N/A",
+      Status: (u.verificationStatus || "pending").toUpperCase(),
+      "Date Registered": u.createdAt ? new Date(u.createdAt).toLocaleString() : "N/A",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Verified Profiles");
+    XLSX.writeFile(workbook, `verified_profiles_${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
   const filteredUsers = users.filter((c) => {
     if (activeTab !== "all" && (c.verificationStatus ?? "pending") !== activeTab) {
       return false;
@@ -290,14 +314,24 @@ export default function VerificationPage() {
             </button>
           ))}
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, phone, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10 rounded-full bg-secondary border-transparent focus-visible:border-primary"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto shrink-0">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Search name, phone, or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 rounded-full bg-secondary border-transparent focus-visible:border-primary w-full"
+            />
+          </div>
+          <Button
+            onClick={handleExportProfilesExcel}
+            variant="outline"
+            className="w-full sm:w-auto rounded-full gap-2 shrink-0"
+          >
+            <Download className="size-4" />
+            Export
+          </Button>
         </div>
       </div>
 

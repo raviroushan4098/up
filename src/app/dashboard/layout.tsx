@@ -14,6 +14,10 @@ import {
   LayoutTemplate,
   QrCode,
   Users,
+  Scan,
+  UserCircle,
+  ClipboardList,
+  ScanLine,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -65,7 +69,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard/admin/passes", label: "VIP Pass Generation", icon: Ticket },
       { to: "/dashboard/admin/cms", label: "Landing Page CMS", icon: LayoutTemplate },
       { to: "/dashboard/admin/qr", label: "QR Studio", icon: QrCode },
+      { to: "/dashboard/admin/qr/logs", label: "QR Audit Logs", icon: ScanLine },
       { to: "/dashboard/admin/team", label: "Team Management", icon: Users },
+      { to: "/dashboard/admin/logs", label: "Audit Logs", icon: ClipboardList },
       { to: "/dashboard/results", label: "State Results", icon: Trophy },
       { to: "/dashboard/notifications", label: "System Alerts", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },
