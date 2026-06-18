@@ -16,6 +16,7 @@ import {
   setDoc,
   increment,
   deleteDoc,
+  where,
 } from "firebase/firestore";
 import { getDerivedEventStatus } from "@/lib/utils";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -350,16 +351,32 @@ export default function AdminEventsPage() {
   };
 
   const handleDelete = async (eventId: string) => {
-    if (!confirm("Are you sure you want to delete this event? This action cannot be undone."))
+    if (
+      !confirm(
+        "Are you sure you want to delete this event and all its associated applications? This action cannot be undone.",
+      )
+    )
       return;
 
     try {
+      // 1. Fetch all applications for this event
+      const appsQuery = query(collection(db, "applications"), where("eventId", "==", eventId));
+      const appsSnapshot = await getDocs(appsQuery);
+
+      // 2. Delete all fetched applications
+      const deletePromises = appsSnapshot.docs.map((docSnap) =>
+        deleteDoc(doc(db, "applications", docSnap.id)),
+      );
+      await Promise.all(deletePromises);
+
+      // 3. Delete the event itself
       await deleteDoc(doc(db, "events", eventId));
-      toast.success("Event deleted successfully");
+
+      toast.success(`Event and ${appsSnapshot.docs.length} applications deleted successfully`);
       fetchEvents();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to delete event");
+      toast.error("Failed to delete event and applications");
     }
   };
 

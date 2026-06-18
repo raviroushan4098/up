@@ -240,6 +240,7 @@ export default function TeamManagementPage() {
                               <SelectItem value="admin">Admin</SelectItem>
                               <SelectItem value="manager">Manager</SelectItem>
                               <SelectItem value="team">Team</SelectItem>
+                              <SelectItem value="user">User</SelectItem>
                             </SelectContent>
                           </Select>
                           {member.uid !== profile.uid && (

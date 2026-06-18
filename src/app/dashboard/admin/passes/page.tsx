@@ -48,6 +48,7 @@ export default function PassesPage() {
   const [teamDesignations, setTeamDesignations] = useState<Record<string, string>>({});
   const [teamFilterStatus, setTeamFilterStatus] = useState<"all" | "generated" | "pending">("all");
   const [teamFilterRole, setTeamFilterRole] = useState<"all" | "admin" | "manager" | "team">("all");
+  const [selectedEventId, setSelectedEventId] = useState<string>("all");
 
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -379,9 +380,14 @@ export default function PassesPage() {
     );
   }
 
-  const pendingApps = applications.filter((app) => !app.passId && !app.isTeamPass);
-  const issuedApps = applications.filter((app) => !!app.passId && !app.isTeamPass);
-  const checkedInApps = applications.filter((app) => app.checkedIn);
+  const eventFilteredApplications =
+    selectedEventId === "all"
+      ? applications
+      : applications.filter((app) => app.eventId === selectedEventId);
+
+  const pendingApps = eventFilteredApplications.filter((app) => !app.passId && !app.isTeamPass);
+  const issuedApps = eventFilteredApplications.filter((app) => !!app.passId && !app.isTeamPass);
+  const checkedInApps = eventFilteredApplications.filter((app) => app.checkedIn);
 
   const filteredTeamUsers = teamUsers.filter((tUser) => {
     if (teamFilterRole !== "all" && tUser.role !== teamFilterRole) return false;
@@ -400,19 +406,35 @@ export default function PassesPage() {
             Generate digital access passes for selected delegates and team members.
           </p>
         </div>
-        <div className="flex gap-4">
-          <div className="bg-success/10 border border-success/20 text-success px-4 py-2 rounded-lg flex items-center gap-3">
-            <QrCode className="size-5" />
-            <div>
-              <p className="text-xs uppercase font-bold tracking-wider opacity-80">Checked In</p>
-              <p className="text-xl font-black leading-none">{checkedInApps.length}</p>
+        <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center">
+          <select
+            value={selectedEventId}
+            onChange={(e) => setSelectedEventId(e.target.value)}
+            className="flex h-10 w-full sm:w-[250px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <option value="all">All Events</option>
+            {Object.entries(eventsMap).map(([id, title]) => (
+              <option key={id} value={id}>
+                {title}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-4">
+            <div className="bg-success/10 border border-success/20 text-success px-4 py-2 rounded-lg flex items-center gap-3">
+              <QrCode className="size-5" />
+              <div>
+                <p className="text-xs uppercase font-bold tracking-wider opacity-80">Checked In</p>
+                <p className="text-xl font-black leading-none">{checkedInApps.length}</p>
+              </div>
             </div>
-          </div>
-          <div className="bg-primary/5 border border-primary/10 text-primary px-4 py-2 rounded-lg flex items-center gap-3">
-            <Ticket className="size-5" />
-            <div>
-              <p className="text-xs uppercase font-bold tracking-wider opacity-80">Total Issued</p>
-              <p className="text-xl font-black leading-none">{issuedApps.length}</p>
+            <div className="bg-primary/5 border border-primary/10 text-primary px-4 py-2 rounded-lg flex items-center gap-3">
+              <Ticket className="size-5" />
+              <div>
+                <p className="text-xs uppercase font-bold tracking-wider opacity-80">
+                  Total Issued
+                </p>
+                <p className="text-xl font-black leading-none">{issuedApps.length}</p>
+              </div>
             </div>
           </div>
         </div>
