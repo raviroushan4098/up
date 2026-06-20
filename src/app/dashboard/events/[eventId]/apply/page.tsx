@@ -156,7 +156,8 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
             where("userId", "==", user.uid),
           );
           const appSnap = await getDocs(appQ);
-          if (!appSnap.empty) setHasApplied(true);
+          const hasActiveApp = appSnap.docs.some((d) => d.data().status !== "rejected");
+          if (hasActiveApp) setHasApplied(true);
         }
       } else {
         router.push("/dashboard/events");

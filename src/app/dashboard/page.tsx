@@ -106,8 +106,10 @@ export default function DashboardHome() {
           const eventsSnap = await getDocs(eventsQ);
           let fetchedEvents = eventsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as UPEvent);
 
-          // Filter out events the user has already applied to
-          const appliedEventIds = userAppsSnap.docs.map((d) => d.data().eventId);
+          // Filter out events the user has already applied to (excluding rejected ones)
+          const appliedEventIds = userAppsSnap.docs
+            .filter((d) => d.data().status !== "rejected")
+            .map((d) => d.data().eventId);
           fetchedEvents = fetchedEvents.filter((e) => !appliedEventIds.includes(e.id));
 
           // Filter out events where the deadline has passed
