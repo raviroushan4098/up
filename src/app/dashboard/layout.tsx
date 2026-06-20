@@ -7,7 +7,6 @@ import {
   CalendarSearch,
   FileText,
   Trophy,
-  Bell,
   User,
   ShieldCheck,
   Ticket,
@@ -73,7 +72,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard/admin/team", label: "Team Management", icon: Users },
       { to: "/dashboard/admin/logs", label: "Audit Logs", icon: ClipboardList },
       { to: "/dashboard/results", label: "State Results", icon: Trophy },
-      { to: "/dashboard/notifications", label: "System Alerts", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
   } else if (role === "manager") {
@@ -82,7 +80,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard", label: "District Review", icon: LayoutDashboard },
       { to: "/dashboard/admin/passes", label: "VIP Pass Generation", icon: Ticket },
       { to: "/dashboard/applications", label: "Assigned Applications", icon: FileText },
-      { to: "/dashboard/notifications", label: "Notifications", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
   } else if (role === "team") {
@@ -97,7 +94,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard/events", label: "Open Events", icon: CalendarSearch },
       { to: "/dashboard/applications", label: "My Applications", icon: FileText },
       { to: "/dashboard/results", label: "Results", icon: Trophy },
-      { to: "/dashboard/notifications", label: "Notifications", icon: Bell },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
   }

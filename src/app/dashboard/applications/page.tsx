@@ -12,6 +12,7 @@ import {
   updateDoc,
   setDoc,
   increment,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,8 +22,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { sendApplicationSelectedEmail, sendApplicationRejectedEmail } from "@/actions/email";
 import {
   Loader2,
@@ -49,6 +58,9 @@ export default function ApplicationsPage() {
   const [selectedUserProfile, setSelectedUserProfile] = useState<any | null>(null);
   const [fetchingProfile, setFetchingProfile] = useState(false);
   const [statusLogs, setStatusLogs] = useState<Record<string, any[]>>({});
+  const [rejectTarget, setRejectTarget] = useState<EventApplication | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 
   const handleViewUserProfile = async (userId: string) => {
     setFetchingProfile(true);
@@ -65,6 +77,23 @@ export default function ApplicationsPage() {
     } finally {
       setFetchingProfile(false);
     }
+  };
+
+  const openRejectDialog = (app: EventApplication) => {
+    setRejectTarget(app);
+    setRejectionReason("");
+    setRejectDialogOpen(true);
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectTarget) return;
+    if (!rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason.");
+      return;
+    }
+    await updateStatus(rejectTarget.id, "rejected", rejectionReason.trim());
+    setRejectDialogOpen(false);
+    setRejectTarget(null);
   };
 
   useEffect(() => {
@@ -128,14 +157,33 @@ export default function ApplicationsPage() {
     }
   };
 
-  const updateStatus = async (appId: string, newStatus: "accepted" | "selected" | "rejected") => {
+  const updateStatus = async (
+    appId: string,
+    newStatus: "accepted" | "selected" | "rejected",
+    rejectionReason?: string,
+  ) => {
     try {
       const appData = applications.find((a) => a.id === appId);
       if (!appData) return;
 
-      await updateDoc(doc(db, "applications", appId), { status: newStatus });
+      const updateData: any = { status: newStatus };
+      if (newStatus === "rejected" && rejectionReason) {
+        updateData.rejectionReason = rejectionReason;
+      } else {
+        updateData.rejectionReason = deleteField();
+      }
+
+      await updateDoc(doc(db, "applications", appId), updateData);
       setApplications((prev) =>
-        prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a)),
+        prev.map((a) =>
+          a.id === appId
+            ? {
+                ...a,
+                status: newStatus,
+                rejectionReason: newStatus === "rejected" ? rejectionReason : undefined,
+              }
+            : a,
+        ),
       );
       toast.success(`Application marked as ${newStatus}`);
 
@@ -185,6 +233,7 @@ export default function ApplicationsPage() {
             appData.applicantEmail,
             appData.applicantName,
             eventTitle,
+            rejectionReason,
           );
         }
       }
@@ -337,6 +386,13 @@ export default function ApplicationsPage() {
                     </Button>
                   )}
                 </div>
+
+                {app.status === "rejected" && app.rejectionReason && (
+                  <div className="sm:col-span-2 mt-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20 text-xs">
+                    <p className="font-semibold text-destructive mb-1">Reason for Rejection:</p>
+                    <p className="text-destructive/90 leading-relaxed">{app.rejectionReason}</p>
+                  </div>
+                )}
               </div>
 
               {/* Status History Logs */}
@@ -383,10 +439,7 @@ export default function ApplicationsPage() {
                       >
                         <CheckCircle className="size-4 mr-2" /> Approve for Review
                       </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => updateStatus(app.id, "rejected")}
-                      >
+                      <Button variant="destructive" onClick={() => openRejectDialog(app)}>
                         <XCircle className="size-4 mr-2" /> Reject
                       </Button>
                     </>
@@ -399,10 +452,7 @@ export default function ApplicationsPage() {
                       >
                         <CheckCircle className="size-4 mr-2" /> 🏆 Mark as Selected
                       </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => updateStatus(app.id, "rejected")}
-                      >
+                      <Button variant="destructive" onClick={() => openRejectDialog(app)}>
                         <XCircle className="size-4 mr-2" /> Reject
                       </Button>
                     </>
@@ -702,6 +752,41 @@ export default function ApplicationsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Rejection Dialog Modal */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="max-w-md bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="size-5" /> Reject Application
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this application. This reason will be saved in
+              the database and sent in the notification email to the applicant.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejectionReason">Rejection Reason</Label>
+              <Textarea
+                id="rejectionReason"
+                placeholder="e.g. Video submission does not meet requirements, incorrect details..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRejectSubmit}>
+              Confirm Rejection
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

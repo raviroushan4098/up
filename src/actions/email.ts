@@ -212,6 +212,7 @@ export async function sendApplicationRejectedEmail(
   email: string,
   name: string,
   eventTitle: string,
+  reason?: string,
 ) {
   try {
     const html = `
@@ -220,6 +221,16 @@ export async function sendApplicationRejectedEmail(
         <p>Dear ${name},</p>
         <p>Thank you for applying to <strong>${eventTitle}</strong>.</p>
         <p>We regret to inform you that your application was not selected at this time. We receive many excellent applications, and the selection process is highly competitive.</p>
+        ${
+          reason
+            ? `
+        <div style="background-color: #FEF2F2; padding: 15px; border-radius: 8px; border: 1px solid #FCA5A5; margin: 20px 0;">
+          <p style="margin: 0 0 5px 0; color: #991B1B; font-weight: bold;">Reason for rejection:</p>
+          <p style="margin: 0; color: #7F1D1D;">${reason}</p>
+        </div>
+        `
+            : ""
+        }
         <p>We encourage you to apply for future events on Bhavishya E Uttar Pradesh. Keep up the great work!</p>
         <br/>
         <p>Best regards,</p>

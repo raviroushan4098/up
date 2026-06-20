@@ -74,6 +74,7 @@ export interface EventApplication {
   eventId: string;
   userId: string;
   status: "pending" | "accepted" | "selected" | "rejected";
+  rejectionReason?: string;
 
   passGenerated?: boolean;
   passId?: string;
