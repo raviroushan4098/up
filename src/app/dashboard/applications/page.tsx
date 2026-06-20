@@ -35,6 +35,7 @@ import {
   X,
   Search,
   Download,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -45,6 +46,26 @@ export default function ApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
+  const [selectedUserProfile, setSelectedUserProfile] = useState<any | null>(null);
+  const [fetchingProfile, setFetchingProfile] = useState(false);
+  const [statusLogs, setStatusLogs] = useState<Record<string, any[]>>({});
+
+  const handleViewUserProfile = async (userId: string) => {
+    setFetchingProfile(true);
+    try {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        setSelectedUserProfile(userDoc.data());
+      } else {
+        toast.error("User profile not found.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch user profile.");
+    } finally {
+      setFetchingProfile(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && user && profile) {
@@ -72,6 +93,33 @@ export default function ApplicationsPage() {
         ...doc.data(),
       })) as EventApplication[];
       setApplications(fetched.filter((app) => !app.isTeamPass));
+
+      // Fetch status change logs
+      try {
+        const auditQ = query(
+          collection(db, "audit_logs"),
+          where("actionType", "==", "APP_STATUS_CHANGED"),
+        );
+        const auditSnap = await getDocs(auditQ);
+        const logsMap: Record<string, any[]> = {};
+        auditSnap.docs.forEach((d) => {
+          const data = d.data();
+          const appId = data.entityId;
+          if (appId) {
+            if (!logsMap[appId]) logsMap[appId] = [];
+            logsMap[appId].push({ id: d.id, ...data });
+          }
+        });
+        // Sort each group by timestamp desc
+        Object.keys(logsMap).forEach((appId) => {
+          logsMap[appId].sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+          );
+        });
+        setStatusLogs(logsMap);
+      } catch (err) {
+        console.error("Failed to fetch status logs:", err);
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch applications");
@@ -93,7 +141,7 @@ export default function ApplicationsPage() {
 
       // Log the audit action
       if (profile && user) {
-        logAuditAction({
+        const logPayload = {
           actionType: "APP_STATUS_CHANGED",
           entityId: appId,
           entityName: appData.applicantName || appData.applicationNo || "Unknown Applicant",
@@ -103,7 +151,14 @@ export default function ApplicationsPage() {
           performedByUid: user.uid,
           performedByName: profile.fullName || "Unknown Name",
           performedByRole: profile.role || "unknown",
-        });
+          entityPhone: appData.applicantPhone || "",
+          timestamp: new Date().toISOString(),
+        };
+        logAuditAction(logPayload);
+        setStatusLogs((prev) => ({
+          ...prev,
+          [appId]: [logPayload, ...(prev[appId] || [])],
+        }));
       }
 
       // Try to get event title for the email
@@ -249,8 +304,8 @@ export default function ApplicationsPage() {
                   </>
                 )}
 
-                {/* Video Link */}
-                <div className="sm:col-span-2 pt-2">
+                {/* Video Link & User Details */}
+                <div className="sm:col-span-2 pt-2 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -264,8 +319,58 @@ export default function ApplicationsPage() {
                   >
                     <Video className="size-4 mr-2 text-accent" /> Watch Submission
                   </Button>
+
+                  {isPrivileged && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-fit"
+                      onClick={() => handleViewUserProfile(app.userId)}
+                      disabled={fetchingProfile}
+                    >
+                      {fetchingProfile ? (
+                        <Loader2 className="size-4 mr-2 animate-spin" />
+                      ) : (
+                        <User className="size-4 mr-2 text-primary" />
+                      )}
+                      Check User Details
+                    </Button>
+                  )}
                 </div>
               </div>
+
+              {/* Status History Logs */}
+              {statusLogs[app.id] && statusLogs[app.id].length > 0 && (
+                <div className="mt-6 pt-4 border-t text-xs text-muted-foreground space-y-2 bg-secondary/10 p-3 rounded-lg border border-border">
+                  <span className="font-semibold block text-[10px] uppercase tracking-wider text-primary mb-1">
+                    Status History Logs:
+                  </span>
+                  <div className="divide-y divide-border/50 max-h-40 overflow-y-auto pr-1">
+                    {statusLogs[app.id].map((log, idx) => (
+                      <div
+                        key={log.id || idx}
+                        className="py-1.5 flex justify-between items-center gap-4"
+                      >
+                        <span>
+                          Status changed from{" "}
+                          <strong className="capitalize">{log.previousValue}</strong> to{" "}
+                          <strong className="capitalize">{log.newValue}</strong> by{" "}
+                          <strong className="text-primary">{log.performedByName}</strong> (
+                          {log.performedByRole})
+                        </span>
+                        <span className="text-[10px] shrink-0 text-muted-foreground">
+                          {new Date(log.timestamp).toLocaleString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Admin/Manager Actions */}
               {isPrivileged && (
@@ -478,6 +583,125 @@ export default function ApplicationsPage() {
               </video>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Profile Modal */}
+      <Dialog
+        open={!!selectedUserProfile}
+        onOpenChange={(open) => !open && setSelectedUserProfile(null)}
+      >
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
+          <DialogHeader className="p-6 bg-secondary/30 border-b flex flex-row items-center justify-between">
+            <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
+              <User className="size-5 text-primary" /> User Profile Details
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full size-8 shrink-0 mt-0"
+              onClick={() => setSelectedUserProfile(null)}
+            >
+              <X className="size-4" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </DialogHeader>
+          {selectedUserProfile && (
+            <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-4 pb-6 border-b">
+                <div className="size-20 rounded-full bg-secondary overflow-hidden flex items-center justify-center border-2 border-border shrink-0">
+                  {selectedUserProfile.profilePhotoUrl ? (
+                    <img
+                      src={selectedUserProfile.profilePhotoUrl}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="size-10 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="text-center sm:text-left">
+                  <h3 className="text-lg font-bold text-primary">{selectedUserProfile.fullName}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedUserProfile.profession || "No profession listed"}
+                  </p>
+                  <Badge variant="outline" className="mt-2 capitalize">
+                    Status: {selectedUserProfile.verificationStatus || "pending"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Father's Name
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.fatherName || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Mother's Name
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.motherName || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Gender
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.gender || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Date of Birth (Age)
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.dob || "N/A"}{" "}
+                    {selectedUserProfile.age ? `(${selectedUserProfile.age} years)` : ""}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Phone Number
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.phoneNumber || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Email
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.email || "N/A"}
+                  </span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Instagram Handle
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.instagramHandle || "N/A"}
+                  </span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-muted-foreground block text-xs font-semibold uppercase tracking-wider">
+                    Address
+                  </span>
+                  <span className="font-medium text-primary">
+                    {selectedUserProfile.address || "N/A"}, {selectedUserProfile.villageCity || ""},{" "}
+                    {selectedUserProfile.district || ""}, {selectedUserProfile.state || ""} -{" "}
+                    {selectedUserProfile.pincode || ""}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

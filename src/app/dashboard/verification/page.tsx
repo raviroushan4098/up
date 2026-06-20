@@ -25,6 +25,7 @@ import type { UserProfile } from "@/hooks/useAuth";
 import * as XLSX from "xlsx";
 import { sendProfileApprovedEmail, sendProfileRejectedEmail } from "@/actions/email";
 import { Card, CardContent } from "@/components/ui/card";
+import { logAuditAction } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -107,6 +108,19 @@ export default function VerificationPage() {
       );
       toast.success(`${user.fullName}'s profile has been verified ✅`);
 
+      // Log the audit action
+      logAuditAction({
+        actionType: "PROFILE_VERIFICATION_CHANGED",
+        entityId: user.uid,
+        entityName: user.fullName,
+        entityPhone: user.phoneNumber || "",
+        previousValue: user.verificationStatus || "pending",
+        newValue: "verified",
+        performedByUid: adminProfile?.uid || "admin",
+        performedByName: adminProfile?.fullName || "Admin",
+        performedByRole: adminProfile?.role || "admin",
+      });
+
       // Fire and forget email notification
       sendProfileApprovedEmail(user.email, user.fullName).catch(console.error);
     } catch (err) {
@@ -163,6 +177,19 @@ export default function VerificationPage() {
         ),
       );
       toast.success(`${rejectTarget.fullName}'s profile has been rejected.`);
+
+      // Log the audit action
+      logAuditAction({
+        actionType: "PROFILE_VERIFICATION_CHANGED",
+        entityId: rejectTarget.uid,
+        entityName: rejectTarget.fullName,
+        entityPhone: rejectTarget.phoneNumber || "",
+        previousValue: rejectTarget.verificationStatus || "pending",
+        newValue: "rejected",
+        performedByUid: adminProfile?.uid || "admin",
+        performedByName: adminProfile?.fullName || "Admin",
+        performedByRole: adminProfile?.role || "admin",
+      });
 
       // Fire and forget email notification
       sendProfileRejectedEmail(

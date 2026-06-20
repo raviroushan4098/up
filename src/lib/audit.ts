@@ -11,6 +11,7 @@ export async function logAuditAction({
   performedByUid,
   performedByName,
   performedByRole,
+  entityPhone,
 }: {
   actionType: string;
   entityId: string;
@@ -21,6 +22,7 @@ export async function logAuditAction({
   performedByUid: string;
   performedByName: string;
   performedByRole: string;
+  entityPhone?: string;
 }) {
   try {
     await addDoc(collection(db, "audit_logs"), {
@@ -33,6 +35,7 @@ export async function logAuditAction({
       performedByUid,
       performedByName,
       performedByRole,
+      entityPhone: entityPhone || null,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
