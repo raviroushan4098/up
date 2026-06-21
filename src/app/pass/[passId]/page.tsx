@@ -17,7 +17,7 @@ export default function DigitalPassPage() {
   const { profile, loading: authLoading } = useAuth();
 
   const [application, setApplication] = useState<EventApplication | null>(null);
-  const [eventTitle, setEventTitle] = useState("UP CONNECT EVENT");
+  const [eventTitle, setEventTitle] = useState("UP CONNECT EVEN");
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(
     "https://via.placeholder.com/300x400.png?text=NO+PHOTO",
   );

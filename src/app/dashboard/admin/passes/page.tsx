@@ -47,6 +47,7 @@ export default function PassesPage() {
   const [applications, setApplications] = useState<EventApplication[]>([]);
   const [teamUsers, setTeamUsers] = useState<UserProfile[]>([]);
   const [teamDesignations, setTeamDesignations] = useState<Record<string, string>>({});
+  const [teamSelectedEvents, setTeamSelectedEvents] = useState<Record<string, string>>({});
   const [teamFilterStatus, setTeamFilterStatus] = useState<"all" | "generated" | "pending">("all");
   const [teamFilterRole, setTeamFilterRole] = useState<"all" | "admin" | "manager" | "team">("all");
   const [selectedEventId, setSelectedEventId] = useState<string>("all");
@@ -161,17 +162,26 @@ export default function PassesPage() {
       const fetchedTeam = teamSnap.docs.map((d) => d.data() as UserProfile);
       setTeamUsers(fetchedTeam);
 
-      // Pre-fill designations if they have an existing pass
+      // Pre-fill designations and selected events if they have an existing pass
       const tDesignations: Record<string, string> = {};
+      const tSelectedEvents: Record<string, string> = {};
       for (const tUser of fetchedTeam) {
         const tApp = fetched.find((a) => a.userId === tUser.uid && a.isTeamPass);
-        if (tApp && tApp.designation) {
-          tDesignations[tUser.uid] = tApp.designation;
+        if (tApp) {
+          if (tApp.designation) {
+            tDesignations[tUser.uid] = tApp.designation;
+          } else {
+            tDesignations[tUser.uid] = tUser.role.toUpperCase();
+          }
+          if (tApp.eventId) {
+            tSelectedEvents[tUser.uid] = tApp.eventId;
+          }
         } else {
           tDesignations[tUser.uid] = tUser.role.toUpperCase();
         }
       }
       setTeamDesignations(tDesignations);
+      setTeamSelectedEvents(tSelectedEvents);
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch data");
@@ -286,8 +296,24 @@ export default function PassesPage() {
   const generateTeamPass = async (userProf: UserProfile) => {
     setProcessingId(userProf.uid);
     try {
-      const eventTitle = "Uttar Pradesh Connect Event";
-      const eventLocation = "Check Official Portal";
+      const selectedEventIdForUser = teamSelectedEvents[userProf.uid] || "general";
+      const eventTitle =
+        selectedEventIdForUser === "general"
+          ? "Uttar Pradesh Connect Event"
+          : eventsMap[selectedEventIdForUser] || "Uttar Pradesh Connect Event";
+
+      let eventLocation = "Check Official Portal";
+      if (selectedEventIdForUser !== "general") {
+        try {
+          const eventDocSnap = await getDoc(doc(db, "events", selectedEventIdForUser));
+          if (eventDocSnap.exists()) {
+            eventLocation = eventDocSnap.data().venue || eventLocation;
+          }
+        } catch (err) {
+          console.error("Failed to fetch event location", err);
+        }
+      }
+
       const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
       const newPassId = `UP-STAFF-${randomStr}`;
       const designation = teamDesignations[userProf.uid] || userProf.role.toUpperCase();
@@ -295,7 +321,7 @@ export default function PassesPage() {
       // Create a mock application doc for the team member
       const mockApp: any = {
         id: `team_${userProf.uid}`,
-        eventId: "general", // Can be generic for team
+        eventId: selectedEventIdForUser,
         userId: userProf.uid,
         applicantName: userProf.fullName,
         applicantEmail: userProf.email,
@@ -561,6 +587,28 @@ export default function PassesPage() {
                               }))
                             }
                           />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Select Event
+                          </label>
+                          <select
+                            value={teamSelectedEvents[tUser.uid] || "general"}
+                            onChange={(e) =>
+                              setTeamSelectedEvents((prev) => ({
+                                ...prev,
+                                [tUser.uid]: e.target.value,
+                              }))
+                            }
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          >
+                            <option value="general">Uttar Pradesh Connect Event (General)</option>
+                            {Object.entries(eventsMap).map(([id, title]) => (
+                              <option key={id} value={id}>
+                                {title}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                       <div className="flex gap-2">
