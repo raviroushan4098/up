@@ -74,11 +74,10 @@ export default function EventDetailPage() {
       <section className="relative">
         <div className="aspect-[21/9] sm:aspect-[3/1] overflow-hidden">
           <img src={e.image} alt={e.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         </div>
-        <div className="container mx-auto px-4 -mt-24 relative">
+        <div className="container mx-auto px-4 mt-6 relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Button asChild variant="ghost" size="sm" className="mb-4">
+            <Button asChild variant="ghost" size="sm" className="mb-4 hidden sm:inline-flex">
               <Link href="/events">
                 <ArrowLeft className="size-4 mr-1" /> All events
               </Link>
@@ -162,7 +161,7 @@ export default function EventDetailPage() {
                 <h2 className="font-display font-bold text-xl text-primary mb-4">
                   Benefits of Participation
                 </h2>
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {e.benefits.map((b, i) => (
                     <div key={i} className="rounded-xl bg-gradient-soft p-4 flex items-start gap-3">
                       <div className="size-8 rounded-lg bg-gradient-saffron grid place-items-center shrink-0">
@@ -175,6 +174,56 @@ export default function EventDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {e.displayConfig?.showDynamicSections !== false &&
+            e.dynamicSections &&
+            e.dynamicSections.map((section) => (
+              <div key={section.id} className="pt-4 pb-2">
+                <h3 className="font-display font-bold text-lg text-primary border-l-4 border-accent pl-2.5 mb-4">
+                  {section.title}
+                </h3>
+                {section.members.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {section.members.map((member) => (
+                      <div
+                        key={member.id}
+                        className="rounded-xl p-[1px] bg-gradient-to-br from-accent/30 via-primary/30 to-accent/30 shadow-soft hover:shadow-glow transition-all duration-300 group/card w-full"
+                      >
+                        <Card className="border-0 overflow-hidden rounded-[11px] bg-card flex flex-col h-[185px] sm:h-[345px]">
+                          <div className="h-[115px] sm:h-[155px] w-full bg-secondary relative overflow-hidden shrink-0">
+                            {member.imageUrl ? (
+                              <img
+                                src={member.imageUrl}
+                                alt={member.name}
+                                className="w-full h-full object-fill group-hover/card:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px] bg-accent/10">
+                                No Image
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-3 text-center flex-1 flex flex-col justify-center min-w-0">
+                            <h4 className="font-bold text-primary text-xs sm:text-sm truncate">
+                              {member.name}
+                            </h4>
+                            {member.role && (
+                              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-tight font-medium">
+                                {member.role}
+                              </p>
+                            )}
+                          </div>
+                        </Card>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground text-sm italic">
+                    No members added.
+                  </p>
+                )}
+              </div>
+            ))}
 
           {e.displayConfig?.showSchedule !== false && e.schedule && e.schedule.length > 0 && (
             <Card className="border-0 shadow-card">
@@ -192,70 +241,6 @@ export default function EventDetailPage() {
               </CardContent>
             </Card>
           )}
-
-          {e.displayConfig?.showDynamicSections !== false &&
-            e.dynamicSections &&
-            e.dynamicSections.map((section) => (
-              <div key={section.id} className="pt-6">
-                <h2 className="font-display font-extrabold text-2xl text-primary text-center mb-1">
-                  {section.title}
-                </h2>
-                <div className="w-12 h-1 bg-gradient-saffron mx-auto mb-8 rounded-full" />
-
-                {section.members.length > 0 ? (
-                  <Carousel
-                    opts={{ align: "start", loop: true }}
-                    plugins={[AutoScroll({ playOnInit: true, stopOnInteraction: false, speed: 1 })]}
-                    className="w-full max-w-full"
-                  >
-                    <CarouselContent className="-ml-2 md:-ml-4">
-                      {section.members.map((member) => (
-                        <CarouselItem
-                          key={member.id}
-                          className="pl-2 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/3"
-                        >
-                          <div className="h-full rounded-2xl p-1 bg-gradient-to-br from-accent via-primary to-accent shadow-soft hover:shadow-glow transition-spring group/card">
-                            <Card className="border-0 overflow-hidden h-full rounded-[14px] bg-card">
-                              <div className="aspect-[4/5] bg-secondary w-full relative overflow-hidden">
-                                {member.imageUrl ? (
-                                  <img
-                                    src={member.imageUrl}
-                                    alt={member.name}
-                                    className="w-full h-full object-cover group-hover/card:scale-105 transition-spring duration-500"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-accent/10">
-                                    No Image
-                                  </div>
-                                )}
-                              </div>
-                              <CardContent className="p-4 text-center">
-                                <h3 className="font-bold text-primary text-sm sm:text-base line-clamp-2">
-                                  {member.name}
-                                </h3>
-                                {member.role && (
-                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-3 leading-snug">
-                                    {member.role}
-                                  </p>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </CarouselItem>
-                      ))}
-                    </CarouselContent>
-                    <div className="hidden sm:block">
-                      <CarouselPrevious className="-left-4 bg-background border shadow-sm" />
-                      <CarouselNext className="-right-4 bg-background border shadow-sm" />
-                    </div>
-                  </Carousel>
-                ) : (
-                  <p className="text-center text-muted-foreground text-sm italic">
-                    No members added.
-                  </p>
-                )}
-              </div>
-            ))}
         </div>
 
         <div className="lg:sticky lg:top-24 h-fit">
@@ -317,6 +302,47 @@ export default function EventDetailPage() {
           </Card>
         </div>
       </section>
+
+      {/* Mobile Sticky Action Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t border-border p-3.5 z-50 flex items-center justify-between gap-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground truncate">{e.title}</p>
+          <p className="font-bold text-primary text-sm">
+            {getDerivedEventStatus(e) === "Closed"
+              ? "Registration Closed"
+              : getDerivedEventStatus(e) === "Coming Soon"
+                ? "Opening Soon"
+                : "Applications Open"}
+          </p>
+        </div>
+        <div>
+          {getDerivedEventStatus(e) === "Closed" ? (
+            <Button
+              disabled
+              size="sm"
+              className="bg-muted text-muted-foreground cursor-not-allowed font-semibold h-10 px-4"
+            >
+              Closed
+            </Button>
+          ) : getDerivedEventStatus(e) === "Coming Soon" ? (
+            <Button
+              disabled
+              size="sm"
+              className="bg-muted text-muted-foreground cursor-not-allowed font-semibold h-10 px-4"
+            >
+              Coming Soon
+            </Button>
+          ) : (
+            <Button
+              asChild
+              size="sm"
+              className="bg-accent text-primary font-bold shadow-soft h-10 px-5 hover:bg-accent-glow"
+            >
+              <Link href="/dashboard/apply">Apply Now</Link>
+            </Button>
+          )}
+        </div>
+      </div>
     </PublicLayout>
   );
 }

@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { Menu, X, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 
 const nav = [
   { to: "/", label: "Home" },
@@ -20,6 +22,41 @@ export function Navbar() {
   const { user, profile, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [passId, setPassId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      const fetchPass = async () => {
+        try {
+          const q = query(
+            collection(db, "applications"),
+            where("userId", "==", user.uid),
+            where("passGenerated", "==", true),
+            limit(1),
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            setPassId(snap.docs[0].data().passId || null);
+          } else {
+            setPassId(null);
+          }
+        } catch (e) {
+          console.error("Failed to fetch user pass in navbar", e);
+        }
+      };
+      fetchPass();
+    } else {
+      setPassId(null);
+    }
+  }, [user]);
+
+  const menuItems = [...nav];
+  if (user && !loading) {
+    menuItems.push({
+      to: passId ? `/pass/${passId}` : "/pass/none",
+      label: "My Pass",
+    });
+  }
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll);
@@ -64,7 +101,7 @@ export function Navbar() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
-            {nav.map((n) => {
+            {menuItems.map((n) => {
               const active = pathname === n.to;
               return (
                 <Link
@@ -139,7 +176,7 @@ export function Navbar() {
               className="md:hidden overflow-hidden border-t bg-background"
             >
               <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
-                {nav.map((n) => (
+                {menuItems.map((n) => (
                   <Link
                     key={n.to}
                     href={n.to}

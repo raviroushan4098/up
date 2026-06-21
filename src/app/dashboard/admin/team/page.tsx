@@ -3,7 +3,16 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserProfile } from "@/hooks/useAuth";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  doc,
+  deleteDoc,
+  getDoc,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -103,6 +112,18 @@ export default function TeamManagementPage() {
       await updateDoc(doc(db, "users", uid), {
         role: newRole,
       });
+
+      // Delete all applications/passes associated with the user when their role changes
+      try {
+        const q = query(collection(db, "applications"), where("userId", "==", uid));
+        const snap = await getDocs(q);
+        const deletePromises = snap.docs.map((docSnap) => deleteDoc(docSnap.ref));
+        await Promise.all(deletePromises);
+        console.log(`Deleted all applications/passes for user ${uid} due to role change`);
+      } catch (passErr) {
+        console.error("Failed to delete user applications after role change:", passErr);
+      }
+
       toast.success(`User role updated to ${newRole}`);
       // Refresh current team
       fetchTeam();

@@ -8,6 +8,8 @@ import { EventApplication, UPEvent } from "@/types/events";
 import QRCode from "react-qr-code";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function DigitalPassPage() {
   const params = useParams();
@@ -20,20 +22,49 @@ export default function DigitalPassPage() {
     "https://via.placeholder.com/300x400.png?text=NO+PHOTO",
   );
   const [loading, setLoading] = useState(true);
+  const [passNotFound, setPassNotFound] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       if (!passId) return;
       try {
-        const q = query(collection(db, "applications"), where("passId", "==", passId));
+        let q;
+        if (profile?.role === "admin" || profile?.role === "manager" || profile?.role === "team") {
+          q = query(collection(db, "applications"), where("passId", "==", passId));
+        } else {
+          q = query(
+            collection(db, "applications"),
+            where("passId", "==", passId),
+            where("userId", "==", profile?.uid),
+          );
+        }
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
-          notFound();
+          setPassNotFound(true);
+          setLoading(false);
           return;
         }
 
         const appData = snapshot.docs[0].data() as EventApplication;
+
+        if (profile) {
+          // Deny access to Admin role
+          if (profile.role === "admin") {
+            setIsAuthorized(false);
+            setLoading(false);
+            return;
+          }
+          // Only allow the owner of the pass to view it
+          if (appData.userId !== profile.uid) {
+            setIsAuthorized(false);
+            setLoading(false);
+            return;
+          }
+        }
+
         setApplication(appData);
 
         if (appData.eventId) {
@@ -60,7 +91,7 @@ export default function DigitalPassPage() {
       }
     }
 
-    if (!authLoading && profile && (profile.role === "admin" || profile.role === "manager")) {
+    if (!authLoading && profile) {
       fetchData();
     } else if (!authLoading) {
       setLoading(false);
@@ -75,23 +106,99 @@ export default function DigitalPassPage() {
     );
   }
 
-  if (!profile || (profile.role !== "admin" && profile.role !== "manager")) {
+  if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] p-6">
         <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center space-y-4 shadow-2xl">
           <AlertCircle className="size-16 text-destructive mx-auto" />
           <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
-          <p className="text-muted-foreground font-medium">
-            You are not authorised to verify or view digital passes.
+          <p className="text-muted-foreground font-medium pb-2">
+            Please log in to view your digital pass.
           </p>
+          <Button
+            asChild
+            className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
+          >
+            <Link href="/login">Go to Login</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center space-y-4 shadow-2xl">
+          <AlertCircle className="size-16 text-destructive mx-auto" />
+          <h2 className="text-2xl font-bold text-destructive">Access Denied</h2>
+          <p className="text-muted-foreground font-medium pb-2">
+            You are not authorised to view this pass.
+          </p>
+          <Button
+            asChild
+            className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
+          >
+            <Link href="/dashboard">Return to Dashboard</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (passNotFound) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center space-y-4 shadow-2xl">
+          <AlertCircle className="size-16 text-amber-500 mx-auto" />
+          <h2 className="text-2xl font-bold text-amber-500">No Pass Available</h2>
+          <p className="text-muted-foreground font-medium pb-2">
+            No pass is currently available for this ID. Please contact support.
+          </p>
+          <Button
+            asChild
+            className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
+          >
+            <Link href="/dashboard">Return to Dashboard</Link>
+          </Button>
         </div>
       </div>
     );
   }
 
   if (!application) {
-    return null; // Will be handled by notFound() above
+    return null;
   }
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    const node = document.querySelector(".card");
+    if (node) {
+      try {
+        const { toJpeg } = await import("html-to-image");
+        const { jsPDF } = await import("jspdf");
+
+        const dataUrl = await toJpeg(node as HTMLElement, {
+          quality: 0.98,
+          pixelRatio: 2,
+          skipFonts: true,
+          fontEmbedCSS: "",
+        });
+
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "px",
+          format: [340, 560],
+        });
+
+        pdf.addImage(dataUrl, "JPEG", 0, 0, 340, 560);
+        pdf.save(`${application.passId || "VIP"}_Pass.pdf`);
+      } catch (err) {
+        console.error("Failed to download PDF", err);
+      }
+    }
+    setDownloading(false);
+  };
 
   const verifyUrl = `${typeof window !== "undefined" ? window.location.origin : "https://bhavishyaeuttarpradesh.in"}/dashboard/admin/verify/${passId}`;
 
@@ -593,7 +700,11 @@ export default function DigitalPassPage() {
                   <img src={profilePhotoUrl} alt="Participant" />
                 </div>
                 <div className="role-pill">
-                  {application.schoolCollegeName ? "STUDENT" : "PARTICIPANT"}
+                  {application.designation
+                    ? application.designation.toUpperCase()
+                    : application.schoolCollegeName
+                      ? "STUDENT"
+                      : "PARTICIPANT"}
                 </div>
               </div>
 
@@ -618,7 +729,11 @@ export default function DigitalPassPage() {
                   <div className="info-cell">
                     <div className="lbl">Category</div>
                     <div className="val truncate">
-                      {application.schoolCollegeName ? "Student" : "Participant"}
+                      {application.designation
+                        ? application.designation
+                        : application.schoolCollegeName
+                          ? "Student"
+                          : "Participant"}
                     </div>
                   </div>
                 </div>
@@ -683,6 +798,32 @@ export default function DigitalPassPage() {
               <div className="footer-url">www.bhavishyaeuttarpradesh.in</div>
               <div className="footer-tag">Official Credential</div>
             </div>
+          </div>
+
+          <div
+            style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "center" }}
+          >
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              style={{
+                background: "linear-gradient(135deg, #FF6B00 0%, #B91C1C 100%)",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                padding: "10px 22px",
+                fontWeight: "bold",
+                fontSize: "13px",
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(255, 107, 0, 0.3)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                opacity: downloading ? 0.7 : 1,
+              }}
+            >
+              {downloading ? "Downloading..." : "Download Pass (PDF)"}
+            </button>
           </div>
 
           <div className="print-hint">

@@ -40,6 +40,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DigitalPassCard } from "@/components/events/DigitalPassCard";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function PassesPage() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -49,6 +50,7 @@ export default function PassesPage() {
   const [teamFilterStatus, setTeamFilterStatus] = useState<"all" | "generated" | "pending">("all");
   const [teamFilterRole, setTeamFilterRole] = useState<"all" | "admin" | "manager" | "team">("all");
   const [selectedEventId, setSelectedEventId] = useState<string>("all");
+  const [sendEmail, setSendEmail] = useState<boolean>(true);
 
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -243,29 +245,35 @@ export default function PassesPage() {
       });
 
       // 6. Send VIP Email
-      const emailRes = await sendDigitalPassEmail(
-        app.applicantEmail,
-        app.applicantName,
-        eventTitle,
-        newPassId,
-        eventLocation,
-        "TBA",
-        app.schoolCollegeName ? "STUDENT" : "PARTICIPANT",
-        "Uttar Pradesh", // Assuming default as we might not have applicantDistrict in app object
-        app.applicantPhone || "Verified",
-        pdfBase64,
-      );
-
-      if (emailRes.success) {
-        toast.success(`VIP Pass Generated & Emailed to ${app.applicantName}`);
-
-        // Optimistic UI Update
-        setApplications((apps) =>
-          apps.map((a) => (a.id === app.id ? { ...a, passGenerated: true, passId: newPassId } : a)),
+      if (sendEmail) {
+        const emailRes = await sendDigitalPassEmail(
+          app.applicantEmail,
+          app.applicantName,
+          eventTitle,
+          newPassId,
+          eventLocation,
+          "TBA",
+          app.schoolCollegeName ? "STUDENT" : "PARTICIPANT",
+          "Uttar Pradesh", // Assuming default as we might not have applicantDistrict in app object
+          app.applicantPhone || "Verified",
+          pdfBase64,
         );
+
+        if (emailRes.success) {
+          toast.success(`VIP Pass Generated & Emailed to ${app.applicantName}`);
+        } else {
+          toast.warning(
+            `VIP Pass Generated but failed to send email: ${emailRes.error || "Unknown error"}`,
+          );
+        }
       } else {
-        toast.error("Failed to send email. Check logs.");
+        toast.success(`VIP Pass Generated for ${app.applicantName}`);
       }
+
+      // Optimistic UI Update - ALWAYS update UI after database update, regardless of email success
+      setApplications((apps) =>
+        apps.map((a) => (a.id === app.id ? { ...a, passGenerated: true, passId: newPassId } : a)),
+      );
     } catch (error) {
       console.error(error);
       toast.error("Error generating pass");
@@ -339,25 +347,31 @@ export default function PassesPage() {
       const newDocRef = doc(db, "applications", mockApp.id);
       await setDoc(newDocRef, mockApp);
 
-      const emailRes = await sendDigitalPassEmail(
-        mockApp.applicantEmail,
-        mockApp.applicantName,
-        eventTitle,
-        newPassId,
-        eventLocation,
-        "TBA",
-        designation,
-        mockApp.applicantDistrict,
-        mockApp.applicantPhone,
-        pdfBase64,
-      );
+      if (sendEmail) {
+        const emailRes = await sendDigitalPassEmail(
+          mockApp.applicantEmail,
+          mockApp.applicantName,
+          eventTitle,
+          newPassId,
+          eventLocation,
+          "TBA",
+          designation,
+          mockApp.applicantDistrict,
+          mockApp.applicantPhone,
+          pdfBase64,
+        );
 
-      if (emailRes.success) {
-        toast.success(`Staff Pass Generated & Emailed to ${userProf.fullName}`);
-        fetchData(); // Refresh UI to show the new pass ID
+        if (emailRes.success) {
+          toast.success(`Staff Pass Generated & Emailed to ${userProf.fullName}`);
+        } else {
+          toast.warning(
+            `Staff Pass Generated but failed to send email: ${emailRes.error || "Unknown error"}`,
+          );
+        }
       } else {
-        toast.error("Failed to send email. Check logs.");
+        toast.success(`Staff Pass Generated for ${userProf.fullName}`);
       }
+      fetchData(); // Refresh UI to show the new pass ID
     } catch (error) {
       console.error(error);
       toast.error("Error generating team pass");
@@ -407,6 +421,19 @@ export default function PassesPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center">
+          <div className="flex items-center space-x-2 bg-background border border-input rounded-md px-3 py-2 h-10 select-none cursor-pointer">
+            <Checkbox
+              id="send-email-checkbox"
+              checked={sendEmail}
+              onCheckedChange={(checked) => setSendEmail(!!checked)}
+            />
+            <label
+              htmlFor="send-email-checkbox"
+              className="text-sm font-medium leading-none cursor-pointer"
+            >
+              Send Email
+            </label>
+          </div>
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}

@@ -61,6 +61,31 @@ export default function ApplicationsPage() {
   const [rejectTarget, setRejectTarget] = useState<EventApplication | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [downloadingVideo, setDownloadingVideo] = useState(false);
+
+  const handleDownloadVideo = async (url: string, filename: string) => {
+    setDownloadingVideo(true);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Network response was not ok");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success("Download started successfully");
+    } catch (error) {
+      console.error("Direct download failed, falling back to new window:", error);
+      // Fallback: Open in new window if CORS/fetch fails
+      window.open(url, "_blank");
+    } finally {
+      setDownloadingVideo(false);
+    }
+  };
 
   const handleViewUserProfile = async (userId: string) => {
     setFetchingProfile(true);
@@ -123,31 +148,33 @@ export default function ApplicationsPage() {
       })) as EventApplication[];
       setApplications(fetched.filter((app) => !app.isTeamPass));
 
-      // Fetch status change logs
-      try {
-        const auditQ = query(
-          collection(db, "audit_logs"),
-          where("actionType", "==", "APP_STATUS_CHANGED"),
-        );
-        const auditSnap = await getDocs(auditQ);
-        const logsMap: Record<string, any[]> = {};
-        auditSnap.docs.forEach((d) => {
-          const data = d.data();
-          const appId = data.entityId;
-          if (appId) {
-            if (!logsMap[appId]) logsMap[appId] = [];
-            logsMap[appId].push({ id: d.id, ...data });
-          }
-        });
-        // Sort each group by timestamp desc
-        Object.keys(logsMap).forEach((appId) => {
-          logsMap[appId].sort(
-            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      // Fetch status change logs for privileged users
+      if (profile?.role === "admin" || profile?.role === "manager") {
+        try {
+          const auditQ = query(
+            collection(db, "audit_logs"),
+            where("actionType", "==", "APP_STATUS_CHANGED"),
           );
-        });
-        setStatusLogs(logsMap);
-      } catch (err) {
-        console.error("Failed to fetch status logs:", err);
+          const auditSnap = await getDocs(auditQ);
+          const logsMap: Record<string, any[]> = {};
+          auditSnap.docs.forEach((d) => {
+            const data = d.data();
+            const appId = data.entityId;
+            if (appId) {
+              if (!logsMap[appId]) logsMap[appId] = [];
+              logsMap[appId].push({ id: d.id, ...data });
+            }
+          });
+          // Sort each group by timestamp desc
+          Object.keys(logsMap).forEach((appId) => {
+            logsMap[appId].sort(
+              (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+            );
+          });
+          setStatusLogs(logsMap);
+        } catch (err) {
+          console.error("Failed to fetch status logs:", err);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -608,26 +635,47 @@ export default function ApplicationsPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-border">
           <DialogHeader className="p-4 absolute top-0 left-0 right-0 z-10 flex flex-row items-center justify-between bg-gradient-to-b from-black/80 to-transparent">
             <DialogTitle className="text-white">{selectedVideo?.title}</DialogTitle>
-            <Button
-              variant="destructive"
-              size="icon"
-              className="rounded-full size-8 shrink-0 shadow-lg mt-0"
-              onClick={() => setSelectedVideo(null)}
-            >
-              <X className="size-4" />
-              <span className="sr-only">Close</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {selectedVideo && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full size-8 shrink-0 bg-white/10 hover:bg-white/20 text-white border-white/20 mt-0"
+                  onClick={() =>
+                    handleDownloadVideo(
+                      selectedVideo.url,
+                      `${selectedVideo.title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.mp4`,
+                    )
+                  }
+                  disabled={downloadingVideo}
+                >
+                  {downloadingVideo ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Download className="size-4" />
+                  )}
+                  <span className="sr-only">Download</span>
+                </Button>
+              )}
+              <Button
+                variant="destructive"
+                size="icon"
+                className="rounded-full size-8 shrink-0 shadow-lg mt-0"
+                onClick={() => setSelectedVideo(null)}
+              >
+                <X className="size-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </div>
           </DialogHeader>
           <div className="relative pt-16 pb-4 px-4 flex items-center justify-center min-h-[50vh]">
             {selectedVideo && (
               <video
                 src={selectedVideo.url}
                 controls
-                controlsList="nodownload"
                 autoPlay
                 playsInline
                 className="max-h-[70vh] w-full rounded-md shadow-2xl"
-                onContextMenu={(e) => e.preventDefault()}
               >
                 Your browser does not support the video tag.
               </video>

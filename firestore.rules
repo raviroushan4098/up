@@ -56,7 +56,7 @@ service cloud.firestore {
     // Applications collection
     match /applications/{applicationId} {
       // Admins, managers, and team can read all applications. Users can read only their own.
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin() || isManager() || isTeam());
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin() || isManager() || isTeam() || resource.data.passGenerated == true);
       
       // Users can create an application for themselves, Admins can create them for team passes
       allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());

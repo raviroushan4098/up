@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import {
   LayoutDashboard,
   CalendarSearch,
@@ -26,6 +28,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, profile, loading } = useAuth();
   const router = useRouter();
 
+  const [passId, setPassId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
@@ -33,6 +37,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.push("/onboarding");
     }
   }, [user, loading, profile, router]);
+
+  useEffect(() => {
+    if (user) {
+      const fetchPass = async () => {
+        try {
+          const q = query(
+            collection(db, "applications"),
+            where("userId", "==", user.uid),
+            where("passGenerated", "==", true),
+            limit(1),
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            setPassId(snap.docs[0].data().passId || null);
+          } else {
+            setPassId(null);
+          }
+        } catch (e) {
+          console.error("Failed to fetch user pass in dashboard layout", e);
+        }
+      };
+      fetchPass();
+    } else {
+      setPassId(null);
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -80,11 +110,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard", label: "District Review", icon: LayoutDashboard },
       { to: "/dashboard/admin/passes", label: "VIP Pass Generation", icon: Ticket },
       { to: "/dashboard/applications", label: "Assigned Applications", icon: FileText },
+      { to: passId ? `/pass/${passId}` : "/pass/none", label: "My Pass", icon: Ticket },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
   } else if (role === "team") {
     nav = [
       { to: "/dashboard/manager", label: "Scanner Console", icon: LayoutDashboard },
+      { to: passId ? `/pass/${passId}` : "/pass/none", label: "My Pass", icon: Ticket },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
   } else {
@@ -93,6 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/dashboard/events", label: "Open Events", icon: CalendarSearch },
       { to: "/dashboard/applications", label: "My Applications", icon: FileText },
+      { to: passId ? `/pass/${passId}` : "/pass/none", label: "My Pass", icon: Ticket },
       { to: "/dashboard/results", label: "Results", icon: Trophy },
       { to: "/dashboard/profile", label: "Profile", icon: User },
     ];
