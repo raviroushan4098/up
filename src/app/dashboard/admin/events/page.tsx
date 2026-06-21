@@ -898,32 +898,37 @@ export default function AdminEventsPage() {
                               key={member.id}
                               className="flex flex-col sm:flex-row gap-3 items-start border p-3 rounded-lg bg-background"
                             >
-                              <label className="shrink-0 size-16 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden bg-secondary relative group">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="sr-only"
-                                  onChange={(e) => {
-                                    if (e.target.files && e.target.files[0]) {
-                                      const newArr = [...dynamicSections];
-                                      newArr[sIdx].members[mIdx].file = e.target.files[0];
-                                      newArr[sIdx].members[mIdx].imageUrl = URL.createObjectURL(
-                                        e.target.files[0],
-                                      );
-                                      setDynamicSections(newArr);
-                                    }
-                                  }}
-                                />
-                                {member.imageUrl ? (
-                                  <img
-                                    src={member.imageUrl}
-                                    alt="preview"
-                                    className="w-full h-full object-cover"
+                              <div className="flex flex-col items-center gap-1 shrink-0">
+                                <label className="size-16 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden bg-secondary relative group">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="sr-only"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        const newArr = [...dynamicSections];
+                                        newArr[sIdx].members[mIdx].file = e.target.files[0];
+                                        newArr[sIdx].members[mIdx].imageUrl = URL.createObjectURL(
+                                          e.target.files[0],
+                                        );
+                                        setDynamicSections(newArr);
+                                      }
+                                    }}
                                   />
-                                ) : (
-                                  <ImageIcon className="size-5 text-muted-foreground group-hover:text-primary" />
-                                )}
-                              </label>
+                                  {member.imageUrl ? (
+                                    <img
+                                      src={member.imageUrl}
+                                      alt="preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <ImageIcon className="size-5 text-muted-foreground group-hover:text-primary" />
+                                  )}
+                                </label>
+                                <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
+                                  400x500px
+                                </span>
+                              </div>
 
                               <div className="flex-1 space-y-2 w-full">
                                 <Input
