@@ -4,12 +4,109 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+// ─── OTP Rate Limiting Helpers ────────────────────────────────────────
+const MAX_OTP_PER_DAY = 3;
+const OTP_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes between each request
+
+/** Get today's date string in YYYY-MM-DD format (IST) */
+const getTodayIST = (): string => {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+};
+
+/** Sanitize phone to use as Firestore document ID (digits only) */
+const sanitizePhone = (phone: string): string => {
+  return phone.replace(/\D/g, "");
+};
+
+interface OtpLimitResult {
+  allowed: boolean;
+  remaining: number;
+  cooldownSeconds: number; // seconds to wait before next OTP (0 = ready)
+}
+
+/**
+ * Check OTP rate limit for a phone number.
+ * Enforces: max 3/day AND 2-minute gap between requests.
+ */
+const checkOtpLimit = async (phone: string): Promise<OtpLimitResult> => {
+  const phoneKey = sanitizePhone(phone);
+  const today = getTodayIST();
+  const limitRef = doc(db, "otp_limits", phoneKey);
+  const snap = await getDoc(limitRef);
+
+  if (!snap.exists()) {
+    return { allowed: true, remaining: MAX_OTP_PER_DAY, cooldownSeconds: 0 };
+  }
+
+  const data = snap.data();
+
+  // If date is different (new day), reset is allowed
+  if (data.date !== today) {
+    // Still check cooldown even across days
+    if (data.lastSentAt?.toMillis) {
+      const elapsed = Date.now() - data.lastSentAt.toMillis();
+      if (elapsed < OTP_COOLDOWN_MS) {
+        const waitSec = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000);
+        return { allowed: false, remaining: MAX_OTP_PER_DAY, cooldownSeconds: waitSec };
+      }
+    }
+    return { allowed: true, remaining: MAX_OTP_PER_DAY, cooldownSeconds: 0 };
+  }
+
+  const currentCount = data.count || 0;
+
+  // Check daily limit first
+  if (currentCount >= MAX_OTP_PER_DAY) {
+    return { allowed: false, remaining: 0, cooldownSeconds: 0 };
+  }
+
+  // Check 2-minute cooldown
+  if (data.lastSentAt?.toMillis) {
+    const elapsed = Date.now() - data.lastSentAt.toMillis();
+    if (elapsed < OTP_COOLDOWN_MS) {
+      const waitSec = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000);
+      return {
+        allowed: false,
+        remaining: MAX_OTP_PER_DAY - currentCount,
+        cooldownSeconds: waitSec,
+      };
+    }
+  }
+
+  return {
+    allowed: true,
+    remaining: MAX_OTP_PER_DAY - currentCount,
+    cooldownSeconds: 0,
+  };
+};
+
+/**
+ * Record an OTP send in Firestore. Increments count for today.
+ * If it's a new day, resets count to 1.
+ */
+const recordOtpSend = async (phone: string): Promise<void> => {
+  const phoneKey = sanitizePhone(phone);
+  const today = getTodayIST();
+  const limitRef = doc(db, "otp_limits", phoneKey);
+  const snap = await getDoc(limitRef);
+
+  if (!snap.exists() || snap.data().date !== today) {
+    // New document or new day — reset to 1
+    await setDoc(limitRef, { count: 1, date: today, lastSentAt: serverTimestamp() });
+  } else {
+    // Same day — increment
+    const currentCount = snap.data().count || 0;
+    await setDoc(limitRef, { count: currentCount + 1, date: today, lastSentAt: serverTimestamp() });
+  }
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,6 +118,23 @@ export default function LoginPage() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [otpRemaining, setOtpRemaining] = useState<number | null>(null);
+  const [cooldown, setCooldown] = useState(0); // seconds remaining in cooldown
+
+  // Countdown timer for cooldown
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -78,15 +192,40 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+
+      // ── OTP Rate Limit Check ──────────────────────────────────────
+      const { allowed, remaining, cooldownSeconds } = await checkOtpLimit(formattedPhone);
+      if (!allowed) {
+        if (cooldownSeconds > 0) {
+          // Cooldown active — not daily limit
+          setCooldown(cooldownSeconds);
+          toast.error(`Please wait ${cooldownSeconds}s before requesting another OTP.`);
+        } else {
+          // Daily limit reached
+          toast.error("Daily OTP limit reached (3/day). Please try again tomorrow.", {
+            duration: 5000,
+          });
+          setOtpRemaining(0);
+        }
+        setSubmitting(false);
+        return;
+      }
+
       const verifier = setupRecaptcha();
       if (!verifier) {
         setSubmitting(false);
         return;
       }
+
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
+
+      // ── Record successful OTP send ────────────────────────────────
+      await recordOtpSend(formattedPhone);
+      setOtpRemaining(remaining - 1);
+
       setConfirmationResult(confirmation);
       setOtpSent(true);
-      toast.success("OTP sent successfully to " + formattedPhone);
+      toast.success(`OTP sent to ${formattedPhone} (${remaining - 1} attempts remaining today)`);
     } catch (error: any) {
       console.error("Phone send OTP error:", error);
 
@@ -153,13 +292,38 @@ export default function LoginPage() {
                 disabled={submitting}
               />
             </div>
+            {otpRemaining !== null && otpRemaining === 0 && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+                <p className="font-semibold">Daily limit reached</p>
+                <p className="text-xs mt-0.5 opacity-80">
+                  You have used all 3 OTP attempts for today. Please try again after midnight.
+                </p>
+              </div>
+            )}
+            {cooldown > 0 && otpRemaining !== 0 && (
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-700">
+                <p className="font-semibold">
+                  Please wait {Math.floor(cooldown / 60)}:{String(cooldown % 60).padStart(2, "0")}
+                </p>
+                <p className="text-xs mt-0.5 opacity-80">
+                  A 2-minute cooldown is required between OTP requests.
+                </p>
+              </div>
+            )}
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || otpRemaining === 0 || cooldown > 0}
               className="w-full bg-gradient-saffron text-primary font-semibold h-11"
             >
-              {submitting ? "Sending..." : "Send OTP"}
+              {submitting
+                ? "Sending..."
+                : cooldown > 0
+                  ? `Wait ${Math.floor(cooldown / 60)}:${String(cooldown % 60).padStart(2, "0")}`
+                  : "Send OTP"}
             </Button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              Max {MAX_OTP_PER_DAY} OTP requests per day · 2 min gap between each
+            </p>
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
@@ -177,6 +341,11 @@ export default function LoginPage() {
                 Dear user, if you have installed Truecaller on your device, kindly check the spam
                 folder for the OTP.
               </p>
+              {otpRemaining !== null && (
+                <p className="text-[11px] text-amber-600 font-medium">
+                  {otpRemaining} OTP attempt{otpRemaining !== 1 ? "s" : ""} remaining today
+                </p>
+              )}
             </div>
             <div className="flex gap-2">
               <Button
