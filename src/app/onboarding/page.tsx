@@ -368,13 +368,10 @@ export default function OnboardingPage() {
       toast.error("Email Address is required");
       return;
     }
-    // Temporarily bypassed email OTP verification
-    /*
     if (!isEmailVerified) {
       toast.error("Please verify your email address before submitting");
       return;
     }
-    */
     if (!instagramHandle.trim()) {
       toast.error("Instagram handle is required");
       return;
@@ -745,18 +742,60 @@ export default function OnboardingPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      required
-                      placeholder="you@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={submitting || (profile?.email ? true : false)}
-                    />
-                    <p className="text-xs text-amber-600 font-medium mt-1">
-                      Kindly fill your correct email ID; you will receive all communication here.
-                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        id="email"
+                        type="email"
+                        required
+                        placeholder="you@email.com"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setIsEmailVerified(false);
+                          setOtpSent(false);
+                        }}
+                        disabled={submitting || (profile?.email ? true : false) || isEmailVerified}
+                        className="flex-1"
+                      />
+                      {!isEmailVerified && !profile?.email && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSendEmailOtp}
+                          disabled={sendingOtp || !email}
+                        >
+                          {sendingOtp ? "Sending..." : "Send OTP"}
+                        </Button>
+                      )}
+                    </div>
+                    {isEmailVerified && (
+                      <p className="text-xs text-success font-medium flex items-center mt-1">
+                        <CheckCircle2 className="size-3 mr-1" /> Email Verified
+                      </p>
+                    )}
+                    {otpSent && !isEmailVerified && (
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          placeholder="6-digit OTP"
+                          value={enteredOtp}
+                          onChange={(e) =>
+                            setEnteredOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                          }
+                          maxLength={6}
+                          className="w-32"
+                          disabled={verifyingEmail}
+                        />
+                        <Button
+                          type="button"
+                          variant="default"
+                          className="bg-primary text-primary-foreground"
+                          onClick={handleVerifyEmailOtp}
+                          disabled={verifyingEmail || enteredOtp.length !== 6}
+                        >
+                          {verifyingEmail ? "Verifying..." : "Verify OTP"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label htmlFor="instagramHandle">Instagram Handle *</Label>

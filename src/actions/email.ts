@@ -1,35 +1,49 @@
 "use server";
 
-import nodemailer from "nodemailer";
-import fs from "fs";
-import path from "path";
+import { Resend } from "resend";
 
-// Setup nodemailer transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT || "465"),
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Setup Resend SDK client
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// A helper to safely send emails even if SMTP is not fully configured (for local dev)
-async function sendEmailSafely(options: nodemailer.SendMailOptions) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log("Mock Email Sent (SMTP not configured):", options);
+// A helper to safely send emails even if Resend is not fully configured (for local dev)
+async function sendEmailSafely(options: {
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: Array<{ filename: string; content: string | Buffer; contentType?: string }>;
+}) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log("Mock Email Sent (Resend not configured):", options);
     return { success: true, mock: true };
   }
 
   try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM_EMAIL || `"Bhavishya E Uttar Pradesh" <${process.env.SMTP_USER}>`,
-      ...options,
+    const formattedAttachments = options.attachments?.map((att) => {
+      // Convert base64 string content to Buffer for Resend compatibility
+      const contentBuffer =
+        typeof att.content === "string" ? Buffer.from(att.content, "base64") : att.content;
+      return {
+        filename: att.filename,
+        content: contentBuffer,
+      };
     });
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      attachments: formattedAttachments,
+    });
+
+    if (error) {
+      console.error("Resend API error:", error);
+      return { success: false, error: error.message };
+    }
+
     return { success: true };
   } catch (error) {
-    console.error("Failed to send email:", error);
+    console.error("Failed to send email via Resend:", error);
     return { success: false, error: "Failed to send email" };
   }
 }
