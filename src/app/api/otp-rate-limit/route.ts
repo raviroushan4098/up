@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import crypto from "crypto";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { db } from "@/lib/firebase";
 
 const MAX_PHONE_OTP_PER_DAY = 3;
@@ -35,11 +36,43 @@ export async function POST(request: Request) {
       );
     }
 
+    const headersList = await headers();
+
+    // ─── App Check Token Verification (Production Only) ─────────────────
+    if (process.env.NODE_ENV !== "development") {
+      const appCheckToken = headersList.get("x-firebase-appcheck");
+      if (!appCheckToken) {
+        return NextResponse.json(
+          { allowed: false, error: "Unauthorized: Missing App Check token." },
+          { status: 401 },
+        );
+      }
+
+      try {
+        const JWKS = createRemoteJWKSet(new URL("https://firebaseappcheck.googleapis.com/v1/jwks"));
+        const projectNumber = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+        const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+        if (!projectNumber || !projectId) {
+          throw new Error("Missing Firebase environment variables configuration.");
+        }
+
+        await jwtVerify(appCheckToken, JWKS, {
+          issuer: `https://firebaseappcheck.googleapis.com/${projectNumber}`,
+          audience: [`projects/${projectNumber}`, `projects/${projectId}`],
+        });
+      } catch (error: any) {
+        return NextResponse.json(
+          { allowed: false, error: `Unauthorized: Invalid App Check token. ${error.message}` },
+          { status: 401 },
+        );
+      }
+    }
+
     const today = getTodayIST();
     const phoneKey = sanitizePhone(phone);
 
     // ─── Get Client IP ──────────────────────────────────────────────────
-    const headersList = await headers();
     const rawIp = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "127.0.0.1";
     const ip = rawIp.split(",")[0].trim();
     const hashedIp = hashString(ip);

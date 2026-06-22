@@ -24,6 +24,8 @@ const storage = getStorage(app);
 // Protects Firestore, Auth, and Storage from unauthorized access.
 // Uses reCAPTCHA Enterprise for web attestation.
 // Only initializes on the client side (not during SSR/build).
+let appCheck: any = null;
+
 if (typeof window !== "undefined") {
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   if (siteKey) {
@@ -34,7 +36,7 @@ if (typeof window !== "undefined") {
     }
 
     try {
-      initializeAppCheck(app, {
+      appCheck = initializeAppCheck(app, {
         provider: new ReCaptchaEnterpriseProvider(siteKey),
         isTokenAutoRefreshEnabled: true,
       });
@@ -44,4 +46,4 @@ if (typeof window !== "undefined") {
   }
 }
 
-export { app, auth, db, storage };
+export { app, auth, db, storage, appCheck };

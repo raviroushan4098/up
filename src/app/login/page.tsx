@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { getToken } from "firebase/app-check";
+import { auth, db, app, appCheck } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -27,9 +28,22 @@ const checkOtpRateLimitOnServer = async (
   deviceId: string | null,
   fingerprint: string,
 ): Promise<RateLimitResponse> => {
+  let appCheckToken = "";
+  try {
+    if (appCheck) {
+      const tokenResult = await getToken(appCheck, false);
+      appCheckToken = tokenResult.token;
+    }
+  } catch (e) {
+    // App Check might not be initialized (e.g. in dev mode)
+  }
+
   const res = await fetch("/api/otp-rate-limit", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(appCheckToken ? { "X-Firebase-AppCheck": appCheckToken } : {}),
+    },
     body: JSON.stringify({ phone, deviceId, fingerprint }),
   });
   return res.json();
