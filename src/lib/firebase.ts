@@ -34,16 +34,27 @@ const storage = getStorage(app);
 // Uses reCAPTCHA Enterprise for web attestation.
 // Only initializes on the client side (not during SSR/build).
 if (typeof window !== "undefined") {
-  // Enable debug token for localhost development
-  if (process.env.NODE_ENV === "development") {
-    // @ts-expect-error — Firebase reads this global to enable debug mode
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-  }
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  if (siteKey) {
+    // Enable debug token for localhost development
+    if (process.env.NODE_ENV === "development") {
+      // @ts-expect-error — Firebase reads this global to enable debug mode
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
 
-  initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!),
-    isTokenAutoRefreshEnabled: true,
-  });
+    try {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(siteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    } catch (error) {
+      console.error("Firebase App Check initialization failed:", error);
+    }
+  } else {
+    console.warn(
+      "Firebase App Check skipped: NEXT_PUBLIC_RECAPTCHA_SITE_KEY is not defined in the environment.",
+    );
+  }
 }
 
 export { app, auth, db, storage };

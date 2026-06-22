@@ -111,5 +111,13 @@ service cloud.firestore {
       allow create: if request.auth != null && (isAdmin() || isManager() || isTeam());
       allow update, delete: if false;
     }
+
+    // OTP Rate Limiting rules
+    match /otp_limits/{phone} {
+      allow read: if true;
+      allow create: if request.resource.data.count == 1;
+      allow update: if (request.resource.data.date != resource.data.date && request.resource.data.count == 1)
+                    || (request.resource.data.date == resource.data.date && resource.data.count < 3 && request.resource.data.count == resource.data.count + 1);
+    }
   }
 }

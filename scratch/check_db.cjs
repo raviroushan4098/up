@@ -16,7 +16,7 @@ const db = getFirestore(app);
 
 async function check() {
   const snap = await getDocs(collection(db, "events"));
-  snap.forEach(doc => {
+  snap.forEach((doc) => {
     const data = doc.data();
     if (data.dynamicSections && data.dynamicSections.length > 0) {
       console.log("Found event with dynamicSections:", doc.id);
