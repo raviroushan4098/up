@@ -15,15 +15,6 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase for SSR compatibility
-if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-  console.warn(
-    "Firebase Config Warning: NEXT_PUBLIC_FIREBASE_API_KEY is undefined. " +
-      "If you recently created or updated the .env file, please restart your " +
-      "development server so Next.js can load it.",
-  );
-}
-
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -48,12 +39,8 @@ if (typeof window !== "undefined") {
         isTokenAutoRefreshEnabled: true,
       });
     } catch (error) {
-      console.error("Firebase App Check initialization failed:", error);
+      // Fail silently without console logs
     }
-  } else {
-    console.warn(
-      "Firebase App Check skipped: NEXT_PUBLIC_RECAPTCHA_SITE_KEY is not defined in the environment.",
-    );
   }
 }
 

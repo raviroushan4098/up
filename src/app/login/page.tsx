@@ -12,100 +12,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// ─── OTP Rate Limiting Helpers ────────────────────────────────────────
 const MAX_OTP_PER_DAY = 3;
-const OTP_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes between each request
 
-/** Get today's date string in YYYY-MM-DD format (IST) */
-const getTodayIST = (): string => {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-};
-
-/** Sanitize phone to use as Firestore document ID (digits only) */
-const sanitizePhone = (phone: string): string => {
-  return phone.replace(/\D/g, "");
-};
-
-interface OtpLimitResult {
+interface RateLimitResponse {
   allowed: boolean;
-  remaining: number;
-  cooldownSeconds: number; // seconds to wait before next OTP (0 = ready)
+  remaining?: number;
+  reason?: "cooldown" | "phone_limit" | "ip_limit" | "device_limit";
+  waitSeconds?: number;
+  message?: string;
 }
 
-/**
- * Check OTP rate limit for a phone number.
- * Enforces: max 3/day AND 2-minute gap between requests.
- */
-const checkOtpLimit = async (phone: string): Promise<OtpLimitResult> => {
-  const phoneKey = sanitizePhone(phone);
-  const today = getTodayIST();
-  const limitRef = doc(db, "otp_limits", phoneKey);
-  const snap = await getDoc(limitRef);
-
-  if (!snap.exists()) {
-    return { allowed: true, remaining: MAX_OTP_PER_DAY, cooldownSeconds: 0 };
-  }
-
-  const data = snap.data();
-
-  // If date is different (new day), reset is allowed
-  if (data.date !== today) {
-    // Still check cooldown even across days
-    if (data.lastSentAt?.toMillis) {
-      const elapsed = Date.now() - data.lastSentAt.toMillis();
-      if (elapsed < OTP_COOLDOWN_MS) {
-        const waitSec = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000);
-        return { allowed: false, remaining: MAX_OTP_PER_DAY, cooldownSeconds: waitSec };
-      }
-    }
-    return { allowed: true, remaining: MAX_OTP_PER_DAY, cooldownSeconds: 0 };
-  }
-
-  const currentCount = data.count || 0;
-
-  // Check daily limit first
-  if (currentCount >= MAX_OTP_PER_DAY) {
-    return { allowed: false, remaining: 0, cooldownSeconds: 0 };
-  }
-
-  // Check 2-minute cooldown
-  if (data.lastSentAt?.toMillis) {
-    const elapsed = Date.now() - data.lastSentAt.toMillis();
-    if (elapsed < OTP_COOLDOWN_MS) {
-      const waitSec = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000);
-      return {
-        allowed: false,
-        remaining: MAX_OTP_PER_DAY - currentCount,
-        cooldownSeconds: waitSec,
-      };
-    }
-  }
-
-  return {
-    allowed: true,
-    remaining: MAX_OTP_PER_DAY - currentCount,
-    cooldownSeconds: 0,
-  };
+const checkOtpRateLimitOnServer = async (
+  phone: string,
+  deviceId: string | null,
+  fingerprint: string,
+): Promise<RateLimitResponse> => {
+  const res = await fetch("/api/otp-rate-limit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone, deviceId, fingerprint }),
+  });
+  return res.json();
 };
 
-/**
- * Record an OTP send in Firestore. Increments count for today.
- * If it's a new day, resets count to 1.
- */
-const recordOtpSend = async (phone: string): Promise<void> => {
-  const phoneKey = sanitizePhone(phone);
-  const today = getTodayIST();
-  const limitRef = doc(db, "otp_limits", phoneKey);
-  const snap = await getDoc(limitRef);
-
-  if (!snap.exists() || snap.data().date !== today) {
-    // New document or new day — reset to 1
-    await setDoc(limitRef, { count: 1, date: today, lastSentAt: serverTimestamp() });
-  } else {
-    // Same day — increment
-    const currentCount = snap.data().count || 0;
-    await setDoc(limitRef, { count: currentCount + 1, date: today, lastSentAt: serverTimestamp() });
-  }
+const getBrowserFingerprint = (): string => {
+  if (typeof window === "undefined") return "";
+  const parts = [
+    navigator.userAgent,
+    screen.width,
+    screen.height,
+    navigator.language,
+    new Date().getTimezoneOffset(),
+  ];
+  return parts.join("|");
 };
 
 export default function LoginPage() {
@@ -143,6 +82,19 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
+  // Generate and save persistent device_id on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let devId = localStorage.getItem("device_id");
+      if (!devId) {
+        devId = window.crypto?.randomUUID
+          ? window.crypto.randomUUID()
+          : Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("device_id", devId);
+      }
+    }
+  }, []);
+
   // Clean up reCAPTCHA on unmount
   useEffect(() => {
     return () => {
@@ -151,7 +103,7 @@ export default function LoginPage() {
           (window as any).recaptchaVerifier.clear();
           (window as any).recaptchaVerifier = null;
         } catch (e) {
-          console.error("Error cleaning up RecaptchaVerifier:", e);
+          // Fail silently
         }
       }
     };
@@ -165,7 +117,7 @@ export default function LoginPage() {
         try {
           (window as any).recaptchaVerifier.clear();
         } catch (e) {
-          console.warn("Error clearing previous RecaptchaVerifier:", e);
+          // Fail silently
         }
       }
       const recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
@@ -174,7 +126,6 @@ export default function LoginPage() {
       (window as any).recaptchaVerifier = recaptchaVerifier;
       return recaptchaVerifier;
     } catch (error: any) {
-      console.error("Recaptcha initialization error:", error);
       if (error.message?.includes("already been rendered")) {
         window.location.reload();
         return;
@@ -193,19 +144,29 @@ export default function LoginPage() {
     try {
       const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
 
-      // ── OTP Rate Limit Check ──────────────────────────────────────
-      const { allowed, remaining, cooldownSeconds } = await checkOtpLimit(formattedPhone);
-      if (!allowed) {
-        if (cooldownSeconds > 0) {
-          // Cooldown active — not daily limit
-          setCooldown(cooldownSeconds);
-          toast.error(`Please wait ${cooldownSeconds}s before requesting another OTP.`);
-        } else {
-          // Daily limit reached
-          toast.error("Daily OTP limit reached (3/day). Please try again tomorrow.", {
+      // ── OTP Rate Limit Check (Server-side) ─────────────────────────
+      const deviceId = typeof window !== "undefined" ? localStorage.getItem("device_id") : null;
+      const fingerprint = getBrowserFingerprint();
+
+      const rateLimit = await checkOtpRateLimitOnServer(formattedPhone, deviceId, fingerprint);
+
+      if (!rateLimit.allowed) {
+        if (rateLimit.reason === "cooldown" && rateLimit.waitSeconds) {
+          setCooldown(rateLimit.waitSeconds);
+          toast.error(
+            rateLimit.message ||
+              `Please wait ${rateLimit.waitSeconds}s before requesting another OTP.`,
+          );
+        } else if (rateLimit.reason === "phone_limit") {
+          setOtpRemaining(0);
+          toast.error(rateLimit.message || "Daily OTP limit reached for this phone number.", {
             duration: 5000,
           });
-          setOtpRemaining(0);
+        } else {
+          // IP limit or device limit
+          toast.error(rateLimit.message || "Too many requests. Please try again tomorrow.", {
+            duration: 5000,
+          });
         }
         setSubmitting(false);
         return;
@@ -219,16 +180,16 @@ export default function LoginPage() {
 
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
 
-      // ── Record successful OTP send ────────────────────────────────
-      await recordOtpSend(formattedPhone);
-      setOtpRemaining(remaining - 1);
+      if (rateLimit.remaining !== undefined) {
+        setOtpRemaining(rateLimit.remaining);
+      }
 
       setConfirmationResult(confirmation);
       setOtpSent(true);
-      toast.success(`OTP sent to ${formattedPhone} (${remaining - 1} attempts remaining today)`);
+      toast.success(
+        `OTP sent to ${formattedPhone} (${rateLimit.remaining !== undefined ? rateLimit.remaining : "some"} attempts remaining today)`,
+      );
     } catch (error: any) {
-      console.error("Phone send OTP error:", error);
-
       if (error.message?.includes("already been rendered")) {
         window.location.reload();
         return;
@@ -269,7 +230,6 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error: any) {
       toast.error("Invalid verification code. Please check and try again.");
-      console.error("Phone confirm OTP error:", error);
     } finally {
       setSubmitting(false);
     }
