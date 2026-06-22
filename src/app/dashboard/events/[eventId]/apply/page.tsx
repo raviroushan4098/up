@@ -638,6 +638,15 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
                 )}
               </label>
 
+              <div className="text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 px-3.5 py-2.5 rounded-lg mt-3 flex items-start gap-2">
+                <ShieldAlert className="size-4 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-semibold text-amber-800">Important Note:</span> The
+                  submitted video must be relevant to the chosen topic. Off-topic submissions will
+                  be automatically rejected.
+                </div>
+              </div>
+
               {/* Upload Progress */}
               {submitting && uploadProgress > 0 && (
                 <div className="mt-6 space-y-2 border rounded-xl p-4 bg-secondary/30">
