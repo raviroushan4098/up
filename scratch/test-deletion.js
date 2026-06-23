@@ -18,7 +18,9 @@ async function testDeletion() {
     console.log("❌ FAILURE: Client was able to delete user document! This is insecure.");
   } catch (error) {
     if (error.message.includes("permission-denied") || error.code === "permission-denied") {
-      console.log("✅ SUCCESS: Client-side deletion correctly blocked by Firestore Rules (Permission Denied).");
+      console.log(
+        "✅ SUCCESS: Client-side deletion correctly blocked by Firestore Rules (Permission Denied).",
+      );
     } else {
       console.error("❌ Unexpected error:", error.message);
     }

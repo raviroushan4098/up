@@ -26,7 +26,15 @@ try {
 }
 
 const { initializeApp } = require("firebase/app");
-const { getFirestore, doc, getDoc, collection, query, orderBy, getDocs } = require("firebase/firestore");
+const {
+  getFirestore,
+  doc,
+  getDoc,
+  collection,
+  query,
+  orderBy,
+  getDocs,
+} = require("firebase/firestore");
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -51,7 +59,7 @@ async function testFetch(name, fn) {
 
 async function run() {
   console.log("Firebase initialized with project:", firebaseConfig.projectId);
-  
+
   await testFetch("1. settings/landingPage doc", async () => {
     const docRef = doc(db, "settings", "landingPage");
     await getDoc(docRef);

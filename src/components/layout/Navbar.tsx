@@ -66,18 +66,6 @@ export function Navbar() {
 
   return (
     <>
-      {/* Announcement */}
-      <div className="bg-gradient-navy text-primary-foreground text-xs sm:text-sm">
-        <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          <span className="flex items-center gap-2">
-            <ShieldCheck className="size-3.5 shrink-0" />
-            <span className="hidden sm:inline">Official Registration Portal</span>
-            <span className="sm:hidden">Official Registration Portal</span>
-          </span>
-          <span className="hidden md:inline opacity-80">Helpline · +91 7991753893</span>
-        </div>
-      </div>
-
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -100,20 +88,21 @@ export function Navbar() {
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-6">
             {menuItems.map((n) => {
               const active = pathname === n.to;
               return (
                 <Link
                   key={n.to}
                   href={n.to}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-base ${
-                    active
-                      ? "bg-primary text-primary-foreground shadow-soft"
-                      : "text-foreground/80 hover:text-primary hover:bg-secondary"
+                  className={`relative py-2 text-sm font-medium transition-base ${
+                    active ? "text-[#8B4513]" : "text-foreground/70 hover:text-[#8B4513]"
                   }`}
                 >
                   {n.label}
+                  {active && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#8B4513] rounded-full" />
+                  )}
                 </Link>
               );
             })}
@@ -148,9 +137,9 @@ export function Navbar() {
                 <Button
                   asChild
                   size="sm"
-                  className="bg-gradient-saffron text-primary hover:opacity-90 shadow-soft font-semibold"
+                  className="bg-[#C84B31] text-white hover:bg-[#B33F28] rounded-full px-6 font-semibold shadow-soft"
                 >
-                  <Link href="/login">Login / Get Started</Link>
+                  <Link href="/login">Login/Get Started</Link>
                 </Button>
               </>
             ) : (

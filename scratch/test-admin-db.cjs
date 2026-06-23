@@ -44,7 +44,7 @@ const db = admin.firestore();
 async function run() {
   try {
     console.log("Checking database via Admin SDK...");
-    
+
     const settingsSnap = await db.collection("settings").doc("landingPage").get();
     if (settingsSnap.exists) {
       console.log("✅ settings/landingPage exists:", settingsSnap.data()?.hero?.titleLine1);
@@ -54,7 +54,12 @@ async function run() {
 
     const eventsSnap = await db.collection("events").limit(1).get();
     if (!eventsSnap.empty) {
-      console.log("✅ events count:", eventsSnap.size, "First event:", eventsSnap.docs[0].data().title);
+      console.log(
+        "✅ events count:",
+        eventsSnap.size,
+        "First event:",
+        eventsSnap.docs[0].data().title,
+      );
     } else {
       console.log("❌ No events found.");
     }

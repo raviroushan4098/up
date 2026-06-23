@@ -11,6 +11,7 @@ export interface CMSHero {
   stat3Value: string;
   image?: string;
   images?: string[];
+  videoUrl?: string;
 }
 
 export interface CMSStat {
@@ -49,6 +50,20 @@ export interface CMSFaq {
   a: string;
 }
 
+export interface CMSSpeaker {
+  name: string;
+  role: string;
+  phone: string;
+  image: string;
+}
+
+export interface ProfileSection {
+  id: string;
+  title: string;
+  visible: boolean;
+  members: CMSSpeaker[];
+}
+
 export interface CMSContact {
   helpline: string;
   email: string;
@@ -64,6 +79,8 @@ export interface LandingPageCMS {
   howItWorks: CMSHowItWorksStep[];
   testimonials: CMSTestimonial[];
   faqs: CMSFaq[];
+  speakers: CMSSpeaker[];
+  profileSections?: ProfileSection[];
   contact: CMSContact;
   visibility: {
     hero: boolean;
@@ -73,6 +90,7 @@ export interface LandingPageCMS {
     howItWorks: boolean;
     testimonials: boolean;
     faqs: boolean;
+    speakers: boolean;
   };
 }
 
@@ -144,6 +162,8 @@ export const emptyLandingCMS: LandingPageCMS = {
   howItWorks: [],
   testimonials: [],
   faqs: [],
+  speakers: [],
+  profileSections: [],
   contact: { helpline: "", email: "", office: "", whatsapp: "" },
   visibility: {
     hero: true,
@@ -153,6 +173,7 @@ export const emptyLandingCMS: LandingPageCMS = {
     howItWorks: true,
     testimonials: true,
     faqs: true,
+    speakers: true,
   },
 };
 

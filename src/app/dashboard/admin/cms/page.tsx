@@ -49,14 +49,26 @@ export default function CMSPage() {
 
       if (landingSnap.exists()) {
         const docData = landingSnap.data();
-        setData({
+        const loadedData = {
           ...emptyLandingCMS,
           ...docData,
           visibility: {
             ...emptyLandingCMS.visibility,
             ...(docData.visibility || {}),
           },
-        } as LandingPageCMS);
+        } as LandingPageCMS;
+
+        if (!loadedData.profileSections || loadedData.profileSections.length === 0) {
+          loadedData.profileSections = [
+            {
+              id: "speakers-legacy",
+              title: "Speakers",
+              visible: loadedData.visibility?.speakers ?? true,
+              members: loadedData.speakers || [],
+            },
+          ];
+        }
+        setData(loadedData);
       }
 
       if (aboutSnap.exists()) {
@@ -190,8 +202,9 @@ export default function CMSPage() {
 
           <TabsContent value="landing">
             <Tabs defaultValue="hero" className="w-full">
-              <TabsList className="mb-4 grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
+              <TabsList className="mb-4 grid w-full grid-cols-5 lg:grid-cols-9 h-auto">
                 <TabsTrigger value="hero">Hero</TabsTrigger>
+                <TabsTrigger value="speakers">Speakers & Guests</TabsTrigger>
                 <TabsTrigger value="stats">Stats</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="benefits">Benefits</TabsTrigger>
@@ -341,6 +354,20 @@ export default function CMSPage() {
                       <p className="text-xs text-muted-foreground">
                         Upload high-quality images (recommended: 1536x1024px). These will rotate
                         every 10 seconds.
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Video URL (YouTube Embed)</label>
+                      <Input
+                        value={data.hero.videoUrl || ""}
+                        placeholder="https://www.youtube.com/embed/..."
+                        onChange={(e) =>
+                          setData({ ...data, hero: { ...data.hero, videoUrl: e.target.value } })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Paste a YouTube embed URL. If set, this replaces the image carousel on the
+                        right side of the hero.
                       </p>
                     </div>
                   </CardContent>
@@ -785,6 +812,361 @@ export default function CMSPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* SPEAKERS & GUESTS SECTION */}
+              <TabsContent value="speakers">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Speakers & Guest Sections</CardTitle>
+                      <CardDescription>
+                        Create and manage dynamic profile sections (e.g. Speakers, VIP Guests,
+                        Mentors) for the landing page.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const newSectionId = `section_${Date.now()}`;
+                        setData({
+                          ...data,
+                          profileSections: [
+                            ...(data.profileSections || []),
+                            {
+                              id: newSectionId,
+                              title: "New Section",
+                              visible: true,
+                              members: [],
+                            },
+                          ],
+                        });
+                      }}
+                    >
+                      <Plus className="size-4 mr-2" /> Add Section
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {!data.profileSections || data.profileSections.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-xl">
+                        No sections created yet. Click "Add Section" above to start.
+                      </div>
+                    ) : (
+                      <Accordion type="single" collapsible className="w-full space-y-4">
+                        {data.profileSections.map((section, sIdx) => (
+                          <AccordionItem
+                            key={section.id}
+                            value={section.id}
+                            className="border border-border/60 rounded-xl px-4 bg-muted/20"
+                          >
+                            <AccordionTrigger className="hover:no-underline py-4">
+                              <div className="flex items-center justify-between w-full pr-4 text-left">
+                                <span className="font-semibold text-primary">
+                                  {section.title || "Untitled Section"}
+                                </span>
+                                <span className="text-xs text-muted-foreground bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-normal">
+                                  {section.members?.length || 0} Members
+                                </span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 pb-6 space-y-6">
+                              {/* Section Title & Visibility Toggle */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-xl bg-card shadow-sm">
+                                <div className="grid gap-1.5 flex-1">
+                                  <label className="text-xs font-semibold text-primary">
+                                    Section Title
+                                  </label>
+                                  <Input
+                                    value={section.title}
+                                    placeholder="e.g. Keynote Speakers"
+                                    onChange={(e) => {
+                                      const newSections = [...(data.profileSections || [])];
+                                      newSections[sIdx] = {
+                                        ...newSections[sIdx],
+                                        title: e.target.value,
+                                      };
+                                      setData({ ...data, profileSections: newSections });
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-4 border-l pl-0 sm:pl-6 border-border/50">
+                                  <div className="flex items-center gap-2">
+                                    <Label
+                                      htmlFor={`visible-${section.id}`}
+                                      className="text-sm font-medium"
+                                    >
+                                      Visible
+                                    </Label>
+                                    <Switch
+                                      id={`visible-${section.id}`}
+                                      checked={section.visible}
+                                      onCheckedChange={(checked) => {
+                                        const newSections = [...(data.profileSections || [])];
+                                        newSections[sIdx] = {
+                                          ...newSections[sIdx],
+                                          visible: checked,
+                                        };
+                                        setData({ ...data, profileSections: newSections });
+                                      }}
+                                    />
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="text-destructive hover:bg-destructive/10 border-destructive/20 size-9 rounded-lg"
+                                    onClick={() => {
+                                      if (
+                                        confirm(
+                                          `Are you sure you want to delete the section "${section.title}"?`,
+                                        )
+                                      ) {
+                                        const newSections = (data.profileSections || []).filter(
+                                          (_, idx) => idx !== sIdx,
+                                        );
+                                        setData({ ...data, profileSections: newSections });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Members Accordion */}
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-sm font-bold text-[#3D1B0E]">
+                                    Members in this Section
+                                  </h4>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs border-primary/20 hover:bg-primary/5 text-primary"
+                                    onClick={() => {
+                                      const newSections = [...(data.profileSections || [])];
+                                      const currentMembers = newSections[sIdx].members || [];
+                                      newSections[sIdx] = {
+                                        ...newSections[sIdx],
+                                        members: [
+                                          ...currentMembers,
+                                          {
+                                            name: "New Member",
+                                            role: "Role",
+                                            phone: "",
+                                            image: "",
+                                          },
+                                        ],
+                                      };
+                                      setData({ ...data, profileSections: newSections });
+                                    }}
+                                  >
+                                    <Plus className="size-3.5 mr-1" /> Add Member
+                                  </Button>
+                                </div>
+
+                                {!section.members || section.members.length === 0 ? (
+                                  <div className="text-center py-6 text-xs text-muted-foreground border border-dashed rounded-lg bg-card/50">
+                                    No members added to this section yet. Click "Add Member" to
+                                    start.
+                                  </div>
+                                ) : (
+                                  <Accordion type="single" collapsible className="w-full space-y-2">
+                                    {section.members.map((member, mIdx) => (
+                                      <AccordionItem
+                                        key={mIdx}
+                                        value={`member-${section.id}-${mIdx}`}
+                                        className="border rounded-lg px-3 bg-card shadow-sm"
+                                      >
+                                        <AccordionTrigger className="hover:no-underline py-3 text-sm">
+                                          <div className="flex items-center gap-3">
+                                            <div className="size-8 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                                              <img
+                                                src={member.image || "/placeholder-avatar.png"}
+                                                alt={member.name}
+                                                className="w-full h-full object-cover"
+                                              />
+                                            </div>
+                                            <span className="font-semibold text-[#3D1B0E]">
+                                              {member.name}{" "}
+                                              <span className="font-normal text-xs text-muted-foreground">
+                                                — {member.role}
+                                              </span>
+                                            </span>
+                                          </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="space-y-4 pt-2 pb-4">
+                                          <div className="grid sm:grid-cols-2 gap-4">
+                                            <div className="grid gap-1.5">
+                                              <label className="text-xs font-semibold">Name</label>
+                                              <Input
+                                                value={member.name}
+                                                onChange={(e) => {
+                                                  const newSections = [
+                                                    ...(data.profileSections || []),
+                                                  ];
+                                                  const newMembers = [...newSections[sIdx].members];
+                                                  newMembers[mIdx] = {
+                                                    ...newMembers[mIdx],
+                                                    name: e.target.value,
+                                                  };
+                                                  newSections[sIdx] = {
+                                                    ...newSections[sIdx],
+                                                    members: newMembers,
+                                                  };
+                                                  setData({
+                                                    ...data,
+                                                    profileSections: newSections,
+                                                  });
+                                                }}
+                                              />
+                                            </div>
+                                            <div className="grid gap-1.5">
+                                              <label className="text-xs font-semibold">Role</label>
+                                              <Input
+                                                value={member.role}
+                                                onChange={(e) => {
+                                                  const newSections = [
+                                                    ...(data.profileSections || []),
+                                                  ];
+                                                  const newMembers = [...newSections[sIdx].members];
+                                                  newMembers[mIdx] = {
+                                                    ...newMembers[mIdx],
+                                                    role: e.target.value,
+                                                  };
+                                                  newSections[sIdx] = {
+                                                    ...newSections[sIdx],
+                                                    members: newMembers,
+                                                  };
+                                                  setData({
+                                                    ...data,
+                                                    profileSections: newSections,
+                                                  });
+                                                }}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="grid gap-1.5">
+                                            <label className="text-xs font-semibold">
+                                              Phone (Optional)
+                                            </label>
+                                            <Input
+                                              value={member.phone || ""}
+                                              placeholder="+91 79917 53893"
+                                              onChange={(e) => {
+                                                const newSections = [
+                                                  ...(data.profileSections || []),
+                                                ];
+                                                const newMembers = [...newSections[sIdx].members];
+                                                newMembers[mIdx] = {
+                                                  ...newMembers[mIdx],
+                                                  phone: e.target.value,
+                                                };
+                                                newSections[sIdx] = {
+                                                  ...newSections[sIdx],
+                                                  members: newMembers,
+                                                };
+                                                setData({ ...data, profileSections: newSections });
+                                              }}
+                                            />
+                                          </div>
+                                          <div className="grid gap-1.5">
+                                            <label className="text-xs font-semibold">
+                                              Guest/Speaker Photo
+                                            </label>
+                                            <div className="flex items-start gap-4">
+                                              {member.image ? (
+                                                <div className="relative group size-20 rounded-lg overflow-hidden border">
+                                                  <img
+                                                    src={member.image}
+                                                    alt={member.name}
+                                                    className="w-full h-full object-cover"
+                                                  />
+                                                  <button
+                                                    onClick={() => {
+                                                      const newSections = [
+                                                        ...(data.profileSections || []),
+                                                      ];
+                                                      const newMembers = [
+                                                        ...newSections[sIdx].members,
+                                                      ];
+                                                      newMembers[mIdx] = {
+                                                        ...newMembers[mIdx],
+                                                        image: "",
+                                                      };
+                                                      newSections[sIdx] = {
+                                                        ...newSections[sIdx],
+                                                        members: newMembers,
+                                                      };
+                                                      setData({
+                                                        ...data,
+                                                        profileSections: newSections,
+                                                      });
+                                                    }}
+                                                    className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-1 shadow-sm hover:bg-destructive/90 transition-colors size-6 flex items-center justify-center"
+                                                  >
+                                                    <Trash2 className="size-3" />
+                                                  </button>
+                                                </div>
+                                              ) : (
+                                                <ProfileImageUploader
+                                                  sectionId={section.id}
+                                                  memberIndex={mIdx}
+                                                  onUploaded={(url) => {
+                                                    const newSections = [
+                                                      ...(data.profileSections || []),
+                                                    ];
+                                                    const newMembers = [
+                                                      ...newSections[sIdx].members,
+                                                    ];
+                                                    newMembers[mIdx] = {
+                                                      ...newMembers[mIdx],
+                                                      image: url,
+                                                    };
+                                                    newSections[sIdx] = {
+                                                      ...newSections[sIdx],
+                                                      members: newMembers,
+                                                    };
+                                                    setData({
+                                                      ...data,
+                                                      profileSections: newSections,
+                                                    });
+                                                  }}
+                                                />
+                                              )}
+                                            </div>
+                                          </div>
+                                          <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => {
+                                              const newSections = [...(data.profileSections || [])];
+                                              const newMembers = newSections[sIdx].members.filter(
+                                                (_, idx) => idx !== mIdx,
+                                              );
+                                              newSections[sIdx] = {
+                                                ...newSections[sIdx],
+                                                members: newMembers,
+                                              };
+                                              setData({ ...data, profileSections: newSections });
+                                            }}
+                                            className="h-8 text-xs font-semibold"
+                                          >
+                                            <Trash2 className="size-3.5 mr-1" /> Remove Member
+                                          </Button>
+                                        </AccordionContent>
+                                      </AccordionItem>
+                                    ))}
+                                  </Accordion>
+                                )}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               {/* CONTACT SECTION */}
               <TabsContent value="contact">
                 <Card>
@@ -1400,5 +1782,63 @@ export default function CMSPage() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+/* ─── Profile Image Uploader (uploads directly to Firebase Storage) ─── */
+function ProfileImageUploader({
+  sectionId,
+  memberIndex,
+  onUploaded,
+}: {
+  sectionId: string;
+  memberIndex: number;
+  onUploaded: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const storage = getStorage(app);
+      const ext = file.name.split(".").pop();
+      const imageRef = ref(
+        storage,
+        `cms/profiles/profile_${sectionId}_${Date.now()}_${memberIndex}.${ext}`,
+      );
+      const uploadResult = await uploadBytes(imageRef, file);
+      const url = await getDownloadURL(uploadResult.ref);
+      onUploaded(url);
+      toast.success("Photo uploaded successfully");
+    } catch (error) {
+      console.error("Profile image upload failed:", error);
+      toast.error("Failed to upload photo");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <label className="h-20 w-20 border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-colors rounded-lg flex flex-col items-center justify-center cursor-pointer shrink-0">
+      {uploading ? (
+        <Loader2 className="size-5 text-primary animate-spin" />
+      ) : (
+        <>
+          <ImagePlus className="size-5 text-primary mb-1" />
+          <span className="text-[9px] font-medium text-primary">Upload</span>
+        </>
+      )}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        disabled={uploading}
+        onChange={handleFileChange}
+      />
+    </label>
   );
 }

@@ -31,7 +31,7 @@ export function Footer() {
     fetchCMS();
   }, []);
   return (
-    <footer className="mt-24 border-t bg-gradient-navy text-primary-foreground">
+    <footer className="mt-0 bg-footer-dark text-white">
       <div className="container mx-auto px-4 py-14 grid gap-10 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -51,7 +51,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="font-semibold mb-4 text-accent-glow">Quick Links</h4>
+          <h4 className="font-semibold mb-4 text-white">Quick Links</h4>
           <ul className="space-y-2 text-sm opacity-90">
             <li>
               <Link href="/" className="hover:text-accent transition-base">
@@ -82,7 +82,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="font-semibold mb-4 text-accent-glow">Contact</h4>
+          <h4 className="font-semibold mb-4 text-white">Contact</h4>
           <ul className="space-y-3 text-sm opacity-90">
             <li className="flex items-start gap-2">
               <MapPin className="size-4 mt-0.5 shrink-0" /> {contact.office}
@@ -97,7 +97,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="font-semibold mb-4 text-accent-glow">Follow</h4>
+          <h4 className="font-semibold mb-4 text-white">Follow</h4>
           <div className="flex gap-3">
             {[
               { Icon: Instagram, href: "https://www.instagram.com/bhavishya_e_uttarpradesh" },
