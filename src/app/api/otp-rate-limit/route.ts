@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import crypto from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import * as admin from "firebase-admin";
-import { adminDb, isAdminConfigured } from "@/lib/firebase-admin";
+import { getAdminDb, isAdminConfigured } from "@/lib/firebase-admin";
 
 const MAX_PHONE_OTP_PER_DAY = 3;
 const MAX_IP_OTP_PER_DAY = 6;
@@ -100,9 +100,10 @@ export async function POST(request: Request) {
       : hashString(fingerprint || "unknown");
 
     // ─── Fetch Documents Concurrently ───────────────────────────────────
-    const phoneDocRef = adminDb.collection("otp_limits").doc(phoneKey);
-    const ipDocRef = adminDb.collection("ip_limits").doc(hashedIp);
-    const deviceDocRef = adminDb.collection("device_limits").doc(deviceKey);
+    const db = getAdminDb();
+    const phoneDocRef = db.collection("otp_limits").doc(phoneKey);
+    const ipDocRef = db.collection("ip_limits").doc(hashedIp);
+    const deviceDocRef = db.collection("device_limits").doc(deviceKey);
 
     const [phoneSnap, ipSnap, deviceSnap] = await Promise.all([
       phoneDocRef.get(),

@@ -1,36 +1,38 @@
 import * as admin from "firebase-admin";
 
-if (!admin.apps.length) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+let dbInstance: admin.firestore.Firestore | null = null;
 
-  if (privateKey && clientEmail && projectId) {
-    try {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey: privateKey.replace(/\\n/g, "\n"),
-        }),
-        databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
-      });
-    } catch (err) {
-      // Fail silently during initial load to prevent server crash
+/**
+ * Lazily initialize and retrieve the Firestore Admin instance.
+ * This prevents build-time failures when environment variables are not yet available.
+ */
+export const getAdminDb = (): admin.firestore.Firestore => {
+  if (!dbInstance) {
+    if (!admin.apps.length) {
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+      if (privateKey && clientEmail && projectId) {
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            clientEmail,
+            privateKey: privateKey.replace(/\\n/g, "\n"),
+          }),
+          databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+        });
+      } else {
+        // Safe placeholder fallback for static page generation/build context
+        admin.initializeApp({
+          projectId: projectId || "upproject-a9200",
+        });
+      }
     }
-  } else {
-    // If running in environment with application default credentials, or just falling back
-    try {
-      admin.initializeApp({
-        projectId: projectId || "upproject-a9200",
-      });
-    } catch (err) {
-      // Fail silently
-    }
+    dbInstance = admin.firestore();
   }
-}
-
-export const adminDb = admin.firestore();
+  return dbInstance;
+};
 
 /**
  * Helper to check if admin credentials are fully configured.
