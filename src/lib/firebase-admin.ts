@@ -14,11 +14,20 @@ export const getAdminDb = (): admin.firestore.Firestore => {
       const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
       if (privateKey && clientEmail && projectId) {
+        // Strip surrounding quotes if present
+        let cleanKey = privateKey.trim();
+        if (cleanKey.startsWith('"') && cleanKey.endsWith('"')) {
+          cleanKey = cleanKey.substring(1, cleanKey.length - 1);
+        }
+        if (cleanKey.startsWith("'") && cleanKey.endsWith("'")) {
+          cleanKey = cleanKey.substring(1, cleanKey.length - 1);
+        }
+
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId,
             clientEmail,
-            privateKey: privateKey.replace(/\\n/g, "\n"),
+            privateKey: cleanKey.replace(/\\n/g, "\n"),
           }),
           databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
         });
