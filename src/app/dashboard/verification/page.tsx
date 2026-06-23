@@ -19,7 +19,7 @@ import {
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserProfile } from "@/hooks/useAuth";
 import * as XLSX from "xlsx";
@@ -39,7 +39,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-type FilterTab = "all" | "pending" | "verified" | "rejected";
+type FilterTab = "all" | "pending" | "verified" | "rejected" | "deleted";
 
 export default function VerificationPage() {
   const { profile: adminProfile } = useAuth();
@@ -55,6 +55,97 @@ export default function VerificationPage() {
   const [rejectTarget, setRejectTarget] = useState<UserProfile | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Master Password Action Dialog
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionTarget, setActionTarget] = useState<UserProfile | null>(null);
+  const [targetActionType, setTargetActionType] = useState<"delete" | "revert" | null>(null);
+  const [masterPassword, setMasterPassword] = useState("");
+  const [submittingAction, setSubmittingAction] = useState(false);
+
+  const openActionDialog = (user: UserProfile, type: "delete" | "revert") => {
+    setActionTarget(user);
+    setTargetActionType(type);
+    setMasterPassword("");
+    setActionDialogOpen(true);
+  };
+
+  const handleAdminActionSubmit = async () => {
+    if (!actionTarget || !targetActionType || !masterPassword.trim()) return;
+    setSubmittingAction(true);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+
+      if (!idToken) {
+        toast.error("Session expired. Please log in again.");
+        return;
+      }
+
+      const res = await fetch("/api/admin/user-action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          targetUid: actionTarget.uid,
+          action: targetActionType,
+          masterPassword: masterPassword.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to process administrative action.");
+      }
+
+      toast.success(
+        targetActionType === "delete"
+          ? `${actionTarget.fullName} has been scheduled for deletion.`
+          : `${actionTarget.fullName}'s account has been successfully restored.`,
+      );
+
+      // Update state locally
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.uid === actionTarget.uid) {
+            if (targetActionType === "delete") {
+              const now = new Date();
+              const scheduled = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+              return {
+                ...u,
+                deleted: "pending",
+                deletionInitiatedAt: now.toISOString(),
+                deletionScheduledAt: scheduled.toISOString(),
+                deletedBy: adminProfile?.fullName || "Admin",
+                deletedByUid: adminProfile?.uid || "admin",
+              };
+            } else {
+              return {
+                ...u,
+                deleted: "no",
+                deletionInitiatedAt: undefined,
+                deletionScheduledAt: undefined,
+                deletedBy: undefined,
+                deletedByUid: undefined,
+                appealPending: undefined,
+              };
+            }
+          }
+          return u;
+        }),
+      );
+
+      setActionDialogOpen(false);
+      setActionTarget(null);
+      setTargetActionType(null);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Failed to execute action.");
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
 
   // Fetch all onboarded users
   useEffect(() => {
@@ -231,8 +322,18 @@ export default function VerificationPage() {
   };
 
   const filteredUsers = users.filter((c) => {
-    if (activeTab !== "all" && (c.verificationStatus ?? "pending") !== activeTab) {
-      return false;
+    if (activeTab === "deleted") {
+      if (c.deleted !== "pending" && c.deleted !== "yes") {
+        return false;
+      }
+    } else {
+      // Exclude soft-deleted users from all normal tabs
+      if (c.deleted === "pending" || c.deleted === "yes") {
+        return false;
+      }
+      if (activeTab !== "all" && (c.verificationStatus ?? "pending") !== activeTab) {
+        return false;
+      }
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -244,13 +345,22 @@ export default function VerificationPage() {
     return true;
   });
 
-  const countBy = (status: string) =>
-    users.filter((c) => (c.verificationStatus ?? "pending") === status).length;
+  const countBy = (status: string) => {
+    if (status === "deleted") {
+      return users.filter((c) => c.deleted === "pending" || c.deleted === "yes").length;
+    }
+    // Only count active users in normal tabs
+    return users.filter(
+      (c) => (!c.deleted || c.deleted === "no") && (c.verificationStatus ?? "pending") === status,
+    ).length;
+  };
+
+  const totalActiveUsers = users.filter((c) => !c.deleted || c.deleted === "no").length;
 
   const stats = [
     {
       label: "Total Profiles",
-      value: users.length,
+      value: totalActiveUsers,
       icon: Users,
       color: "text-primary",
       bg: "bg-primary/10",
@@ -283,6 +393,7 @@ export default function VerificationPage() {
     { key: "pending", label: "Pending" },
     { key: "verified", label: "Verified" },
     { key: "rejected", label: "Rejected" },
+    { key: "deleted", label: "Deleted" },
   ];
 
   return (
@@ -443,6 +554,40 @@ export default function VerificationPage() {
                             {user.rejectionReason.length > 80 ? "..." : ""}
                           </p>
                         )}
+                        {(user.deleted === "pending" || user.deleted === "yes") && (
+                          <div className="mt-2 flex flex-col gap-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  user.deleted === "pending"
+                                    ? "text-amber-600 border-amber-500/30 bg-amber-500/5 text-[10px] h-5"
+                                    : "text-destructive border-destructive/20 bg-destructive/5 text-[10px] h-5"
+                                }
+                              >
+                                {user.deleted === "pending" ? "Deletion Pending" : "Fully Deleted"}
+                              </Badge>
+                              {user.appealPending && (
+                                <Badge className="bg-emerald-500 text-white font-semibold text-[10px] h-5 px-2 rounded-full">
+                                  Appeal Submitted
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {user.deleted === "pending" ? (
+                                <>
+                                  Scheduled:{" "}
+                                  <span className="font-semibold text-destructive">
+                                    {new Date(user.deletionScheduledAt!).toLocaleString()}
+                                  </span>
+                                  {user.deletedBy && <span> (by {user.deletedBy})</span>}
+                                </>
+                              ) : (
+                                <>Account is fully soft-deleted.</>
+                              )}
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       {/* Action Buttons */}
@@ -468,40 +613,65 @@ export default function VerificationPage() {
                             <ChevronDown className="size-3" />
                           )}
                         </Button>
-                        {status !== "verified" && (
-                          <Button
-                            size="sm"
-                            disabled={isActing}
-                            onClick={() => handleApprove(user)}
-                            className="h-8 text-xs bg-success text-success-foreground hover:opacity-90 gap-1"
-                          >
-                            <CheckCircle2 className="size-3.5" />
-                            {isActing ? "..." : "Approve"}
-                          </Button>
-                        )}
-                        {status !== "rejected" && (
+
+                        {user.deleted === "pending" || user.deleted === "yes" ? (
                           <Button
                             size="sm"
                             variant="outline"
                             disabled={isActing}
-                            onClick={() => openRejectDialog(user)}
-                            className="h-8 text-xs text-destructive hover:bg-destructive/10 border-destructive/25 gap-1"
+                            onClick={() => openActionDialog(user, "revert")}
+                            className="h-8 text-xs text-emerald-600 border-emerald-500/25 hover:bg-emerald-500/10 gap-1"
                           >
-                            <XCircle className="size-3.5" />
-                            Reject
+                            <ShieldCheck className="size-3.5" /> Revert Deletion
                           </Button>
-                        )}
-                        {status === "rejected" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isActing}
-                            onClick={() => openRejectDialog(user)}
-                            className="h-8 text-xs gap-1 border-warning/25 text-warning-foreground"
-                          >
-                            <AlertTriangle className="size-3.5" />
-                            Edit Reason
-                          </Button>
+                        ) : (
+                          <>
+                            {status !== "verified" && (
+                              <Button
+                                size="sm"
+                                disabled={isActing}
+                                onClick={() => handleApprove(user)}
+                                className="h-8 text-xs bg-success text-success-foreground hover:opacity-90 gap-1"
+                              >
+                                <CheckCircle2 className="size-3.5" />
+                                {isActing ? "..." : "Approve"}
+                              </Button>
+                            )}
+                            {status !== "rejected" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isActing}
+                                onClick={() => openRejectDialog(user)}
+                                className="h-8 text-xs text-destructive hover:bg-destructive/10 border-destructive/25 gap-1"
+                              >
+                                <XCircle className="size-3.5" />
+                                Reject
+                              </Button>
+                            )}
+                            {status === "rejected" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isActing}
+                                onClick={() => openRejectDialog(user)}
+                                className="h-8 text-xs gap-1 border-warning/25 text-warning-foreground"
+                              >
+                                <AlertTriangle className="size-3.5" />
+                                Edit Reason
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isActing}
+                              onClick={() => openActionDialog(user, "delete")}
+                              className="h-8 text-xs text-destructive hover:bg-destructive/10 border-destructive/25 gap-1"
+                            >
+                              <AlertTriangle className="size-3.5" />
+                              Delete User
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -616,6 +786,69 @@ export default function VerificationPage() {
               />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Master Password Confirmation Dialog */}
+      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2 text-primary">
+              <ShieldCheck className="size-5 text-primary" />
+              Confirm Admin Authorization
+            </DialogTitle>
+            <DialogDescription>
+              {targetActionType === "delete" ? (
+                <>
+                  Are you sure you want to schedule account deletion for{" "}
+                  <strong>{actionTarget?.fullName}</strong>? This will initiate a 24-hour cooldown
+                  period, during which the user can appeal.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to restore the account and revert deletion for{" "}
+                  <strong>{actionTarget?.fullName}</strong>?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="master-password">Master Password</Label>
+              <Input
+                id="master-password"
+                type="password"
+                placeholder="Enter master password"
+                value={masterPassword}
+                onChange={(e) => setMasterPassword(e.target.value)}
+                disabled={submittingAction}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setActionDialogOpen(false)}
+                disabled={submittingAction}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAdminActionSubmit}
+                disabled={!masterPassword.trim() || submittingAction}
+                className={
+                  targetActionType === "delete"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-success text-success-foreground hover:opacity-90"
+                }
+              >
+                {submittingAction
+                  ? "Processing..."
+                  : targetActionType === "delete"
+                    ? "Confirm Deletion"
+                    : "Confirm Restore"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

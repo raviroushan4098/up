@@ -31,6 +31,13 @@ export interface UserProfile {
   verificationStatus?: "pending" | "verified" | "rejected";
   rejectionReason?: string;
   verificationUpdatedAt?: string;
+  // Soft deletion metadata fields
+  deleted?: "yes" | "no" | "pending";
+  deletionInitiatedAt?: string;
+  deletionScheduledAt?: string;
+  deletedBy?: string;
+  deletedByUid?: string;
+  appealPending?: boolean;
 }
 
 interface AuthContextType {

@@ -96,6 +96,20 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
+  // Display toast if redirected from deleted session
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "deleted") {
+        toast.error(
+          "Your account has been fully deleted. Please contact support if you need assistance.",
+        );
+        // Clear query param
+        router.replace("/login");
+      }
+    }
+  }, [router]);
+
   // Generate and save persistent device_id on mount
   useEffect(() => {
     if (typeof window !== "undefined") {

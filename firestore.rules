@@ -1,4 +1,5 @@
 rules_version = '2';
+// Deployed on 2026-06-23
 service cloud.firestore {
   match /databases/{database}/documents {
     
@@ -27,23 +28,30 @@ service cloud.firestore {
                     && (!("role" in request.resource.data) || request.resource.data.role == "user")
                     && (!("verificationStatus" in request.resource.data) || request.resource.data.verificationStatus == "pending");
 
-      // Admins can update anything. Regular users can update their own doc but cannot escalate roles.
+      // Admins can update anything EXCEPT deletion status fields. 
+      // Regular users can update their own doc (excluding role/verification status/deletion fields) but can appeal.
       allow update: if request.auth != null && (
-        isAdmin() ||
+        (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['deleted', 'deletionInitiatedAt', 'deletionScheduledAt', 'deletedBy', 'deletedByUid', 'appealPending'])) ||
         (
           request.auth.uid == userId &&
-          // Prevent role escalation
           // Prevent role escalation
           (!("role" in request.resource.data) || request.resource.data.role == resource.data.role) &&
           // Prevent self-verifying (Users can only set to pending or keep it the same)
           (!("verificationStatus" in request.resource.data) || 
            request.resource.data.verificationStatus == "pending" || 
-           request.resource.data.verificationStatus == resource.data.get("verificationStatus", ""))
+           request.resource.data.verificationStatus == resource.data.get("verificationStatus", "")) &&
+          // Prevent client-side updates to soft-deletion metadata
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['deleted', 'deletionInitiatedAt', 'deletionScheduledAt', 'deletedBy', 'deletedByUid']) &&
+          // Allow user to set appealPending to true if their account deletion is pending
+          (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['appealPending']) ||
+            (request.resource.data.appealPending == true && resource.data.deleted == "pending")
+          )
         )
       );
 
-      // Only admins can delete a user
-      allow delete: if isAdmin();
+      // Hard deletions are strictly forbidden on the client side
+      allow delete: if false;
     }
 
 
