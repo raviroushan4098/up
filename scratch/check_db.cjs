@@ -1,7 +1,7 @@
 const { initializeApp } = require("firebase/app");
-const { getFirestore, collection, getDocs, query, orderBy, limit } = require("firebase/firestore");
+const { getFirestore, doc, setDoc, serverTimestamp } = require("firebase/firestore");
+// require("dotenv").config(); // Load environment variables from .env
 
-// Need the firebase config to initialize
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -14,17 +14,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-async function check() {
-  const snap = await getDocs(collection(db, "events"));
-  snap.forEach((doc) => {
-    const data = doc.data();
-    if (data.dynamicSections && data.dynamicSections.length > 0) {
-      console.log("Found event with dynamicSections:", doc.id);
-      console.log(JSON.stringify(data.dynamicSections, null, 2));
-    }
-  });
-  console.log("Done");
+async function testWrite(collectionName, docId) {
+  console.log(`Testing write to ${collectionName}/${docId}...`);
+  try {
+    const docRef = doc(db, collectionName, docId);
+    await setDoc(docRef, {
+      count: 1,
+      date: "2026-06-23",
+      lastSentAt: serverTimestamp(),
+    });
+    console.log(`✅ Success: Written to ${collectionName}/${docId}`);
+  } catch (error) {
+    console.error(`❌ Failed write to ${collectionName}/${docId}:`, error.message);
+  }
+}
+
+async function run() {
+  await testWrite("otp_limits", "test_phone_number");
+  await testWrite("ip_limits", "test_ip_hash");
+  await testWrite("device_limits", "test_device_key");
   process.exit(0);
 }
 
-check().catch(console.error);
+run();

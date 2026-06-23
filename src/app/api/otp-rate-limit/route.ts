@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import crypto from "crypto";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { db } from "@/lib/firebase";
+import * as admin from "firebase-admin";
+import { adminDb, isAdminConfigured } from "@/lib/firebase-admin";
 
 const MAX_PHONE_OTP_PER_DAY = 3;
 const MAX_IP_OTP_PER_DAY = 6;
@@ -69,6 +69,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // ─── Check Firebase Admin Configuration ──────────────────────────────
+    if (!isAdminConfigured()) {
+      if (process.env.NODE_ENV === "development") {
+        return NextResponse.json({
+          allowed: true,
+          remaining: 3,
+          warning:
+            "Firebase Admin SDK is not configured. Rate limiting is bypassed in development mode.",
+        });
+      } else {
+        return NextResponse.json(
+          { allowed: false, error: "Firebase Admin credentials are not configured on the server." },
+          { status: 500 },
+        );
+      }
+    }
+
     const today = getTodayIST();
     const phoneKey = sanitizePhone(phone);
 
@@ -83,24 +100,24 @@ export async function POST(request: Request) {
       : hashString(fingerprint || "unknown");
 
     // ─── Fetch Documents Concurrently ───────────────────────────────────
-    const phoneDocRef = doc(db, "otp_limits", phoneKey);
-    const ipDocRef = doc(db, "ip_limits", hashedIp);
-    const deviceDocRef = doc(db, "device_limits", deviceKey);
+    const phoneDocRef = adminDb.collection("otp_limits").doc(phoneKey);
+    const ipDocRef = adminDb.collection("ip_limits").doc(hashedIp);
+    const deviceDocRef = adminDb.collection("device_limits").doc(deviceKey);
 
     const [phoneSnap, ipSnap, deviceSnap] = await Promise.all([
-      getDoc(phoneDocRef),
-      getDoc(ipDocRef),
-      getDoc(deviceDocRef),
+      phoneDocRef.get(),
+      ipDocRef.get(),
+      deviceDocRef.get(),
     ]);
 
     const now = Date.now();
 
     // ─── Check 1: Phone Cooldown & Daily Limit ──────────────────────────
-    if (phoneSnap.exists()) {
+    if (phoneSnap.exists) {
       const data = phoneSnap.data();
 
       // Check Cooldown first (always check 2-minute gap)
-      if (data.lastSentAt?.toMillis) {
+      if (data && data.lastSentAt && data.lastSentAt.toMillis) {
         const elapsed = now - data.lastSentAt.toMillis();
         if (elapsed < OTP_COOLDOWN_MS) {
           const waitSeconds = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000);
@@ -114,7 +131,7 @@ export async function POST(request: Request) {
       }
 
       // Check daily limit if date is same
-      if (data.date === today && (data.count || 0) >= MAX_PHONE_OTP_PER_DAY) {
+      if (data && data.date === today && (data.count || 0) >= MAX_PHONE_OTP_PER_DAY) {
         return NextResponse.json({
           allowed: false,
           reason: "phone_limit",
@@ -124,9 +141,9 @@ export async function POST(request: Request) {
     }
 
     // ─── Check 2: IP Daily Limit ────────────────────────────────────────
-    if (ipSnap.exists()) {
+    if (ipSnap.exists) {
       const data = ipSnap.data();
-      if (data.date === today && (data.count || 0) >= MAX_IP_OTP_PER_DAY) {
+      if (data && data.date === today && (data.count || 0) >= MAX_IP_OTP_PER_DAY) {
         return NextResponse.json({
           allowed: false,
           reason: "ip_limit",
@@ -136,9 +153,9 @@ export async function POST(request: Request) {
     }
 
     // ─── Check 3: Device Daily Limit ────────────────────────────────────
-    if (deviceSnap.exists()) {
+    if (deviceSnap.exists) {
       const data = deviceSnap.data();
-      if (data.date === today && (data.count || 0) >= MAX_DEVICE_OTP_PER_DAY) {
+      if (data && data.date === today && (data.count || 0) >= MAX_DEVICE_OTP_PER_DAY) {
         return NextResponse.json({
           allowed: false,
           reason: "device_limit",
@@ -148,42 +165,72 @@ export async function POST(request: Request) {
     }
 
     // ─── All Checks Passed: Pre-increment all counters ─────────────────
-    const updates: Promise<void>[] = [];
+    const updates: Promise<any>[] = [];
 
     // Increment Phone
-    if (!phoneSnap.exists() || phoneSnap.data()?.date !== today) {
-      updates.push(setDoc(phoneDocRef, { count: 1, date: today, lastSentAt: serverTimestamp() }));
+    if (!phoneSnap.exists || phoneSnap.data()?.date !== today) {
+      updates.push(
+        phoneDocRef.set({
+          count: 1,
+          date: today,
+          lastSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
+      );
     } else {
       const count = phoneSnap.data()?.count || 0;
       updates.push(
-        setDoc(phoneDocRef, { count: count + 1, date: today, lastSentAt: serverTimestamp() }),
+        phoneDocRef.set({
+          count: count + 1,
+          date: today,
+          lastSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
       );
     }
 
     // Increment IP
-    if (!ipSnap.exists() || ipSnap.data()?.date !== today) {
-      updates.push(setDoc(ipDocRef, { count: 1, date: today, lastSentAt: serverTimestamp() }));
+    if (!ipSnap.exists || ipSnap.data()?.date !== today) {
+      updates.push(
+        ipDocRef.set({
+          count: 1,
+          date: today,
+          lastSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
+      );
     } else {
       const count = ipSnap.data()?.count || 0;
       updates.push(
-        setDoc(ipDocRef, { count: count + 1, date: today, lastSentAt: serverTimestamp() }),
+        ipDocRef.set({
+          count: count + 1,
+          date: today,
+          lastSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
       );
     }
 
     // Increment Device
-    if (!deviceSnap.exists() || deviceSnap.data()?.date !== today) {
-      updates.push(setDoc(deviceDocRef, { count: 1, date: today, lastSentAt: serverTimestamp() }));
+    if (!deviceSnap.exists || deviceSnap.data()?.date !== today) {
+      updates.push(
+        deviceDocRef.set({
+          count: 1,
+          date: today,
+          lastSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
+      );
     } else {
       const count = deviceSnap.data()?.count || 0;
       updates.push(
-        setDoc(deviceDocRef, { count: count + 1, date: today, lastSentAt: serverTimestamp() }),
+        deviceDocRef.set({
+          count: count + 1,
+          date: today,
+          lastSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
       );
     }
 
     await Promise.all(updates);
 
     const currentCount =
-      phoneSnap.exists() && phoneSnap.data()?.date === today ? phoneSnap.data()?.count || 0 : 0;
+      phoneSnap.exists && phoneSnap.data()?.date === today ? phoneSnap.data()?.count || 0 : 0;
 
     return NextResponse.json({
       allowed: true,
