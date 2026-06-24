@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Menu, X, ShieldCheck, User } from "lucide-react";
+import { Menu, X, ShieldCheck, User, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebase";
@@ -96,12 +96,12 @@ export function Navbar() {
                   key={n.to}
                   href={n.to}
                   className={`relative py-2 text-sm font-medium transition-base ${
-                    active ? "text-[#8B4513]" : "text-foreground/70 hover:text-[#8B4513]"
+                    active ? "text-[#C84B31]" : "text-foreground/70 hover:text-[#C84B31]"
                   }`}
                 >
                   {n.label}
                   {active && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#8B4513] rounded-full" />
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#C84B31] rounded-full" />
                   )}
                 </Link>
               );
@@ -134,13 +134,15 @@ export function Navbar() {
               </Button>
             ) : !loading ? (
               <>
-                <Button
-                  asChild
-                  size="sm"
-                  className="bg-[#C84B31] text-white hover:bg-[#B33F28] rounded-full px-6 font-semibold shadow-soft"
+                <Link
+                  href="/login"
+                  className="group rounded-full pl-5 pr-2 py-1 h-10 flex items-center gap-2.5 font-bold text-sm bg-white hover:bg-neutral-50 border border-[#C84B31] text-[#C84B31] transition-all duration-300 shadow-sm"
                 >
-                  <Link href="/login">Login/Get Started</Link>
-                </Button>
+                  Login/Get Started
+                  <span className="size-6 rounded-full bg-[#C84B31] text-white flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+                    <ArrowUpRight className="size-3.5" />
+                  </span>
+                </Link>
               </>
             ) : (
               <div className="w-40 h-9 animate-pulse bg-secondary rounded-md" />

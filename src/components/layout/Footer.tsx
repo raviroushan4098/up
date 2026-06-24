@@ -32,8 +32,8 @@ export function Footer() {
   }, []);
   return (
     <footer className="mt-0 bg-footer-dark text-white">
-      <div className="container mx-auto px-4 py-14 grid gap-10 md:grid-cols-4">
-        <div>
+      <div className="container mx-auto px-4 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-8 md:gap-10">
+        <div className="col-span-2 md:col-span-1 order-1 md:order-1">
           <div className="flex items-center gap-3 mb-4">
             <div className="size-10 rounded-xl bg-white overflow-hidden grid place-items-center">
               <img src="/brandlogo2.svg" alt="Logo" className="w-full h-full object-contain p-1" />
@@ -50,7 +50,7 @@ export function Footer() {
           </p>
         </div>
 
-        <div>
+        <div className="col-span-1 md:col-span-1 order-2 md:order-2">
           <h4 className="font-semibold mb-4 text-white">Quick Links</h4>
           <ul className="space-y-2 text-sm opacity-90">
             <li>
@@ -81,7 +81,7 @@ export function Footer() {
           </ul>
         </div>
 
-        <div>
+        <div className="col-span-2 md:col-span-1 order-4 md:order-3">
           <h4 className="font-semibold mb-4 text-white">Contact</h4>
           <ul className="space-y-3 text-sm opacity-90">
             <li className="flex items-start gap-2">
@@ -96,7 +96,7 @@ export function Footer() {
           </ul>
         </div>
 
-        <div>
+        <div className="col-span-1 md:col-span-1 order-3 md:order-4">
           <h4 className="font-semibold mb-4 text-white">Follow</h4>
           <div className="flex gap-3">
             {[

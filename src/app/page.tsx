@@ -66,6 +66,9 @@ export default function HomePage() {
   const [activeEventIndex, setActiveEventIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  // How It Works active step
+  const [activeStep, setActiveStep] = useState(0);
+
   const heroImages = cms?.hero?.images?.length
     ? cms.hero.images
     : cms?.hero?.image
@@ -206,11 +209,11 @@ export default function HomePage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          {/* ═══════════════ HERO ═══════════════ */}
+          {/* ═══════════════ HERO 1: MEDIA ═══════════════ */}
           {cms.visibility?.hero !== false && (
-            <section className="relative overflow-hidden min-h-[70vh] flex items-center">
-              {/* ── Background: Sliding Images / Video ── */}
-              <div className="absolute inset-0 -z-20">
+            <section className="w-full aspect-[16/9] md:aspect-[21/9] min-h-[40vh] md:min-h-[55vh] max-h-[70vh] relative overflow-hidden bg-black">
+              {/* ── Media Background ── */}
+              <div className="absolute inset-0">
                 {cms.hero.videoUrl ? (
                   <iframe
                     src={`${cms.hero.videoUrl}${cms.hero.videoUrl.includes("?") ? "&" : "?"}autoplay=1&mute=1&loop=1&controls=0&showinfo=0`}
@@ -235,79 +238,90 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* ── Golden overlay for readability ── */}
-              <div className="absolute inset-0 -z-10 bg-gradient-to-b from-white/55 via-[#FFF8F0]/50 to-white/60" />
-
-              {/* ── Decorative golden wave SVG ── */}
-              <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
-                <svg
-                  className="absolute -left-20 top-0 h-full w-[60%] opacity-[0.12]"
-                  viewBox="0 0 600 800"
-                  fill="none"
-                  preserveAspectRatio="none"
-                >
-                  <path
-                    d="M0 0C200 100 400 200 300 400C200 600 500 700 600 800H0V0Z"
-                    fill="url(#gold)"
-                  />
-                  <defs>
-                    <linearGradient id="gold" x1="0" y1="0" x2="600" y2="800">
-                      <stop offset="0%" stopColor="#F4A460" />
-                      <stop offset="100%" stopColor="#C84B31" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-
-              {/* ── Hero Content (centered text) ── */}
-              <div className="container mx-auto px-4 py-20 lg:py-28">
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7 }}
-                  className="text-center max-w-3xl mx-auto"
-                >
-                  {/* Badge */}
-                  <div className="flex justify-center mb-6">
-                    <span className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full border border-[#8B4513]/40 text-[#8B4513] text-sm font-medium backdrop-blur-sm bg-white/40">
-                      {cms.hero.badgeText ||
-                        "Empowering Youth · Inspiring Leadership · Building The Nation"}
-                    </span>
-                  </div>
-
-                  {/* Main Hindi Heading */}
-                  <h1 className="font-display font-extrabold text-5xl sm:text-6xl lg:text-7xl xl:text-8xl leading-[1.1] text-[#3D1B0E] mb-4">
-                    भविष्य-ए-उत्तर प्रदेश
-                  </h1>
-
-                  {/* Hindi Subtitle */}
-                  <h2 className="font-display font-bold text-2xl sm:text-3xl lg:text-4xl text-[#2D2D2D] mb-6">
-                    {cms.hero.titleLine1 || "विकसित भारत की सीढ़ी, आज की युवा पीढ़ी"}
-                  </h2>
-
-                  {/* English Description */}
-                  <p className="text-base sm:text-lg text-foreground/70 max-w-2xl mx-auto leading-relaxed">
-                    {cms.hero.subtitle}
-                  </p>
-                </motion.div>
-              </div>
-
               {/* ── Slide indicators ── */}
-              {heroImages.length > 1 && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+              {!cms.hero.videoUrl && heroImages.length > 1 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                   {heroImages.map((_, i) => (
                     <button
                       key={i}
                       onClick={() => setActiveIndex(i)}
                       className={`h-1.5 rounded-full transition-all duration-300 ${
-                        i === activeIndex
-                          ? "w-8 bg-[#C84B31]"
-                          : "w-3 bg-[#8B4513]/30 hover:bg-[#8B4513]/50"
+                        i === activeIndex ? "w-8 bg-white" : "w-3 bg-white/40 hover:bg-white/70"
                       }`}
                     />
                   ))}
                 </div>
               )}
+            </section>
+          )}
+
+          {/* ═══════════════ HERO 2: CONTENT ═══════════════ */}
+          {cms.visibility?.hero !== false && (
+            <section className="bg-[#C84B31] text-white py-16 md:py-24 px-4 sm:px-6 relative overflow-hidden">
+              <div className="container mx-auto max-w-4xl text-center relative z-10 flex flex-col items-center">
+                {/* Badge */}
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                  className="mb-8"
+                >
+                  <span className="inline-block border border-white/45 text-white/95 rounded-full px-6 py-2 text-xs sm:text-sm font-semibold tracking-wide bg-transparent backdrop-blur-sm shadow-sm">
+                    {cms.hero.badgeText ||
+                      "Empowering Youth • Inspiring Leadership • Building The Nation"}
+                  </span>
+                </motion.div>
+
+                {/* Main Title (Hindi) */}
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="font-display font-extrabold text-5xl sm:text-6xl lg:text-7xl leading-tight mb-4 tracking-tight drop-shadow-sm"
+                >
+                  भविष्य-ए-उत्तर प्रदेश
+                </motion.h1>
+
+                {/* Subtitle (Hindi) */}
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="font-display font-bold text-xl sm:text-2xl lg:text-3xl text-white/95 mb-6"
+                >
+                  {cms.hero.titleLine1 || "विकसित भारत की सीढ़ी, आज की युवा पीढ़ी"}
+                </motion.h2>
+
+                {/* Description (English) */}
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="text-sm sm:text-base md:text-lg text-white/90 max-w-3xl leading-relaxed mb-10 font-normal"
+                >
+                  {cms.hero.subtitle}
+                </motion.p>
+
+                {/* Button */}
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  <Button
+                    asChild
+                    size="lg"
+                    className="bg-white text-[#C84B31] hover:bg-neutral-50 hover:scale-105 transition-spring duration-300 rounded-full h-12 px-8 font-bold shadow-md"
+                  >
+                    <Link href="/login">Login/Get Started</Link>
+                  </Button>
+                </motion.div>
+              </div>
             </section>
           )}
 
@@ -367,18 +381,99 @@ export default function HomePage() {
               ),
           )}
 
+          {/* ═══════════════ SPOTLIGHT FEATURED EVENT ═══════════════ */}
+          {liveEvents.length > 0 && (
+            <section className="container mx-auto px-8 py-8 md:py-8">
+              <div className="grid md:grid-cols-12 bg-[#C84B31] rounded-[32px] border border-border/40 shadow-soft overflow-hidden items-stretch">
+                {/* Left Column: Details */}
+                <div className="md:col-span-8 bg-white rounded-[24px] md:rounded-r-[200px] lg:rounded-r-[240px] md:mt-6 md:mb-* md:ml-* p-8 md:p-12 pr-8 md:pr-16 lg:pr-24 flex flex-col justify-center relative z-0">
+                  <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-[#3D1B0E] mb-5 leading-tight">
+                    {mainEvent.title}
+                  </h2>
+                  <p className="text-sm sm:text-base text-foreground/80 leading-relaxed mb-8 max-w-xl">
+                    {(() => {
+                      const text = mainEvent.description || "";
+                      const target = "viksit uttar pradesh:";
+                      const index = text.toLowerCase().indexOf(target);
+                      if (index !== -1) {
+                        const cutIndex = index + target.length;
+                        return (
+                          <>
+                            {text.substring(0, cutIndex)}...{" "}
+                            <Link
+                              href={`/events/${mainEvent.id}`}
+                              className="text-[#C84B31] font-bold hover:underline inline-flex items-center gap-0.5"
+                            >
+                              read more
+                            </Link>
+                          </>
+                        );
+                      }
+                      if (text.length > 330) {
+                        return (
+                          <>
+                            {text.substring(0, 330)}...{" "}
+                            <Link
+                              href={`/events/${mainEvent.id}`}
+                              className="text-[#C84B31] font-bold hover:underline inline-flex items-center gap-0.5"
+                            >
+                              read more
+                            </Link>
+                          </>
+                        );
+                      }
+                      return text;
+                    })()}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      asChild
+                      className="bg-[#C84B31] text-white hover:bg-[#B33F28] rounded-full h-11 px-6 font-semibold"
+                    >
+                      <Link href={`/events/${mainEvent.id}`}>View Details</Link>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Right Column: Poster Container */}
+                <div className="md:col-span-4 relative flex items-center justify-center p-8 overflow-visible min-h-[320px] md:min-h-[400px]">
+                  <div className="relative z-10 w-full max-w-[420px] aspect-[453/388] rounded-[24px] overflow-hidden shadow-elegant border border-white/20 md:-ml-[200px] lg:-ml-[240px]">
+                    <img
+                      src={
+                        mainEvent.image ||
+                        mainEvent.bannerUrl ||
+                        "https://images.unsplash.com/photo-1540575467063-178a50c2df87"
+                      }
+                      alt={mainEvent.title}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* ═══════════════ EVENTS CAROUSEL ═══════════════ */}
           {liveEvents.length > 0 && (
-            <section className="container mx-auto px-4 pt-2 pb-8 lg:pt-3 lg:pb-12 overflow-hidden">
-              <motion.div {...fadeUp} className="flex items-center justify-between mb-8">
-                <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-[#3D1B0E]">
-                  Events
+            <section className="container mx-auto px-4 pt-8 pb-12 overflow-hidden">
+              <motion.div {...fadeUp} className="text-center mb-8 relative">
+                <span className="text-xs font-bold text-[#C84B31] tracking-wider uppercase">
+                  FEATURED
+                </span>
+                <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-[#3D1B0E] mt-1">
+                  Live Events & Opportunities
                 </h2>
-                <Button asChild variant="ghost" className="text-sm">
-                  <Link href="/events">
-                    View all events <ChevronRight className="size-4 ml-1" />
-                  </Link>
-                </Button>
+                <div className="absolute right-0 bottom-0 hidden sm:block">
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="text-xs hover:bg-transparent p-0 text-foreground/70 hover:text-[#C84B31]"
+                  >
+                    <Link href="/events" className="flex items-center gap-1">
+                      View all events <ChevronRight className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
               </motion.div>
 
               <motion.div {...fadeUp}>
@@ -395,7 +490,7 @@ export default function HomePage() {
                           transition={{ duration: 0.6, ease: "easeInOut" }}
                           key={e.id}
                           onClick={() => setActiveEventIndex(e.originalIndex)}
-                          className={`flex-shrink-0 mx-2 sm:mx-3 rounded-2xl overflow-hidden cursor-pointer ${
+                          className={`flex-shrink-0 mx-2 sm:mx-3 rounded-2xl overflow-hidden cursor-pointer relative ${
                             isActive
                               ? "w-[280px] sm:w-[340px] md:w-[400px] h-[360px] sm:h-[420px] shadow-glow z-20"
                               : "w-[160px] sm:w-[200px] md:w-[240px] h-[240px] sm:h-[280px] shadow-soft z-10"
@@ -411,43 +506,46 @@ export default function HomePage() {
                             loading="lazy"
                             className="w-full h-full object-cover"
                           />
-                          {/* Gradient overlay specifically for the text footer (visible on all cards) */}
-                          <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none" />
 
-                          {/* Text Content */}
-                          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 flex flex-col justify-end">
-                            <h3
-                              className={`font-display font-bold text-white leading-snug drop-shadow-md transition-all duration-700 ${
-                                isActive
-                                  ? "text-lg sm:text-xl line-clamp-2"
-                                  : "text-base sm:text-lg line-clamp-1"
-                              }`}
-                            >
-                              {e.title}
-                            </h3>
-                            <p
-                              className={`text-white/90 text-xs mt-2 drop-shadow-sm transition-all duration-700 ${
-                                isActive ? "line-clamp-3 sm:text-sm" : "line-clamp-2"
-                              }`}
-                            >
-                              {e.description}
-                            </p>
-                            <div className="mt-4">
-                              <Button
-                                asChild
-                                size="sm"
-                                className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/10 rounded-full h-8 px-4 text-xs font-medium transition-colors"
-                              >
-                                <Link href={`/events/${e.id}`}>
-                                  View Details <ChevronRight className="size-3 ml-1 opacity-70" />
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
+                          {/* Renders overlay and text details ONLY on the active centered card */}
+                          {isActive && (
+                            <>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent pointer-events-none" />
+                              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6 flex flex-col justify-end text-left h-[70%] z-10">
+                                <h3 className="font-display font-bold text-white text-lg sm:text-xl md:text-2xl leading-snug drop-shadow-md line-clamp-2">
+                                  {e.title}
+                                </h3>
+                                <p className="text-white/90 text-xs sm:text-sm mt-2.5 drop-shadow-sm line-clamp-3 leading-relaxed">
+                                  {e.description}
+                                </p>
+                                <div className="mt-5">
+                                  <Button
+                                    asChild
+                                    size="sm"
+                                    className="bg-white text-[#C84B31] hover:bg-neutral-50 rounded-full h-9 px-6 text-xs font-bold transition-all shadow-md"
+                                  >
+                                    <Link href={`/events/${e.id}`}>View More</Link>
+                                  </Button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </motion.div>
                       );
                     })}
                   </AnimatePresence>
+                </div>
+                {/* Mobile view all link */}
+                <div className="text-center mt-4 sm:hidden">
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="text-xs hover:bg-transparent text-foreground/70 hover:text-[#C84B31]"
+                  >
+                    <Link href="/events" className="flex items-center justify-center gap-1">
+                      View all events <ChevronRight className="size-3.5" />
+                    </Link>
+                  </Button>
                 </div>
               </motion.div>
             </section>
@@ -519,22 +617,59 @@ export default function HomePage() {
                   <p className="opacity-80 mt-2">
                     Three simple steps to register for any UP initiative.
                   </p>
+                  <div className="w-16 h-0.5 bg-white/60 mx-auto mt-4" />
                 </motion.div>
-                <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                  {cms.howItWorks.map((s, i) => (
-                    <motion.div
-                      key={i}
-                      {...fadeUp}
-                      transition={{ ...fadeUp.transition, delay: i * 0.08 }}
-                      className="rounded-2xl p-6 bg-white/10 backdrop-blur-sm border border-white/15 hover:bg-white/15 transition-base"
-                    >
-                      <div className="font-display font-extrabold text-5xl text-white/30">
-                        {s.n}
-                      </div>
-                      <h3 className="font-display font-bold text-xl mt-3">{s.t}</h3>
-                      <p className="text-sm opacity-80 mt-2">{s.d}</p>
-                    </motion.div>
-                  ))}
+                <div className="flex flex-col md:flex-row gap-6 max-w-4xl mx-auto items-stretch">
+                  {cms.howItWorks.map((s, i) => {
+                    const isActive = activeStep === i;
+                    return (
+                      <motion.div
+                        key={i}
+                        layout
+                        initial={{ opacity: 0, y: 24 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-80px" }}
+                        transition={{
+                          opacity: { duration: 0.5, delay: i * 0.08 },
+                          y: { duration: 0.5, delay: i * 0.08 },
+                          layout: { duration: 0.4, ease: "easeInOut" },
+                        }}
+                        onClick={() => setActiveStep(i)}
+                        onMouseEnter={() => setActiveStep(i)}
+                        className={`rounded-[32px] p-8 backdrop-blur-sm border flex flex-col items-center justify-center text-center transition-colors duration-300 cursor-pointer ${
+                          isActive
+                            ? "md:flex-[2.5] bg-white/20 border-white/30 shadow-elegant opacity-100"
+                            : "md:flex-[1] bg-white/5 border-white/10 opacity-60 hover:opacity-90 hover:bg-white/10"
+                        }`}
+                      >
+                        <div
+                          className={`font-display font-extrabold text-5xl md:text-6xl transition-all duration-300 ${
+                            isActive ? "text-white scale-110" : "text-white/40"
+                          }`}
+                        >
+                          {s.n}
+                        </div>
+                        <AnimatePresence initial={false}>
+                          {isActive && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="overflow-hidden w-full flex flex-col items-center"
+                            >
+                              <h3 className="font-display font-bold text-xl mt-4 text-white">
+                                {s.t}
+                              </h3>
+                              <p className="text-sm text-white/80 mt-2 leading-relaxed max-w-md">
+                                {s.d}
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
             </section>
