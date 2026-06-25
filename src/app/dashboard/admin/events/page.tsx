@@ -83,6 +83,7 @@ export default function AdminEventsPage() {
   const [showBenefits, setShowBenefits] = useState(true);
   const [showSchedule, setShowSchedule] = useState(true);
   const [showDynamicSections, setShowDynamicSections] = useState(true);
+  const [showParticipantsCount, setShowParticipantsCount] = useState(false);
 
   useEffect(() => {
     if (!authLoading && profile?.role !== "admin") {
@@ -167,6 +168,7 @@ export default function AdminEventsPage() {
       showEligibility: true,
       showBenefits: true,
       showSchedule: true,
+      showParticipantsCount: false,
     };
     setShowDates(dConf.showDates ?? true);
     setShowVenue(dConf.showVenue ?? true);
@@ -179,6 +181,7 @@ export default function AdminEventsPage() {
     setShowBenefits(dConf.showBenefits ?? true);
     setShowSchedule(dConf.showSchedule ?? true);
     setShowDynamicSections(dConf.showDynamicSections ?? true);
+    setShowParticipantsCount(dConf.showParticipantsCount ?? false);
 
     setCustomDeclaration(ev.customDeclaration || "");
     setBannerFile(null);
@@ -226,6 +229,7 @@ export default function AdminEventsPage() {
     setShowBenefits(true);
     setShowSchedule(true);
     setShowDynamicSections(true);
+    setShowParticipantsCount(false);
 
     setIsDragging(false);
   };
@@ -328,6 +332,7 @@ export default function AdminEventsPage() {
           showBenefits,
           showSchedule,
           showDynamicSections,
+          showParticipantsCount,
         },
         status: "Open", // Default to open for now
       };
@@ -583,7 +588,13 @@ export default function AdminEventsPage() {
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-1">
-                  <Label>Hero: Expected Participants</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Hero: Expected Participants</Label>
+                    <Switch
+                      checked={showParticipantsCount}
+                      onCheckedChange={setShowParticipantsCount}
+                    />
+                  </div>
                   <Input
                     value={participantsCount}
                     onChange={(e) => setParticipantsCount(e.target.value)}

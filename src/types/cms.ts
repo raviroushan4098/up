@@ -104,6 +104,7 @@ export interface AboutHero {
 export interface AboutMissionVision {
   title: string;
   description: string;
+  image?: string;
 }
 
 export interface AboutObjective {
@@ -180,8 +181,8 @@ export const emptyLandingCMS: LandingPageCMS = {
 
 export const emptyAboutCMS: AboutPageCMS = {
   hero: { badgeText: "", titleLine1: "", titleGradient: "", subtitle: "" },
-  mission: { title: "", description: "" },
-  vision: { title: "", description: "" },
+  mission: { title: "", description: "", image: "" },
+  vision: { title: "", description: "", image: "" },
   objectives: [],
   timeline: [],
   teamCategories: [],

@@ -65,6 +65,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [redirectTo, setRedirectTo] = useState("/dashboard");
 
   // Phone Auth State
   const [phone, setPhone] = useState("");
@@ -73,6 +74,17 @@ export default function LoginPage() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [otpRemaining, setOtpRemaining] = useState<number | null>(null);
   const [cooldown, setCooldown] = useState(0); // seconds remaining in cooldown
+
+  // Resolve redirect parameter on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get("redirectTo");
+      if (redirectParam) {
+        setRedirectTo(redirectParam);
+      }
+    }
+  }, []);
 
   // Countdown timer for cooldown
   useEffect(() => {
@@ -92,9 +104,9 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+      router.push(redirectTo);
     }
-  }, [user, router]);
+  }, [user, router, redirectTo]);
 
   // Display toast if redirected from deleted session
   useEffect(() => {
@@ -255,7 +267,7 @@ export default function LoginPage() {
     try {
       await confirmationResult.confirm(otp);
       toast.success("Verified successfully!");
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch (error: any) {
       toast.error("Invalid verification code. Please check and try again.");
     } finally {

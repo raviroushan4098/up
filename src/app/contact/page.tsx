@@ -187,7 +187,7 @@ export default function ContactPage() {
                   We're here to help
                 </h1>
                 <p className="mt-4 text-white/90 text-sm sm:text-base max-w-lg mx-auto">
-                  Reach out anytime — our helpline operates 7am to 9pm, every day.
+                  Reach out anytime — our helpline operates 10am To 9PM, Every day.
                 </p>
                 <div className="w-16 h-[2px] bg-white mx-auto mt-6" />
               </div>

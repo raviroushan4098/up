@@ -51,6 +51,7 @@ export interface UPEvent {
     showBenefits: boolean;
     showSchedule: boolean;
     showDynamicSections?: boolean;
+    showParticipantsCount?: boolean;
   };
 
   dynamicSections?: DynamicSection[];

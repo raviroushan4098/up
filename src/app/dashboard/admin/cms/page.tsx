@@ -1335,6 +1335,40 @@ export default function CMSPage() {
                         rows={8}
                       />
                     </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Mission Image</label>
+                      {aboutData.mission.image ? (
+                        <div className="relative w-full md:w-48 h-32 rounded-lg overflow-hidden border border-border">
+                          <img
+                            src={aboutData.mission.image}
+                            alt="Mission"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAboutData({
+                                ...aboutData,
+                                mission: { ...aboutData.mission, image: "" },
+                              })
+                            }
+                            className="absolute top-2 right-2 bg-destructive text-white rounded-full p-1 shadow-md hover:bg-destructive/90 transition-colors"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <CMSImageUploader
+                          path="mission"
+                          onUploaded={(url) =>
+                            setAboutData({
+                              ...aboutData,
+                              mission: { ...aboutData.mission, image: url },
+                            })
+                          }
+                        />
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -1366,6 +1400,40 @@ export default function CMSPage() {
                         }
                         rows={8}
                       />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Vision Image</label>
+                      {aboutData.vision.image ? (
+                        <div className="relative w-full md:w-48 h-32 rounded-lg overflow-hidden border border-border">
+                          <img
+                            src={aboutData.vision.image}
+                            alt="Vision"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAboutData({
+                                ...aboutData,
+                                vision: { ...aboutData.vision, image: "" },
+                              })
+                            }
+                            className="absolute top-2 right-2 bg-destructive text-white rounded-full p-1 shadow-md hover:bg-destructive/90 transition-colors"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <CMSImageUploader
+                          path="vision"
+                          onUploaded={(url) =>
+                            setAboutData({
+                              ...aboutData,
+                              vision: { ...aboutData.vision, image: url },
+                            })
+                          }
+                        />
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1830,6 +1898,59 @@ function ProfileImageUploader({
         <>
           <ImagePlus className="size-5 text-primary mb-1" />
           <span className="text-[9px] font-medium text-primary">Upload</span>
+        </>
+      )}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        disabled={uploading}
+        onChange={handleFileChange}
+      />
+    </label>
+  );
+}
+
+/* ─── CMS Image Uploader (uploads directly to Firebase Storage) ─── */
+function CMSImageUploader({
+  path,
+  onUploaded,
+}: {
+  path: string;
+  onUploaded: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const storage = getStorage(app);
+      const ext = file.name.split(".").pop();
+      const imageRef = ref(storage, `cms/about/${path}_${Date.now()}.${ext}`);
+      const uploadResult = await uploadBytes(imageRef, file);
+      const url = await getDownloadURL(uploadResult.ref);
+      onUploaded(url);
+      toast.success("Image uploaded successfully");
+    } catch (error) {
+      console.error("CMS image upload failed:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <label className="h-24 w-full md:w-48 border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 hover:bg-primary/10 transition-colors rounded-lg flex flex-col items-center justify-center cursor-pointer shrink-0 py-4">
+      {uploading ? (
+        <Loader2 className="size-6 text-primary animate-spin" />
+      ) : (
+        <>
+          <ImagePlus className="size-6 text-primary mb-1.5" />
+          <span className="text-xs font-semibold text-primary">Upload Custom Image</span>
         </>
       )}
       <input

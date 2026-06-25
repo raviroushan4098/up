@@ -31,12 +31,14 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UPEvent } from "@/types/events";
 import { parseDateString, formatDateString, getDerivedEventStatus } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function EventDetailPage() {
   const params = useParams();
   const eventId = params.eventId as string;
   const [e, setE] = useState<UPEvent | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -264,19 +266,21 @@ export default function EventDetailPage() {
                       </div>
 
                       {/* Participants */}
-                      <div className="bg-white rounded-xl p-3 flex items-center gap-3 shadow-sm border border-border/30">
-                        <div className="p-2 rounded-lg bg-red-50">
-                          <Users className="size-4 text-[#C84B31]" />
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                            Participants
+                      {e.displayConfig?.showParticipantsCount && (
+                        <div className="bg-white rounded-xl p-3 flex items-center gap-3 shadow-sm border border-border/30">
+                          <div className="p-2 rounded-lg bg-red-50">
+                            <Users className="size-4 text-[#C84B31]" />
                           </div>
-                          <div className="text-xs font-bold text-[#632020] mt-0.5">
-                            {e.participantsCount || "3,500+"}
+                          <div>
+                            <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                              Participants
+                            </div>
+                            <div className="text-xs font-bold text-[#632020] mt-0.5">
+                              {e.participantsCount || "3,500+"}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Registration */}
                       <div className="bg-white rounded-xl p-3 flex items-center gap-3 shadow-sm border border-border/30">
@@ -319,16 +323,28 @@ export default function EventDetailPage() {
                             size="lg"
                             className="bg-[#C84B31] text-white hover:bg-[#bd4128] font-bold px-8 rounded-xl shadow-md h-12"
                           >
-                            <Link href="/dashboard/apply">Apply Now</Link>
+                            <Link
+                              href={
+                                user
+                                  ? `/dashboard/events/${eventId}/apply`
+                                  : `/login?redirectTo=/dashboard/events/${eventId}/apply`
+                              }
+                            >
+                              Apply Now
+                            </Link>
                           </Button>
-                          <Button
-                            asChild
-                            size="lg"
-                            variant="outline"
-                            className="border-[#C84B31]/30 text-[#C84B31] hover:bg-[#C84B31]/5 font-bold px-8 rounded-xl h-12 bg-transparent"
-                          >
-                            <Link href="/login">Continue to Login</Link>
-                          </Button>
+                          {!user && (
+                            <Button
+                              asChild
+                              size="lg"
+                              variant="outline"
+                              className="border-[#C84B31]/30 text-[#C84B31] hover:bg-[#C84B31]/5 font-bold px-8 rounded-xl h-12 bg-transparent"
+                            >
+                              <Link href={`/login?redirectTo=/dashboard/events/${eventId}/apply`}>
+                                Continue to Login
+                              </Link>
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>
@@ -531,15 +547,27 @@ export default function EventDetailPage() {
                             asChild
                             className="w-full bg-[#C84B31] text-white font-bold hover:bg-[#bd4128] h-11 rounded-xl shadow-md border-0"
                           >
-                            <Link href="/dashboard/apply">Apply Now</Link>
+                            <Link
+                              href={
+                                user
+                                  ? `/dashboard/events/${eventId}/apply`
+                                  : `/login?redirectTo=/dashboard/events/${eventId}/apply`
+                              }
+                            >
+                              Apply Now
+                            </Link>
                           </Button>
-                          <Button
-                            asChild
-                            variant="outline"
-                            className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-11 rounded-xl"
-                          >
-                            <Link href="/login">Login to Continue</Link>
-                          </Button>
+                          {!user && (
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 h-11 rounded-xl"
+                            >
+                              <Link href={`/login?redirectTo=/dashboard/events/${eventId}/apply`}>
+                                Login to Continue
+                              </Link>
+                            </Button>
+                          )}
                         </div>
                       )}
                     </CardContent>
@@ -655,7 +683,15 @@ export default function EventDetailPage() {
                     size="sm"
                     className="bg-[#C84B31] text-white font-bold shadow-soft h-10 px-5 hover:bg-[#bd4128]"
                   >
-                    <Link href="/dashboard/apply">Apply Now</Link>
+                    <Link
+                      href={
+                        user
+                          ? `/dashboard/events/${eventId}/apply`
+                          : `/login?redirectTo=/dashboard/events/${eventId}/apply`
+                      }
+                    >
+                      Apply Now
+                    </Link>
                   </Button>
                 )}
               </div>

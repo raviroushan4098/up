@@ -162,7 +162,10 @@ export default function AboutPage() {
                   className="order-2 md:order-2 relative min-h-[320px] md:min-h-[480px]"
                 >
                   <img
-                    src="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800&q=80"
+                    src={
+                      data.mission.image ||
+                      "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800&q=80"
+                    }
                     alt={data.mission.title}
                     className="absolute inset-0 w-full h-full object-cover"
                   />
@@ -176,7 +179,10 @@ export default function AboutPage() {
                   className="order-2 md:order-1 relative min-h-[320px] md:min-h-[480px]"
                 >
                   <img
-                    src="https://images.unsplash.com/photo-1508962914676-134849a727f0?w=800&q=80"
+                    src={
+                      data.vision.image ||
+                      "https://images.unsplash.com/photo-1508962914676-134849a727f0?w=800&q=80"
+                    }
                     alt={data.vision.title}
                     className="absolute inset-0 w-full h-full object-cover"
                   />
