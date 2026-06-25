@@ -73,30 +73,33 @@ export default function EventsPage() {
 
   return (
     <PublicLayout>
-      <section className="bg-gradient-soft py-14">
-        <div className="container mx-auto px-4 text-center max-w-3xl">
-          <Badge variant="outline" className="mb-3">
+      <section className="bg-gradient-to-r from-[#822216] via-[#c2452b] to-[#f37c35] py-20 relative overflow-hidden">
+        <div className="container mx-auto px-4 text-center max-w-3xl relative z-10">
+          <Badge
+            variant="outline"
+            className="mb-4 text-white border-white/60 px-4 py-1 text-xs rounded-full bg-transparent hover:bg-white/5 select-none"
+          >
             All Events
           </Badge>
-          <h1 className="font-display font-extrabold text-4xl sm:text-5xl text-primary">
-            Find your <span className="text-gradient-saffron">opportunity</span>
+          <h1 className="font-display font-extrabold text-4xl sm:text-5xl text-white">
+            Find your opportunity
           </h1>
-          <p className="mt-4 text-muted-foreground">
+          <p className="mt-4 text-white/90 text-sm sm:text-base max-w-lg mx-auto">
             Explore live programmes from the Uttar Pradesh.
           </p>
+          <div className="w-16 h-[2px] bg-white mx-auto mt-6" />
         </div>
       </section>
 
-      <section className="container mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-sm text-muted-foreground">{filtered.length} events found</p>
+      <section className="container mx-auto px-4 py-12 max-w-5xl">
+        <div className="flex items-center justify-between pb-3 border-b border-border/80 mb-6">
+          <p className="text-base font-bold text-[#632020]">{filtered.length} events found</p>
           <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger className="w-44 h-9">
-              <SlidersHorizontal className="size-3.5 mr-1" />
+            <SelectTrigger className="border-0 bg-transparent shadow-none p-0 focus:ring-0 text-base font-bold text-[#632020] h-auto hover:opacity-80 w-auto flex items-center gap-1 [&>svg]:hidden select-none">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="deadline">Deadline (soonest)</SelectItem>
+            <SelectContent align="end">
+              <SelectItem value="deadline">Deadlines (soonest)</SelectItem>
               <SelectItem value="name">Name (A–Z)</SelectItem>
             </SelectContent>
           </Select>
@@ -117,80 +120,94 @@ export default function EventsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map((e, i) => (
-              <motion.div
-                key={e.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.05 }}
-              >
-                <Card className="overflow-hidden h-full border-0 shadow-card hover:shadow-elegant hover:-translate-y-1 transition-spring group">
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    <img
-                      src={e.image}
-                      alt={e.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-spring"
-                    />
-                    <Badge
-                      className={`absolute top-3 right-3 ${
-                        getDerivedEventStatus(e) === "Closed"
-                          ? "bg-muted text-muted-foreground"
-                          : getDerivedEventStatus(e) === "Open"
-                            ? "bg-success text-success-foreground"
-                            : "bg-info text-info-foreground"
-                      }`}
-                    >
-                      {getDerivedEventStatus(e)}
-                    </Badge>
-                  </div>
-                  <CardContent className="p-5">
-                    <Badge variant="outline" className="mb-2 text-xs">
-                      {e.category}
-                    </Badge>
-                    <h3 className="font-display font-bold text-lg leading-snug text-primary">
-                      {e.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                      {e.description}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-4">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="size-3.5" />{" "}
-                        {formatDateString(e.endDate || e.deadline, {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+          <div className="flex flex-col">
+            {filtered.map((e, i) => {
+              const dateObj = parseDateString(e.endDate || e.deadline);
+              const dayStr = dateObj
+                ? formatDateString(e.endDate || e.deadline, { day: "2-digit" })
+                : "";
+              const monthStr = dateObj
+                ? formatDateString(e.endDate || e.deadline, { month: "short" })
+                : "";
+              const status = getDerivedEventStatus(e);
+
+              return (
+                <motion.div
+                  key={e.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.05 }}
+                  className="py-10 border-b border-border/80 last:border-0"
+                >
+                  <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start">
+                    {/* Date Column */}
+                    <div className="w-full md:w-24 shrink-0 flex md:flex-col items-baseline md:items-start gap-1.5 md:gap-0 select-none">
+                      <span className="font-display font-extrabold text-3xl md:text-4xl text-[#632020] leading-none">
+                        {dayStr || "TBA"}
+                      </span>
+                      <span className="font-display font-bold text-lg md:text-xl text-[#632020]/80 md:mt-1 uppercase tracking-wider">
+                        {monthStr}
                       </span>
                     </div>
-                    {getDerivedEventStatus(e) === "Closed" ||
-                    getDerivedEventStatus(e) === "Coming Soon" ? (
-                      <Button
-                        asChild
-                        variant="secondary"
-                        className="w-full mt-5 font-semibold text-primary"
-                      >
-                        <Link href={`/events/${e.id}`}>
-                          View Details <ArrowRight className="size-4 ml-1" />
+
+                    {/* Image Column */}
+                    <div className="w-full md:w-80 shrink-0 aspect-[16/10] md:aspect-[1.5] rounded-2xl overflow-hidden shadow-sm relative group bg-secondary">
+                      <img
+                        src={e.image}
+                        alt={e.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
+                      />
+                      {status && (
+                        <Badge
+                          className={`absolute top-3 right-3 select-none ${
+                            status === "Closed"
+                              ? "bg-muted text-muted-foreground"
+                              : status === "Open"
+                                ? "bg-success text-success-foreground"
+                                : "bg-info text-info-foreground"
+                          }`}
+                        >
+                          {status}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Info Column */}
+                    <div className="flex-1 space-y-4 w-full">
+                      <div>
+                        <h2 className="font-display font-bold text-2xl text-[#632020] hover:text-[#C84B31] transition-colors leading-snug">
+                          <Link href={`/events/${e.id}`}>{e.title}</Link>
+                        </h2>
+                        {e.category && (
+                          <Badge
+                            variant="outline"
+                            className="mt-2 text-xs border-accent/30 text-accent/80"
+                          >
+                            {e.category}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <p className="text-sm sm:text-base text-foreground/80 leading-relaxed line-clamp-3">
+                        {e.description}
+                      </p>
+
+                      <div className="pt-4 border-t border-border/80">
+                        <Link
+                          href={`/events/${e.id}`}
+                          className="inline-flex items-center gap-1.5 font-bold text-[#632020] hover:text-[#C84B31] transition-colors group text-sm sm:text-base"
+                        >
+                          View Event Details{" "}
+                          <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
                         </Link>
-                      </Button>
-                    ) : (
-                      <Button
-                        asChild
-                        className="w-full mt-5 bg-gradient-saffron text-primary font-semibold hover:opacity-95"
-                      >
-                        <Link href={`/events/${e.id}`}>
-                          Apply Now <ArrowRight className="size-4 ml-1" />
-                        </Link>
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </section>

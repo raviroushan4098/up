@@ -45,6 +45,9 @@ export default function AdminEventsPage() {
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [title, setTitle] = useState("");
+  const [titleHi, setTitleHi] = useState("");
+  const [participantsCount, setParticipantsCount] = useState("");
+  const [registrationFeeLabel, setRegistrationFeeLabel] = useState("");
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -58,6 +61,8 @@ export default function AdminEventsPage() {
   const [eligibility, setEligibility] = useState("");
   const [benefits, setBenefits] = useState("");
   const [schedule, setSchedule] = useState<{ date: string; label: string }[]>([]);
+  const [statsHighlights, setStatsHighlights] = useState<{ value: string; label: string }[]>([]);
+  const [focusAreas, setFocusAreas] = useState<{ title: string; description: string }[]>([]);
   const [customDeclaration, setCustomDeclaration] = useState("");
   const [requireEducation, setRequireEducation] = useState(true);
   const [requireTopic, setRequireTopic] = useState(true);
@@ -112,6 +117,9 @@ export default function AdminEventsPage() {
   const handleEditClick = (ev: UPEvent) => {
     setEditEventId(ev.id);
     setTitle(ev.title);
+    setTitleHi(ev.titleHi || "");
+    setParticipantsCount(ev.participantsCount || "");
+    setRegistrationFeeLabel(ev.registrationFeeLabel || "");
     setDescription(ev.description);
     setDeadline(ev.deadline || "");
     setStartDate(ev.startDate || "");
@@ -124,6 +132,8 @@ export default function AdminEventsPage() {
     setEligibility(ev.eligibility ? ev.eligibility.join("\n") : "");
     setBenefits(ev.benefits ? ev.benefits.join("\n") : "");
     setSchedule(ev.schedule || []);
+    setStatsHighlights(ev.statsHighlights || []);
+    setFocusAreas(ev.focusAreas || []);
 
     if (ev.agendaTopics) {
       if (typeof ev.agendaTopics[0] === "string") {
@@ -181,6 +191,9 @@ export default function AdminEventsPage() {
     setBannerFile(null);
     setIsDragging(false);
     setTitle("");
+    setTitleHi("");
+    setParticipantsCount("");
+    setRegistrationFeeLabel("");
     setDescription("");
     setDeadline("");
     setStartDate("");
@@ -193,6 +206,8 @@ export default function AdminEventsPage() {
     setEligibility("");
     setBenefits("");
     setSchedule([]);
+    setStatsHighlights([]);
+    setFocusAreas([]);
     setAgendaTopics([]);
     setCustomDeclaration("");
     setRequireEducation(true);
@@ -270,6 +285,9 @@ export default function AdminEventsPage() {
       // 3. Prepare Final Event Data
       const eventData: any = {
         title,
+        titleHi,
+        participantsCount,
+        registrationFeeLabel,
         description,
         deadline: endDate, // Legacy fallback
         startDate,
@@ -288,6 +306,8 @@ export default function AdminEventsPage() {
           .map((s) => s.trim())
           .filter(Boolean),
         schedule: schedule.filter((s) => s.date.trim() || s.label.trim()),
+        statsHighlights: statsHighlights.filter((s) => s.value.trim() || s.label.trim()),
+        focusAreas: focusAreas.filter((f) => f.title.trim() || f.description.trim()),
         agendaTopics: validTopics,
         dynamicSections: updatedSections,
         customDeclaration,
@@ -548,9 +568,36 @@ export default function AdminEventsPage() {
                   </label>
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Event Title *</Label>
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label>Event Title (English) *</Label>
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label>Event Title (Hindi)</Label>
+                  <Input
+                    value={titleHi}
+                    onChange={(e) => setTitleHi(e.target.value)}
+                    placeholder="हिंदी शीर्षक"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label>Hero: Expected Participants</Label>
+                  <Input
+                    value={participantsCount}
+                    onChange={(e) => setParticipantsCount(e.target.value)}
+                    placeholder="e.g. 3,500+"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-1">
+                  <Label>Hero: Registration Label</Label>
+                  <Input
+                    value={registrationFeeLabel}
+                    onChange={(e) => setRegistrationFeeLabel(e.target.value)}
+                    placeholder="e.g. Free"
+                  />
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
@@ -827,6 +874,153 @@ export default function AdminEventsPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     This displays a vertical timeline of the event on the public details page.
                   </p>
+                </div>
+
+                {/* Stats Highlights */}
+                <div className="space-y-4 sm:col-span-2 border-t pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-semibold">Stats Highlights</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Highlight key statistics on the details page (e.g. "50+ Speakers", "3 Days
+                        Summit"). Max 4 items.
+                      </p>
+                    </div>
+                    {statsHighlights.length < 4 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setStatsHighlights([...statsHighlights, { value: "", label: "" }])
+                        }
+                      >
+                        <Plus className="size-4 mr-2" /> Add Stat Highlight
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {statsHighlights.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex gap-3 items-start border p-3 rounded-lg bg-secondary/30"
+                      >
+                        <div className="flex-1 grid sm:grid-cols-2 gap-3">
+                          <Input
+                            placeholder="Value (e.g., 50+ or 3 Days)"
+                            value={item.value}
+                            onChange={(e) => {
+                              const newArr = [...statsHighlights];
+                              newArr[i].value = e.target.value;
+                              setStatsHighlights(newArr);
+                            }}
+                            required
+                          />
+                          <Input
+                            placeholder="Label (e.g., Speakers or Summit)"
+                            value={item.label}
+                            onChange={(e) => {
+                              const newArr = [...statsHighlights];
+                              newArr[i].label = e.target.value;
+                              setStatsHighlights(newArr);
+                            }}
+                            required
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            const newArr = [...statsHighlights];
+                            newArr.splice(i, 1);
+                            setStatsHighlights(newArr);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {statsHighlights.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">
+                        No stats highlights added.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Core Focus Areas */}
+                <div className="space-y-4 sm:col-span-2 border-t pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-semibold">Core Focus Areas</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Specify core focal areas or key highlights of the event (e.g., "Inspire",
+                        "Learn"). Max 4 items.
+                      </p>
+                    </div>
+                    {focusAreas.length < 4 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setFocusAreas([...focusAreas, { title: "", description: "" }])
+                        }
+                      >
+                        <Plus className="size-4 mr-2" /> Add Focus Area
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {focusAreas.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex gap-3 items-start border p-3 rounded-lg bg-secondary/30"
+                      >
+                        <div className="flex-1 space-y-3">
+                          <Input
+                            placeholder="Focus Title (e.g., Inspire)"
+                            value={item.title}
+                            onChange={(e) => {
+                              const newArr = [...focusAreas];
+                              newArr[i].title = e.target.value;
+                              setFocusAreas(newArr);
+                            }}
+                            required
+                          />
+                          <Textarea
+                            placeholder="Short Focus Description"
+                            value={item.description}
+                            onChange={(e) => {
+                              const newArr = [...focusAreas];
+                              newArr[i].description = e.target.value;
+                              setFocusAreas(newArr);
+                            }}
+                            rows={2}
+                            required
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            const newArr = [...focusAreas];
+                            newArr.splice(i, 1);
+                            setFocusAreas(newArr);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {focusAreas.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">
+                        No core focus areas added.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-4 sm:col-span-2">

@@ -25,6 +25,10 @@ export interface UPEvent {
 
   // Additional fields from mock that might be added to DB later
   titleHi?: string;
+  participantsCount?: string;
+  registrationFeeLabel?: string;
+  statsHighlights?: { value: string; label: string }[];
+  focusAreas?: { title: string; description: string }[];
   eligibility?: string[];
   benefits?: string[];
   schedule?: { date: string; label: string }[];
