@@ -124,6 +124,7 @@ export interface TeamMember {
   role?: string;
   notes: string;
   image: string;
+  phone?: string;
 }
 
 export interface TeamCategory {
