@@ -21,6 +21,7 @@ import {
   ScanLine,
   AlertTriangle,
   LogOut,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -240,6 +241,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { to: "/dashboard/applications", label: "All Applications", icon: FileText },
       { to: "/dashboard/admin/passes", label: "VIP Pass Generation", icon: Ticket },
       { to: "/dashboard/admin/cms", label: "Landing Page CMS", icon: LayoutTemplate },
+      { to: "/dashboard/admin/mail-config", label: "Email Configuration", icon: Mail },
       { to: "/dashboard/admin/qr", label: "QR Studio", icon: QrCode },
       { to: "/dashboard/admin/qr/logs", label: "QR Audit Logs", icon: ScanLine },
       { to: "/dashboard/admin/team", label: "Team Management", icon: Users },
