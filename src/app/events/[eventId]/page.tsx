@@ -41,12 +41,30 @@ export default function EventDetailPage() {
   const { user } = useAuth();
 
   useEffect(() => {
+    if (!eventId) return;
+
+    try {
+      const cached = sessionStorage.getItem(`event_data_${eventId}`);
+      if (cached) {
+        setE(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error("Failed to load event detail cache:", e);
+    }
+
     const fetchEvent = async () => {
       try {
         const docRef = doc(db, "events", eventId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setE({ id: docSnap.id, ...docSnap.data() } as UPEvent);
+          const eventData = { id: docSnap.id, ...docSnap.data() } as UPEvent;
+          setE(eventData);
+          try {
+            sessionStorage.setItem(`event_data_${eventId}`, JSON.stringify(eventData));
+          } catch (e) {
+            console.error("Failed to write event detail cache:", e);
+          }
         }
       } catch (error) {
         console.error("Error fetching event:", error);
@@ -54,7 +72,7 @@ export default function EventDetailPage() {
         setLoading(false);
       }
     };
-    if (eventId) fetchEvent();
+    fetchEvent();
   }, [eventId]);
 
   const status = e ? getDerivedEventStatus(e) : "Closed";

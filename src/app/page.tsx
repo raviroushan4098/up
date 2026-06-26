@@ -15,6 +15,7 @@ import {
   HeartHandshake,
   Award,
   Sparkles,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   Phone,
@@ -118,13 +119,41 @@ export default function HomePage() {
 
   // Strict Firebase Fetch
   useEffect(() => {
+    // 1. Try to load cached data from sessionStorage to render instantly
+    try {
+      const cachedCms = sessionStorage.getItem("landing_cms_data");
+      const cachedEvents = sessionStorage.getItem("landing_events_data");
+      const cachedStats = sessionStorage.getItem("landing_global_stats");
+
+      if (cachedCms) {
+        setCms(JSON.parse(cachedCms));
+        setLoading(false); // Render layout instantly!
+      }
+      if (cachedEvents) {
+        setLiveEvents(JSON.parse(cachedEvents));
+      }
+      if (cachedStats) {
+        const stats = JSON.parse(cachedStats);
+        setGlobalStats(stats);
+        setTotalApplications(stats.totalApplications || 0);
+      }
+    } catch (e) {
+      console.error("Failed to load landing page cache:", e);
+    }
+
     const fetchLandingData = async () => {
       try {
         // 1. Fetch CMS Text Overrides
         const docRef = doc(db, "settings", "landingPage");
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setCms(docSnap.data() as LandingPageCMS);
+          const cmsData = docSnap.data() as LandingPageCMS;
+          setCms(cmsData);
+          try {
+            sessionStorage.setItem("landing_cms_data", JSON.stringify(cmsData));
+          } catch (e) {
+            console.error("Failed to write landing cms cache:", e);
+          }
         } else {
           console.error("Landing page CMS not seeded in Firebase yet!");
         }
@@ -146,6 +175,11 @@ export default function HomePage() {
           });
 
           setLiveEvents(fetchedEvents);
+          try {
+            sessionStorage.setItem("landing_events_data", JSON.stringify(fetchedEvents));
+          } catch (e) {
+            console.error("Failed to write landing events cache:", e);
+          }
         }
 
         // 3. Fetch Total Applications & Global Stats
@@ -155,6 +189,11 @@ export default function HomePage() {
           const statsData = globalStatsSnap.data();
           setGlobalStats(statsData);
           setTotalApplications(statsData.totalApplications || 0);
+          try {
+            sessionStorage.setItem("landing_global_stats", JSON.stringify(statsData));
+          } catch (e) {
+            console.error("Failed to write landing stats cache:", e);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch landing page data:", error);
@@ -454,7 +493,7 @@ export default function HomePage() {
                           "https://images.unsplash.com/photo-1540575467063-178a50c2df87"
                         }
                         alt={mainEvent.title}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                        className="w-full h-full object-fill transition-transform duration-500 hover:scale-105"
                       />
                     </div>
                   </div>
@@ -485,7 +524,7 @@ export default function HomePage() {
                   </div>
                 </motion.div>
 
-                <motion.div {...fadeUp}>
+                <motion.div {...fadeUp} className="relative">
                   <div className="relative w-full overflow-hidden flex justify-center items-center h-[500px]">
                     <AnimatePresence mode="popLayout">
                       {visibleEvents.map((e) => {
@@ -544,6 +583,33 @@ export default function HomePage() {
                       })}
                     </AnimatePresence>
                   </div>
+
+                  {/* Manual Navigation Arrows */}
+                  {liveEvents.length > 1 && (
+                    <>
+                      <button
+                        onClick={() =>
+                          setActiveEventIndex((prev) =>
+                            prev === 0 ? liveEvents.length - 1 : prev - 1,
+                          )
+                        }
+                        className="absolute left-2 sm:left-4 top-[250px] -translate-y-1/2 z-30 size-10 sm:size-12 rounded-full bg-white/80 hover:bg-white text-[#C84B31] border border-border/40 shadow-elegant flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                        aria-label="Previous event"
+                      >
+                        <ChevronLeft className="size-6 sm:size-7" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          setActiveEventIndex((prev) => (prev + 1) % liveEvents.length)
+                        }
+                        className="absolute right-2 sm:right-4 top-[250px] -translate-y-1/2 z-30 size-10 sm:size-12 rounded-full bg-white/80 hover:bg-white text-[#C84B31] border border-border/40 shadow-elegant flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                        aria-label="Next event"
+                      >
+                        <ChevronRight className="size-6 sm:size-7" />
+                      </button>
+                    </>
+                  )}
+
                   {/* Mobile view all link */}
                   <div className="text-center mt-4 sm:hidden">
                     <Button
@@ -583,14 +649,13 @@ export default function HomePage() {
                           {/* Background Image */}
                           <img
                             src={
-                              liveEvents[i]?.image ||
-                              liveEvents[i]?.bannerUrl ||
+                              t.image ||
                               liveEvents[0]?.image ||
                               liveEvents[0]?.bannerUrl ||
                               "https://images.unsplash.com/photo-1540575467063-178a50c2df87"
                             }
                             alt={t.title}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-spring"
+                            className="absolute inset-0 w-full h-full object-fill group-hover:scale-105 transition-spring"
                           />
                           {/* Overlay */}
                           <div className="absolute inset-0 timeline-card-overlay" />

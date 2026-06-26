@@ -455,7 +455,12 @@ export default function CMSPage() {
                             ...data,
                             timeline: [
                               ...data.timeline,
-                              { date: "New Date", title: "New Milestone", desc: "Description..." },
+                              {
+                                date: "New Date",
+                                title: "New Milestone",
+                                desc: "Description...",
+                                image: "",
+                              },
                             ],
                           });
                         }}
@@ -502,6 +507,39 @@ export default function CMSPage() {
                             />
                           </div>
                         </div>
+
+                        <div className="grid gap-4 md:grid-cols-12 items-end">
+                          <div className="md:col-span-8 space-y-2">
+                            <label className="text-xs font-medium">Image URL</label>
+                            <Input
+                              placeholder="https://..."
+                              value={item.image || ""}
+                              onChange={(e) => {
+                                const newTimeline = [...data.timeline];
+                                newTimeline[i].image = e.target.value;
+                                setData({ ...data, timeline: newTimeline });
+                              }}
+                            />
+                          </div>
+                          <div className="md:col-span-4 flex items-center gap-3">
+                            {item.image && (
+                              <img
+                                src={item.image}
+                                alt="preview"
+                                className="h-10 w-16 object-cover rounded border"
+                              />
+                            )}
+                            <CMSImageUploader
+                              path={`timeline_${i}`}
+                              onUploaded={(url) => {
+                                const newTimeline = [...data.timeline];
+                                newTimeline[i].image = url;
+                                setData({ ...data, timeline: newTimeline });
+                              }}
+                            />
+                          </div>
+                        </div>
+
                         <Button
                           variant="destructive"
                           size="sm"

@@ -27,6 +27,16 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem("events_list_data");
+      if (cached) {
+        setEventsList(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error("Failed to load events cache:", e);
+    }
+
     const fetchEvents = async () => {
       try {
         const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
@@ -36,6 +46,11 @@ export default function EventsPage() {
           ...doc.data(),
         })) as UPEvent[];
         setEventsList(fetchedEvents);
+        try {
+          sessionStorage.setItem("events_list_data", JSON.stringify(fetchedEvents));
+        } catch (e) {
+          console.error("Failed to write events cache:", e);
+        }
       } catch (error) {
         console.error("Error fetching events:", error);
       } finally {

@@ -36,11 +36,27 @@ export default function AboutPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem("about_cms_data");
+      if (cached) {
+        setCms(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error("Failed to load about cache:", e);
+    }
+
     const fetchData = async () => {
       try {
         const cmsSnap = await getDoc(doc(db, "settings", "aboutPage"));
         if (cmsSnap.exists()) {
-          setCms({ ...emptyAboutCMS, ...cmsSnap.data() } as AboutPageCMS);
+          const cmsData = { ...emptyAboutCMS, ...cmsSnap.data() } as AboutPageCMS;
+          setCms(cmsData);
+          try {
+            sessionStorage.setItem("about_cms_data", JSON.stringify(cmsData));
+          } catch (e) {
+            console.error("Failed to write about cache:", e);
+          }
         } else {
           setCms(emptyAboutCMS);
         }

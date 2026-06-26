@@ -24,6 +24,7 @@ export interface CMSTimelineItem {
   date: string;
   title: string;
   desc: string;
+  image?: string;
 }
 
 export interface CMSBenefit {

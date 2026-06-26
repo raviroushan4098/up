@@ -34,6 +34,19 @@ export default function ContactPage() {
     const n2 = Math.floor(Math.random() * 9) + 1;
     setChallenge({ num1: n1, num2: n2 });
 
+    try {
+      const cached = sessionStorage.getItem("landing_cms_data");
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (data.contact) {
+          setContact(data.contact);
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load contact cache:", e);
+    }
+
     const fetchCMS = async () => {
       try {
         const docSnap = await getDoc(doc(db, "settings", "landingPage"));
@@ -41,6 +54,11 @@ export default function ContactPage() {
           const data = docSnap.data();
           if (data.contact) {
             setContact(data.contact);
+          }
+          try {
+            sessionStorage.setItem("landing_cms_data", JSON.stringify(data));
+          } catch (e) {
+            console.error("Failed to write contact landing cache:", e);
           }
         }
       } catch (e) {
