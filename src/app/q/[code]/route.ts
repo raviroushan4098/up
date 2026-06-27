@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { notFound } from "next/navigation";
+import * as admin from "firebase-admin";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -10,24 +11,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   try {
-    const linkRef = doc(db, "dynamic_links", code);
-    const linkSnap = await getDoc(linkRef);
+    const adminDb = getAdminDb();
+    const docRef = adminDb.collection("dynamic_links").doc(code.toLowerCase());
+    const docSnap = await docRef.get();
 
-    if (linkSnap.exists()) {
-      const data = linkSnap.data();
+    if (docSnap.exists) {
+      const data = docSnap.data();
 
-      // Fire and forget the increment counter
-      updateDoc(linkRef, {
-        clicks: increment(1),
-      }).catch((err) => console.error("Failed to increment clicks:", err));
+      // Fire and forget the increment counter using Admin SDK FieldValue
+      docRef
+        .update({
+          clicks: admin.firestore.FieldValue.increment(1),
+        })
+        .catch((err) => console.error("Failed to increment clicks:", err));
 
       // Redirect to target URL
-      return NextResponse.redirect(data.targetUrl, 302);
+      if (data && data.targetUrl) {
+        return NextResponse.redirect(data.targetUrl, 302);
+      }
     }
   } catch (error) {
     console.error("Error processing dynamic link:", error);
   }
 
-  // Fallback if code not found
-  return NextResponse.redirect(new URL("/not-found", request.url));
+  // Fallback if code not found - renders the native Next.js 404 page
+  notFound();
 }
