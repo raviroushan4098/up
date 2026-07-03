@@ -55,23 +55,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (uid: string): Promise<UserProfile | null> => {
+  const fetchProfile = async (uid: string): Promise<{ exists: boolean; data?: UserProfile }> => {
     try {
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return docSnap.data() as UserProfile;
+        return { exists: true, data: docSnap.data() as UserProfile };
       }
+      return { exists: false };
     } catch (error) {
       console.error("Error fetching user profile:", error);
+      throw error;
     }
-    return null;
   };
 
   const refreshProfile = async () => {
     if (user) {
-      const prof = await fetchProfile(user.uid);
-      if (prof) setProfile(prof);
+      try {
+        const result = await fetchProfile(user.uid);
+        if (result.exists && result.data) {
+          setProfile(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to refresh profile:", error);
+      }
     }
   };
 
@@ -82,26 +89,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        let prof = await fetchProfile(firebaseUser.uid);
-        if (!prof) {
-          // Fallback if profile wasn't created on signup (e.g. Google Sign-In)
-          const newProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || "",
-            fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
-            role: "user",
-            createdAt: new Date().toISOString(),
-            onboarded: false,
-          };
-          try {
+        try {
+          const result = await fetchProfile(firebaseUser.uid);
+          if (result.exists && result.data) {
+            setProfile(result.data);
+          } else {
+            // Fallback if profile wasn't created on signup (e.g. Google Sign-In or phone sign up)
+            const newProfile: UserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || "",
+              fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
+              role: "user",
+              createdAt: new Date().toISOString(),
+              onboarded: false,
+            };
             await setDoc(doc(db, "users", firebaseUser.uid), newProfile);
             await setDoc(doc(db, "counters", "users"), { count: increment(1) }, { merge: true });
-            prof = newProfile;
-          } catch (e) {
-            console.error("Error setting default user profile or counter:", e);
+            setProfile(newProfile);
           }
+        } catch (e) {
+          console.error("Error loading user profile on auth state change:", e);
+          // Keep profile as null or handle connection error gracefully
         }
-        setProfile(prof);
       } else {
         setProfile(null);
       }

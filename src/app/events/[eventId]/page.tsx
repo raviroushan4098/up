@@ -603,9 +603,7 @@ export default function EventDetailPage() {
                     <h3 className="font-display font-extrabold text-3xl text-[#632020] text-center mb-1">
                       {section.title}
                     </h3>
-                    <p className="text-center text-[#C84B31] font-bold text-xs uppercase tracking-widest mb-8">
-                      CHIEF GUESTS
-                    </p>
+                    <p className="text-center text-[#C84B31] font-bold text-xs uppercase tracking-widest mb-8" />
 
                     {section.members.length > 0 ? (
                       <Carousel
