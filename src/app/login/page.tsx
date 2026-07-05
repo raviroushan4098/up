@@ -3,28 +3,36 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { signInWithCustomToken } from "firebase/auth";
 import { getToken } from "firebase/app-check";
-import { auth, db, app, appCheck } from "@/lib/firebase";
+import { auth, appCheck } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MAX_OTP_PER_DAY = 3;
 
 interface RateLimitResponse {
   allowed: boolean;
   remaining?: number;
-  reason?: "cooldown" | "phone_limit" | "ip_limit" | "device_limit";
+  reason?: "cooldown" | "email_limit" | "ip_limit" | "device_limit";
   waitSeconds?: number;
   message?: string;
 }
 
-const checkOtpRateLimitOnServer = async (
-  phone: string,
+const sendOtpRequestOnServer = async (
+  email: string,
   deviceId: string | null,
   fingerprint: string,
 ): Promise<RateLimitResponse> => {
@@ -38,13 +46,27 @@ const checkOtpRateLimitOnServer = async (
     // App Check might not be initialized (e.g. in dev mode)
   }
 
-  const res = await fetch("/api/otp-rate-limit", {
+  const res = await fetch("/api/auth/send-otp", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(appCheckToken ? { "X-Firebase-AppCheck": appCheckToken } : {}),
     },
-    body: JSON.stringify({ phone, deviceId, fingerprint }),
+    body: JSON.stringify({ email, deviceId, fingerprint }),
+  });
+  return res.json();
+};
+
+const verifyOtpRequestOnServer = async (
+  email: string,
+  otp: string,
+): Promise<{ success: boolean; customToken?: string; error?: string }> => {
+  const res = await fetch("/api/auth/verify-otp", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, otp }),
   });
   return res.json();
 };
@@ -67,13 +89,15 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [redirectTo, setRedirectTo] = useState("/dashboard");
 
-  // Phone Auth State
-  const [phone, setPhone] = useState("");
+  // Email Auth State
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [otpRemaining, setOtpRemaining] = useState<number | null>(null);
   const [cooldown, setCooldown] = useState(0); // seconds remaining in cooldown
+
+  // Forgot Email Modal State
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   // Resolve redirect parameter on mount
   useEffect(() => {
@@ -135,60 +159,18 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Clean up reCAPTCHA on unmount
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && (window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-          (window as any).recaptchaVerifier = null;
-        } catch (e) {
-          // Fail silently
-        }
-      }
-    };
-  }, []);
-
-  // Recaptcha setup
-  const setupRecaptcha = () => {
-    if (typeof window === "undefined") return;
-    try {
-      if ((window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-        } catch (e) {
-          // Fail silently
-        }
-      }
-      const recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-      });
-      (window as any).recaptchaVerifier = recaptchaVerifier;
-      return recaptchaVerifier;
-    } catch (error: any) {
-      if (error.message?.includes("already been rendered")) {
-        window.location.reload();
-        return;
-      }
-      toast.error("Failed to initialize security verification. Please try again.");
-    }
-  };
-
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone) {
-      toast.error("Please enter a valid mobile number");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid email address");
       return;
     }
     setSubmitting(true);
     try {
-      const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
-
-      // ── OTP Rate Limit Check (Server-side) ─────────────────────────
       const deviceId = typeof window !== "undefined" ? localStorage.getItem("device_id") : null;
       const fingerprint = getBrowserFingerprint();
 
-      const rateLimit = await checkOtpRateLimitOnServer(formattedPhone, deviceId, fingerprint);
+      const rateLimit = await sendOtpRequestOnServer(email, deviceId, fingerprint);
 
       if (!rateLimit.allowed) {
         if (rateLimit.reason === "cooldown" && rateLimit.waitSeconds) {
@@ -197,9 +179,9 @@ export default function LoginPage() {
             rateLimit.message ||
               `Please wait ${rateLimit.waitSeconds}s before requesting another OTP.`,
           );
-        } else if (rateLimit.reason === "phone_limit") {
+        } else if (rateLimit.reason === "email_limit") {
           setOtpRemaining(0);
-          toast.error(rateLimit.message || "Daily OTP limit reached for this phone number.", {
+          toast.error(rateLimit.message || "Daily OTP limit reached for this email address.", {
             duration: 5000,
           });
         } else {
@@ -212,42 +194,16 @@ export default function LoginPage() {
         return;
       }
 
-      const verifier = setupRecaptcha();
-      if (!verifier) {
-        setSubmitting(false);
-        return;
-      }
-
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
-
       if (rateLimit.remaining !== undefined) {
         setOtpRemaining(rateLimit.remaining);
       }
 
-      setConfirmationResult(confirmation);
       setOtpSent(true);
       toast.success(
-        `OTP sent to ${formattedPhone} (${rateLimit.remaining !== undefined ? rateLimit.remaining : "some"} attempts remaining today)`,
+        `Verification OTP sent to ${email} (${rateLimit.remaining !== undefined ? rateLimit.remaining : "some"} attempts remaining today)`,
       );
     } catch (error: any) {
-      if (error.message?.includes("already been rendered")) {
-        window.location.reload();
-        return;
-      }
-
-      let errorMessage = "Failed to send OTP. Please try again.";
-
-      if (
-        error.code === "auth/invalid-phone-number" ||
-        error.message?.includes("TOO_LONG") ||
-        error.message?.includes("TOO_SHORT")
-      ) {
-        errorMessage = "Please enter a valid 10-digit mobile number.";
-      } else if (error.code === "auth/too-many-requests") {
-        errorMessage = "Too many attempts. Please try again later.";
-      }
-
-      toast.error(errorMessage);
+      toast.error("Failed to send OTP. Please check your internet connection.");
     } finally {
       setSubmitting(false);
     }
@@ -259,17 +215,18 @@ export default function LoginPage() {
       toast.error("Please enter the 6-digit OTP code");
       return;
     }
-    if (!confirmationResult) {
-      toast.error("Session expired. Please request a new OTP.");
-      return;
-    }
     setSubmitting(true);
     try {
-      await confirmationResult.confirm(otp);
-      toast.success("Verified successfully!");
-      router.push(redirectTo);
+      const res = await verifyOtpRequestOnServer(email, otp);
+      if (res.success && res.customToken) {
+        await signInWithCustomToken(auth, res.customToken);
+        toast.success("Verified successfully!");
+        router.push(redirectTo);
+      } else {
+        toast.error(res.error || "Invalid verification code. Please check and try again.");
+      }
     } catch (error: any) {
-      toast.error("Invalid verification code. Please check and try again.");
+      toast.error("An error occurred during verification. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -277,18 +234,26 @@ export default function LoginPage() {
 
   return (
     <AuthLayout title="Welcome back" subtitle="Login to access your applications and dashboard.">
-      <div id="recaptcha-container" />
       <div className="mt-5">
         {!otpSent ? (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Mobile Number</Label>
+              <div className="flex justify-between items-center">
+                <Label>Email Address</Label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-[11px] font-medium text-accent hover:underline focus:outline-none"
+                >
+                  Forgot email?
+                </button>
+              </div>
               <Input
                 required
-                type="tel"
-                placeholder="90000 00000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={submitting}
               />
             </div>
@@ -319,7 +284,7 @@ export default function LoginPage() {
                 ? "Sending..."
                 : cooldown > 0
                   ? `Wait ${Math.floor(cooldown / 60)}:${String(cooldown % 60).padStart(2, "0")}`
-                  : "Send OTP"}
+                  : "Send Verification Code"}
             </Button>
             <p className="text-[11px] text-muted-foreground text-center">
               Max {MAX_OTP_PER_DAY} OTP requests per day · 2 min gap between each
@@ -328,7 +293,7 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Enter OTP</Label>
+              <Label>Enter Verification OTP</Label>
               <Input
                 required
                 placeholder="6-digit code"
@@ -338,12 +303,11 @@ export default function LoginPage() {
                 disabled={submitting}
               />
               <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">
-                Dear user, if you have installed Truecaller on your device, kindly check the spam
-                folder for the OTP.
+                Dear user, please check your email inbox and spam folder for the login OTP code.
               </p>
               {otpRemaining !== null && (
                 <p className="text-[11px] text-amber-600 font-medium">
-                  {otpRemaining} OTP attempt{otpRemaining !== 1 ? "s" : ""} remaining today
+                  {otpRemaining} OTP request{otpRemaining !== 1 ? "s" : ""} remaining today
                 </p>
               )}
             </div>
@@ -355,7 +319,7 @@ export default function LoginPage() {
                 disabled={submitting}
                 className="flex-1 h-11"
               >
-                Change Number
+                Change Email
               </Button>
               <Button
                 type="submit"
@@ -368,6 +332,33 @@ export default function LoginPage() {
           </form>
         )}
       </div>
+
+      {/* Forgot Email Admin Contact Modal */}
+      <AlertDialog open={showForgotModal} onOpenChange={setShowForgotModal}>
+        <AlertDialogContent className="max-w-md rounded-2xl border-primary/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display text-lg text-primary font-bold">
+              Forgot Email Address?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed mt-2">
+              To retrieve your registered email address, please contact administration support at:
+              <span className="block font-bold text-lg text-accent mt-2 font-mono tracking-wider">
+                6386751603
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogAction asChild>
+              <Button
+                onClick={() => setShowForgotModal(false)}
+                className="bg-gradient-saffron text-primary font-semibold w-full sm:w-auto"
+              >
+                OK
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AuthLayout>
   );
 }

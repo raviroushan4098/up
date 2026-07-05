@@ -307,6 +307,7 @@ export default function VerificationPage() {
 
     const data = filteredUsers.map((u) => ({
       Name: u.fullName || "N/A",
+      "Father's Name": u.fatherName || "N/A",
       Email: u.email || "N/A",
       Phone: u.phoneNumber ? String(u.phoneNumber) : "N/A",
       Profession: u.profession || "N/A",
