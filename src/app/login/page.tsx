@@ -29,6 +29,7 @@ interface RateLimitResponse {
   reason?: "cooldown" | "email_limit" | "ip_limit" | "device_limit";
   waitSeconds?: number;
   message?: string;
+  error?: string;
 }
 
 const sendOtpRequestOnServer = async (
@@ -185,10 +186,13 @@ export default function LoginPage() {
             duration: 5000,
           });
         } else {
-          // IP limit or device limit
-          toast.error(rateLimit.message || "Too many requests. Please try again tomorrow.", {
-            duration: 5000,
-          });
+          // IP limit, device limit, or App Check validation failure
+          toast.error(
+            rateLimit.error || rateLimit.message || "Too many requests. Please try again tomorrow.",
+            {
+              duration: 5000,
+            },
+          );
         }
         setSubmitting(false);
         return;
