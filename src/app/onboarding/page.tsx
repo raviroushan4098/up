@@ -149,9 +149,6 @@ export default function OnboardingPage() {
   // Pre-fill fields from authentication credentials
   useEffect(() => {
     if (profile) {
-      if (!sessionStorage.getItem("onboarding_form") || !fullName) {
-        setFullName(profile.fullName || "");
-      }
       if (!sessionStorage.getItem("onboarding_form") || !email) {
         setEmail(profile.email || "");
         if (profile.email) setIsEmailVerified(true);

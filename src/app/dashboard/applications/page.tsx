@@ -26,6 +26,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -504,25 +510,68 @@ export default function ApplicationsPage() {
     );
   });
 
-  const handleExportExcel = () => {
-    if (applications.length === 0) {
-      toast.error("No applications to export.");
+  const handleExportExcel = async (
+    filterStatus: "all" | "pending" | "selected" | "rejected" | "accepted",
+  ) => {
+    let exportApplications = applications;
+    if (filterStatus !== "all") {
+      exportApplications = applications.filter((app) => app.status === filterStatus);
+    }
+
+    if (exportApplications.length === 0) {
+      toast.error(`No ${filterStatus} applications to export.`);
       return;
     }
 
-    const data = applications.map((app) => ({
-      "Application No": app.applicationNo || "N/A",
-      "Applicant Name": app.applicantName || "N/A",
-      Email: app.applicantEmail || "N/A",
-      Phone: app.applicantPhone ? String(app.applicantPhone) : "N/A",
-      Status: app.status.toUpperCase(),
-      "Date Applied": app.appliedAt ? new Date(app.appliedAt).toLocaleString() : "N/A",
-    }));
+    // 1. Get unique userIds from applications list
+    const userIds = Array.from(
+      new Set(exportApplications.map((app) => app.userId).filter(Boolean)),
+    );
+
+    // 2. Fetch profiles in chunks of 30 (Firestore limit for 'in' query)
+    const usersMap: Record<string, any> = {};
+    const chunks = [];
+    for (let i = 0; i < userIds.length; i += 30) {
+      chunks.push(userIds.slice(i, i + 30));
+    }
+
+    try {
+      await Promise.all(
+        chunks.map(async (chunk) => {
+          const q = query(collection(db, "users"), where("__name__", "in", chunk));
+          const snap = await getDocs(q);
+          snap.forEach((doc) => {
+            usersMap[doc.id] = doc.data();
+          });
+        }),
+      );
+    } catch (err) {
+      console.error("Failed to fetch user profiles for export details:", err);
+    }
+
+    // 3. Map export data using the snapshot or retrieved profile
+    const data = exportApplications.map((app) => {
+      const userProfile = usersMap[app.userId];
+      return {
+        "Application No": app.applicationNo || "N/A",
+        "Applicant Name": app.applicantName || "N/A",
+        "Selected Topic": app.selectedTopic || "N/A",
+        Email: app.applicantEmail || "N/A",
+        Phone: app.applicantPhone ? String(app.applicantPhone) : "N/A",
+        District: app.applicantDistrict || userProfile?.district || "N/A",
+        State: app.applicantState || userProfile?.state || "N/A",
+        Status: app.status.toUpperCase(),
+        "Date Applied": app.appliedAt ? new Date(app.appliedAt).toLocaleString() : "N/A",
+      };
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Applications");
-    XLSX.writeFile(workbook, `applications_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(
+      workbook,
+      `applications_${filterStatus}_${new Date().toISOString().split("T")[0]}.xlsx`,
+    );
   };
 
   return (
@@ -549,14 +598,46 @@ export default function ApplicationsPage() {
             />
           </div>
           {isPrivileged && (
-            <Button
-              onClick={handleExportExcel}
-              variant="outline"
-              className="w-full sm:w-auto shrink-0 gap-2"
-            >
-              <Download className="size-4" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto shrink-0 gap-2">
+                  <Download className="size-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel("all")}
+                  className="cursor-pointer"
+                >
+                  All Statuses
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel("pending")}
+                  className="cursor-pointer"
+                >
+                  Pending
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel("accepted")}
+                  className="cursor-pointer"
+                >
+                  Under Review
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel("selected")}
+                  className="cursor-pointer"
+                >
+                  Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel("rejected")}
+                  className="cursor-pointer"
+                >
+                  Rejected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>

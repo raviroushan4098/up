@@ -125,14 +125,19 @@ export async function sendOnboardingCompleteEmail(email: string, name: string) {
 
 export async function sendProfileApprovedEmail(email: string, name: string) {
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-      <h2 style="color: #10B981;">Profile Verified</h2>
-      <p>Dear ${name},</p>
-      <p>Great news! Your profile on <strong>Bhavishya E Uttar Pradesh</strong> has been verified by our administration team.</p>
-      <p>You now have full access to apply for events and programs.</p>
-      <br/>
-      <p>Best regards,</p>
-      <p><strong>Bhavishya E Uttar Pradesh Team</strong></p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; line-height: 1.6; color: #1e293b;">
+      <h2 style="color: #10b981; margin-top: 0; font-size: 20px; font-weight: 700;">Profile Verified</h2>
+      <p style="font-size: 15px; font-weight: 600;">Dear ${name},</p>
+      <p style="font-size: 15px;">Congratulations! Your profile on <strong>Bhavishya E Uttar Pradesh</strong> has been successfully verified.</p>
+      <p style="font-size: 15px;">If you wish to participate in the <strong>Future Leaders Conclave 2026</strong> as a Delegate, please complete your event registration through your dashboard at the earliest.</p>
+      <p style="font-size: 15px; color: #ef4444; font-weight: bold;">Your application will be considered only after the registration is successfully completed.</p>
+      <p style="font-size: 14px; background-color: #f8fafc; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+        If you face any issues during registration, please contact our Technical Support Team at:<br/>
+        <strong>+91 6386751603, +91 79917 53893</strong>
+      </p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+      <p style="margin: 0; font-size: 14px; color: #64748b;">Regards,</p>
+      <p style="margin: 4px 0 0 0; font-weight: bold; font-size: 14px; color: #0f172a;">Team Bhavishya E Uttar Pradesh</p>
     </div>
   `;
   return await sendEmailSafely({

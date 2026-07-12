@@ -545,7 +545,9 @@ export default function VerificationPage() {
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
                           <span>{user.email}</span>
-                          {user.district && <span>📍 {user.district}</span>}
+                          {(user.district || user.state) && (
+                            <span>📍 {[user.district, user.state].filter(Boolean).join(", ")}</span>
+                          )}
                           {user.profession && <span>💼 {user.profession}</span>}
                         </div>
                         {status === "rejected" && user.rejectionReason && (
@@ -709,6 +711,7 @@ export default function VerificationPage() {
                               <DetailRow label="Email" value={user.email} />
                               <DetailRow label="Phone" value={user.phoneNumber} />
                               <DetailRow label="District" value={user.district} />
+                              <DetailRow label="State" value={user.state} />
                               <DetailRow label="Village / City" value={user.villageCity} />
                               <DetailRow label="Address" value={user.address} />
                             </div>

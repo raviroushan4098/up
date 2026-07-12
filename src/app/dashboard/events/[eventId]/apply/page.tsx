@@ -358,6 +358,7 @@ export default function ApplyEventPage({ params }: { params: Promise<{ eventId: 
         applicantEmail: profile.email,
         applicantPhone: profile.phoneNumber || "",
         applicantDistrict: profile.district || "",
+        applicantState: profile.state || "",
         appliedAt: new Date().toISOString(),
       };
 

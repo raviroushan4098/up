@@ -98,6 +98,7 @@ export interface EventApplication {
   applicantEmail: string;
   applicantPhone?: string;
   applicantDistrict?: string;
+  applicantState?: string;
 
   checkedIn?: boolean;
   checkedInAt?: string;

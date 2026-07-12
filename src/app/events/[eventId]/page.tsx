@@ -442,6 +442,42 @@ export default function EventDetailPage() {
                       </Card>
                     )}
 
+                  {/* Agenda Topics section */}
+                  {e.displayConfig?.showAgendaTopics !== false &&
+                    e.agendaTopics &&
+                    e.agendaTopics.length > 0 && (
+                      <Card className="border border-border/80 shadow-sm rounded-2xl">
+                        <CardContent className="p-6 sm:p-8">
+                          <h3 className="font-display font-bold text-xl text-[#632020] mb-4">
+                            Agenda Topics
+                          </h3>
+                          <ul className="space-y-4">
+                            {e.agendaTopics.map((topic: any, idx) => {
+                              const title = typeof topic === "string" ? topic : topic.title;
+                              const desc = typeof topic === "string" ? "" : topic.description;
+                              return (
+                                <li key={idx} className="flex items-start gap-3">
+                                  <div className="size-5 rounded-full bg-red-50 border border-red-100 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Sparkles className="size-3 text-[#C84B31]" />
+                                  </div>
+                                  <div>
+                                    <span className="text-foreground/90 font-semibold text-sm sm:text-base">
+                                      {title}
+                                    </span>
+                                    {desc && (
+                                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                        {desc}
+                                      </p>
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+
                   {/* Benefits box grid */}
                   {e.displayConfig?.showBenefits !== false &&
                     e.benefits &&

@@ -388,10 +388,7 @@ export default function HomePage() {
                         {section.title}
                       </h2>
                     </motion.div>
-                    <motion.div
-                      {...fadeUp}
-                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5"
-                    >
+                    <motion.div {...fadeUp} className="flex flex-wrap justify-center gap-5">
                       {section.members.map((member, i) => (
                         <motion.div
                           key={i}
@@ -399,6 +396,7 @@ export default function HomePage() {
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true }}
                           transition={{ duration: 0.4, delay: i * 0.05 }}
+                          className="w-[calc(50%-10px)] sm:w-[180px] md:w-[200px] lg:w-[220px] flex-shrink-0"
                         >
                           <Card className="border-0 shadow-card hover:shadow-elegant hover:-translate-y-1 transition-spring overflow-hidden h-full">
                             <div className="aspect-square overflow-hidden bg-muted">

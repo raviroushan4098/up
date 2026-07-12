@@ -327,6 +327,7 @@ export default function PassesPage() {
         applicantEmail: userProf.email,
         applicantPhone: userProf.phoneNumber || "Verified",
         applicantDistrict: userProf.district || "Uttar Pradesh",
+        applicantState: userProf.state || "",
         schoolCollegeName: "",
         passGenerated: true,
         passId: newPassId,
