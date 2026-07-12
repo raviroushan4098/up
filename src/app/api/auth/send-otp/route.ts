@@ -6,9 +6,9 @@ import * as admin from "firebase-admin";
 import { getAdminDb, isAdminConfigured } from "@/lib/firebase-admin";
 import { sendVerificationOtpEmail } from "@/actions/email";
 
-const MAX_EMAIL_OTP_PER_DAY = 3;
-const MAX_IP_OTP_PER_DAY = 6;
-const MAX_DEVICE_OTP_PER_DAY = 6;
+const MAX_EMAIL_OTP_PER_DAY = 5;
+const MAX_IP_OTP_PER_DAY = 20;
+const MAX_DEVICE_OTP_PER_DAY = 20;
 const OTP_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
 /** Helper: Generate SHA-256 hash */
